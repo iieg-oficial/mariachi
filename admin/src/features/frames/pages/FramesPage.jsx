@@ -1,19 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Col, ConfigProvider, Empty, Row, Segmented, Space, Spin, message } from 'antd';
+import { Button, ConfigProvider, Segmented, Space, Spin, message } from 'antd';
 import {
-    AppstoreOutlined,
     CloudDownloadOutlined,
     ExpandOutlined,
     PlusOutlined,
-    TableOutlined,
     VideoCameraOutlined,
 } from '@ant-design/icons';
-import { GridPanel } from '@shared/components/dataGrid';
 import PageHeading from '@shared/components/PageHeading';
 import { useAuth } from '@shared/contexts/useAuth';
 
-import CamaraCard from '../components/CamaraCard';
 import CamaraModal from '../components/CamaraModal';
 import EstadoFrames from '../components/EstadoFrames';
 import ImportarNvr from '../components/ImportarNvr';
@@ -30,16 +26,8 @@ import {
     updateCamara,
 } from '../api/framesService';
 
-const VISTAS = [
-    { label: 'Fichas', value: 'fichas', icon: <AppstoreOutlined /> },
-    { label: 'Tabla', value: 'tabla', icon: <TableOutlined /> },
-    { label: 'En vivo', value: 'vivo', icon: <VideoCameraOutlined /> },
-];
-
-const BUSQUEDA = ['nombre', 'etiqueta', 'ubicacion', 'rtsp_url'];
-
-const DESCRIPCION = 'Catálogo de cámaras de videovigilancia. Lo que se guarda aquí es la fuente '
-    + 'de verdad; frames lo toma al aplicar.';
+const DESCRIPCION = 'Cámaras de videovigilancia en vivo. Lo que se guarda aquí es la fuente de '
+    + 'verdad; frames lo toma al aplicar. Edita o agrega desde esta misma pantalla.';
 
 const FramesPage = () => {
     const navigate = useNavigate();
@@ -54,11 +42,8 @@ const FramesPage = () => {
     const [importarAbierto, setImportarAbierto] = useState(false);
     const [enEdicion, setEnEdicion] = useState(null);
     const [enVivo, setEnVivo] = useState({});
-    const [vista, setVista] = useState('fichas');
     const [alto, setAlto] = useState(360);
-    const [versionVivo, setVersionVivo] = useState(0);
-
-    const habilitadas = useMemo(() => camaras.filter((c) => c.habilitada), [camaras]);
+    const [version, setVersion] = useState(0);
 
     const cargar = useCallback(async () => {
         setCargando(true);
@@ -71,6 +56,7 @@ const FramesPage = () => {
             } catch {
                 setEnVivo({});
             }
+            setVersion((v) => v + 1);
         } catch {
             message.error('No se pudieron cargar las cámaras');
         } finally {
@@ -90,11 +76,6 @@ const FramesPage = () => {
     const abrirEdicion = (camara) => {
         setEnEdicion(camara);
         setModalAbierto(true);
-    };
-
-    const cambiarVista = (valor) => {
-        setVista(valor);
-        if (valor === 'vivo') setVersionVivo((v) => v + 1);
     };
 
     const guardar = async (valores) => {
@@ -147,18 +128,13 @@ const FramesPage = () => {
                 description={DESCRIPCION}
                 extra={
                     <Space size={12} wrap>
-                        <Segmented options={VISTAS} value={vista} onChange={cambiarVista} />
-                        {vista === 'vivo' && (
-                            <>
-                                <Segmented options={CALIDADES} value={alto} onChange={setAlto} />
-                                <Button
-                                    icon={<ExpandOutlined />}
-                                    onClick={() => navigate('/frames/vivo/pantalla')}
-                                >
-                                    Pantalla completa
-                                </Button>
-                            </>
-                        )}
+                        <Segmented options={CALIDADES} value={alto} onChange={setAlto} />
+                        <Button
+                            icon={<ExpandOutlined />}
+                            onClick={() => navigate('/frames/vivo/pantalla')}
+                        >
+                            Pantalla completa
+                        </Button>
                         {puedeGestionar && (
                             <>
                                 <Button
@@ -185,53 +161,17 @@ const FramesPage = () => {
                 puedeGestionar={puedeGestionar}
             />
 
-            {vista === 'fichas' ? (
-                <Spin spinning={cargando}>
-                    {camaras.length === 0 ? (
-                        <Empty description="Todavía no hay cámaras en el catálogo" />
-                    ) : (
-                        <Row gutter={[16, 16]}>
-                            {camaras.map((camara) => (
-                                <Col key={camara.id} xs={24} sm={12} xl={8}>
-                                    <CamaraCard
-                                        camara={camara}
-                                        vivo={enVivo[camara.nombre]}
-                                        onEditar={abrirEdicion}
-                                        onEliminar={eliminar}
-                                        puedeGestionar={puedeGestionar}
-                                    />
-                                </Col>
-                            ))}
-                        </Row>
-                    )}
-                </Spin>
-            ) : null}
-
-            {vista === 'tabla' ? (
-                <div style={{ height: '60vh' }}>
-                    <GridPanel
-                        resource="frames-camaras"
-                        rowKeyField="nombre"
-                        searchFields={BUSQUEDA}
-                        searchPlaceholder="Buscar por nombre, ubicación o URL"
-                        itemsLabel="cámaras"
-                        exportFileName="camaras-frames"
-                        rowLabelField="etiqueta"
-                        active={vista === 'tabla'}
-                    />
-                </div>
-            ) : null}
-
-            {vista === 'vivo' ? (
-                <Spin spinning={cargando}>
-                    <MosaicoCamaras
-                        camaras={habilitadas}
-                        estados={enVivo}
-                        alto={alto}
-                        version={versionVivo}
-                    />
-                </Spin>
-            ) : null}
+            <Spin spinning={cargando}>
+                <MosaicoCamaras
+                    camaras={camaras}
+                    estados={enVivo}
+                    alto={alto}
+                    version={version}
+                    onEditar={abrirEdicion}
+                    onEliminar={eliminar}
+                    puedeGestionar={puedeGestionar}
+                />
+            </Spin>
 
             <CamaraModal
                 abierto={modalAbierto}

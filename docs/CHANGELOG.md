@@ -46,10 +46,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Cambiado
 
-- El módulo de frames unifica «Cámaras» y «En vivo» en una sola página con modos Fichas, Tabla y En
-  vivo; se retira la ruta `/frames/vivo` y su entrada de menú. La preview de cada cámara reintenta con
-  freno: tras tres fallos pasa a reintentar cada media hora (antes insistía cada 2 s sin tope) y si el
-  estado ya la da sin señal baja al reintento lento de inmediato.
+- El módulo de frames es ahora **una sola vista en vivo**: un mosaico con todas las cámaras del
+  catálogo (las encendidas con video, las apagadas con un recuadro «apagada»), y en el encabezado de
+  cada tarjeta los botones de **editar**, **eliminar** y pantalla completa. Se retiran las vistas
+  Fichas y Tabla, la ruta `/frames/vivo` y su entrada de menú; agregar e importar siguen en el
+  encabezado de la página. La preview de cada cámara reintenta con freno: tras tres fallos pasa a
+  reintentar cada media hora (antes insistía cada 2 s sin tope) y si el estado ya la da sin señal baja
+  al reintento lento de inmediato.
 - Guía del plugin de QGIS: desde 0.17.0 ya no pide el servidor, viene con el público del IIEG.
 - Tópico del MCP en el admin: seis tools en producción y siete en dev/beta, reglas de identificadores,
   fechas, municipios y textos sin datos de contacto, y una tarjeta de protecciones (rol de BD, GeoServer
