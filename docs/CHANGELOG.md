@@ -30,9 +30,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - `purge_mapalab_events.py` purga también `huachicol.mcp_events` con la misma ventana de
   `MAPALAB_EVENTS_RETENTION_DAYS`; los rollups `huachicol.mcp_rollup_*` solo recalculan los últimos
   3 días y conservan el histórico.
+- **Importar del NVR** en las cámaras de frames (`POST /frames/nvr/canales`): consulta el inventario
+  del grabador por ISAPI (nombre, IP y estado de cada canal) y da de alta las elegidas apagadas con la
+  ruta RTSP del canal correcto armada sola, en vez de capturarla a mano.
+- Botón **Probar conexión** al crear o editar una cámara de frames (`POST /frames/camaras/probar`):
+  valida la URL con un sondeo RTSP (DESCRIBE con Digest) antes de guardar, así que detecta puerto mal,
+  host inalcanzable, credencial equivocada o canal inexistente. Al editar reutiliza la contraseña
+  guardada sin volver a pedirla.
 
 ### Cambiado
 
+- El módulo de frames unifica «Cámaras» y «En vivo» en una sola página con modos Fichas, Tabla y En
+  vivo; se retira la ruta `/frames/vivo` y su entrada de menú. La preview de cada cámara reintenta con
+  freno: tras tres fallos pasa a reintentar cada media hora (antes insistía cada 2 s sin tope) y si el
+  estado ya la da sin señal baja al reintento lento de inmediato.
 - Guía del plugin de QGIS: desde 0.17.0 ya no pide el servidor, viene con el público del IIEG.
 - Tópico del MCP en el admin: seis tools en producción y siete en dev/beta, reglas de identificadores,
   fechas, municipios y textos sin datos de contacto, y una tarjeta de protecciones (rol de BD, GeoServer
@@ -51,6 +62,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Corregido
 
+- `POST /frames/aplicar` y `GET /frames/preview` devolvían 500 cuando frames tardaba en guardar la
+  configuración (típico mientras reinicia ffmpeg): el `ReadTimeout` de httpx no se traducía a error de
+  frames. Ahora el guardado espera hasta 30 s y un timeout se reporta como error claro (502), no como
+  fallo interno.
 - La pestaña Estadísticas de una capa manda el `db_schema` del workspace y no su alias: en `general`,
   `seguridad` y `recursos` no coinciden y la cifra calculada se rechazaba o quedaba en «—».
 - Agregar una condición a una cifra calculada ya no tumba el admin (React #31): el editor de
