@@ -237,6 +237,7 @@ TODOS_LOS_PERMISOS = frozenset({
     "mariachi.usuarios.update",
     "mariachi.usuarios.delete",
     "mariachi.usuarios.assign",
+    "mariachi.access.manage",
     "mariachi.sistema.manage",
 })
 
@@ -281,6 +282,7 @@ def establecer_cookies_de_sesion(client, user):
 
 def login_as(client, user, permissions):
     user.permissions = set(permissions)
+    user.minerva_access_token = "token-minerva-de-prueba"
 
     async def override_get_current_user():
         return user

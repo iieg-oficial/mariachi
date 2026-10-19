@@ -117,6 +117,8 @@ permissions:
     name: Eliminar usuarios
   - key: mariachi.usuarios.assign
     name: Asignar accesos a usuarios
+  - key: mariachi.access.manage
+    name: Administrar el acceso a mariachi en minerva
 
   - key: mariachi.sistema.manage
     name: Administrar la configuracion del sistema
@@ -287,6 +289,7 @@ roles:
       - mariachi.usuarios.update
       - mariachi.usuarios.delete
       - mariachi.usuarios.assign
+      - mariachi.access.manage
 
   - name: Sistema - administracion
     description: Atomico. Configuracion del sistema
@@ -338,4 +341,5 @@ roles:
       - mariachi.usuarios.update
       - mariachi.usuarios.delete
       - mariachi.usuarios.assign
+      - mariachi.access.manage
       - mariachi.sistema.manage

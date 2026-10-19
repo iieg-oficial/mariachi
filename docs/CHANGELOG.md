@@ -13,6 +13,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- **Acceso en minerva desde la ficha del usuario.** Con el permiso nuevo `mariachi.access.manage`, el
+  modal de edición muestra los roles de mariachi en minerva (los heredados de un grupo, bloqueados) y
+  al guardar da de alta a la persona en minerva si no existía, la vincula y fija sus roles; el
+  enlace de invitación aparece una sola vez para copiarlo. «Enviar acceso» genera un enlace de
+  restablecimiento. Al eliminar un usuario se le retiran sus roles de mariachi en minerva. Usa la
+  administración delegada de minerva (`/delegated`, minerva#201): endpoints
+  `GET /usuarios/acceso/roles`, `GET /usuarios/acceso/personas`, `PUT /usuarios/{id}/acceso` y
+  `POST /usuarios/{id}/acceso/enlace`.
 - La API puede autenticarse ante GeoServer con un token de servicio de minerva (`client_credentials`)
   en lugar de usuario y contraseña: `GEOSERVER_AUTH_MODE=minerva` y `GEOSERVER_MINERVA_AUDIENCE=sextante`.
   Usa `MINERVA_CLIENT_ID`, `MINERVA_CLIENT_SECRET` y el canal `MINERVA_ISSUER_URL`; renueva el token

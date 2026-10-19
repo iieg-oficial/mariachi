@@ -12,6 +12,8 @@ import UserFormModal from '../components/UserFormModal';
 import UsersFilters from '../components/UsersFilters';
 import ImpactoEliminacion from '../components/ImpactoEliminacion';
 import useUsuarios from '../hooks/useUsuarios';
+import useAccesoMinerva, { rolesDirectos } from '../hooks/useAccesoMinerva';
+import EnlaceAccesoModal from '../components/EnlaceAccesoModal';
 import useFiltroUsuarios from '../hooks/useFiltroUsuarios';
 import { allowedSlugsForRole } from '../constants/projectAccess';
 
@@ -70,6 +72,10 @@ export default function Users() {
     const puedeGestionar = can('mariachi.usuarios.update');
     const puedeAsignar = can('mariachi.usuarios.assign');
     const puedeEliminar = can('mariachi.usuarios.delete');
+    const puedeAcceso = can('mariachi.access.manage');
+    const currentUserId = currentUser?.id;
+    const acceso = useAccesoMinerva(puedeAcceso);
+    const [enlace, setEnlace] = useState(null);
 
     const { usuarios, proyectos, grupos, cargando, recargar, cargarGrupos } = useUsuarios();
     const filtro = useFiltroUsuarios(usuarios);
@@ -97,9 +103,10 @@ export default function Users() {
             project_assignments: buildAssignmentsValue(proyectos, record.projects),
             sieej_grupo_id: record.sieej_grupo?.id,
             sieej_grupo_nombre: undefined,
+            minerva_role_ids: rolesDirectos(acceso.personaDe(record.id)),
         });
         setModalVisible(true);
-    }, [cargarGrupos, form, proyectos]);
+    }, [acceso, cargarGrupos, form, proyectos]);
 
     const handleDelete = useCallback(async (record) => {
         let impacto;
@@ -164,20 +171,32 @@ export default function Users() {
         }
 
         try {
-            if (editingUser) {
-                await api.put(`/usuarios/${editingUser.id}`, payload);
-                message.success('Usuario actualizado exitosamente');
-            } else {
-                await api.post('/usuarios', payload);
-                message.success('Usuario creado exitosamente');
-            }
+            const { data } = editingUser
+                ? await api.put(`/usuarios/${editingUser.id}`, payload)
+                : await api.post('/usuarios', payload);
+            message.success(editingUser ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente');
             setModalVisible(false);
             recargar();
+            if (puedeAcceso && data.id !== currentUserId) {
+                try {
+                    setEnlace(await acceso.sincronizar(data.id, values.minerva_role_ids));
+                } catch (error) {
+                    message.error(formatBackendError(error, 'No se actualizó el acceso en minerva'));
+                }
+            }
         } catch (error) {
             const fallback = editingUser ? 'Error al actualizar usuario' : 'Error al crear usuario';
             message.error(formatBackendError(error, fallback));
         }
-    }, [editingUser, proyectos, puedeAsignar, recargar]);
+    }, [acceso, currentUserId, editingUser, proyectos, puedeAcceso, puedeAsignar, recargar]);
+
+    const handleEnviarAcceso = useCallback(async (record) => {
+        try {
+            setEnlace(await acceso.enviar(record.id));
+        } catch (error) {
+            message.error(formatBackendError(error, 'No se pudo generar el enlace'));
+        }
+    }, [acceso]);
 
     const sinUsuarios = usuarios.length === 0;
 
@@ -255,10 +274,17 @@ export default function Users() {
                 puedeAsignar={puedeAsignar}
                 puedeEliminar={puedeEliminar}
                 esPropio={currentUser?.id === editingUser?.id}
+                acceso={puedeAcceso ? {
+                    roles: acceso.roles,
+                    persona: editingUser ? acceso.personaDe(editingUser.id) : null,
+                    cargando: acceso.cargando,
+                } : null}
+                onEnviarAcceso={handleEnviarAcceso}
                 onDelete={handleDelete}
                 onCancel={() => setModalVisible(false)}
                 onSubmit={handleSubmit}
             />
+            <EnlaceAccesoModal enlace={enlace} onClose={() => setEnlace(null)} />
         </div>
     );
 }

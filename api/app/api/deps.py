@@ -92,6 +92,7 @@ async def get_current_user(
 
     usuario.permissions = permissions
     usuario.minerva_claims = claims
+    usuario.minerva_access_token = minerva_token
     usuario.token_exp = payload.get("exp")
     return usuario
 

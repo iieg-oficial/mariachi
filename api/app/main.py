@@ -62,6 +62,7 @@ from app.api.routes import (
     sistema,
     symbols,
     users,
+    usuarios_acceso,
     vine,
 )
 from app.core.settings import get_settings
@@ -116,6 +117,7 @@ def create_app() -> FastAPI:
         )
     ]
 
+    app.include_router(usuarios_acceso.router, prefix=settings.admin_prefix)
     app.include_router(
         users.router,
         prefix=settings.admin_prefix,

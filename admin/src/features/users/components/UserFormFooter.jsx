@@ -1,10 +1,11 @@
 import { Button, Tooltip } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, SendOutlined } from '@ant-design/icons';
 
 export default function UserFormFooter({
     editingUser,
     puedeEliminar,
     esPropio,
+    onEnviarAcceso,
     onDelete,
     onCancel,
     onSubmit,
@@ -30,6 +31,11 @@ export default function UserFormFooter({
                 )}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
+                {onEnviarAcceso && (
+                    <Button shape="round" icon={<SendOutlined />} onClick={() => onEnviarAcceso(editingUser)}>
+                        Enviar acceso
+                    </Button>
+                )}
                 <Button onClick={onCancel}>Cancelar</Button>
                 <Button type="primary" onClick={onSubmit}>
                     {editingUser ? 'Actualizar' : 'Crear'}
