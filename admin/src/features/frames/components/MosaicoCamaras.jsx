@@ -55,15 +55,8 @@ const MosaicoCamaras = ({
                 <Col key={camara.id} {...span}>
                     <Card
                         size="small"
-                        title={camara.etiqueta}
-                        variant={oscuro ? 'borderless' : 'outlined'}
-                        styles={oscuro
-                            ? { header: { color: '#fff' }, body: { padding: 0 } }
-                            : { body: { padding: 8 } }}
-                        style={oscuro ? { background: '#141414' } : undefined}
-                        extra={
+                        title={
                             <Space size={4}>
-                                {chipDe(camara, estados[camara.nombre])}
                                 {gestion && onEditar ? (
                                     <Tooltip title="Editar">
                                         <Button
@@ -75,6 +68,29 @@ const MosaicoCamaras = ({
                                         />
                                     </Tooltip>
                                 ) : null}
+                                {camara.habilitada ? (
+                                    <Tooltip title="Ver en grande">
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            icon={<ExpandOutlined />}
+                                            aria-label={`Ver ${camara.etiqueta} en grande`}
+                                            style={oscuro ? { color: '#fff' } : undefined}
+                                            onClick={() => navigate(rutaDe(camara.nombre))}
+                                        />
+                                    </Tooltip>
+                                ) : null}
+                                <span>{camara.etiqueta}</span>
+                            </Space>
+                        }
+                        variant={oscuro ? 'borderless' : 'outlined'}
+                        styles={oscuro
+                            ? { header: { color: '#fff' }, body: { padding: 0 } }
+                            : { body: { padding: 8 } }}
+                        style={oscuro ? { background: '#141414' } : undefined}
+                        extra={
+                            <Space size={4}>
+                                {chipDe(camara, estados[camara.nombre])}
                                 {gestion && onEliminar ? (
                                     <Popconfirm
                                         title="Eliminar cámara"
@@ -91,18 +107,6 @@ const MosaicoCamaras = ({
                                             aria-label={`Eliminar ${camara.etiqueta}`}
                                         />
                                     </Popconfirm>
-                                ) : null}
-                                {camara.habilitada ? (
-                                    <Tooltip title="Ver en grande">
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<ExpandOutlined />}
-                                            aria-label={`Ver ${camara.etiqueta} en grande`}
-                                            style={oscuro ? { color: '#fff' } : undefined}
-                                            onClick={() => navigate(rutaDe(camara.nombre))}
-                                        />
-                                    </Tooltip>
                                 ) : null}
                             </Space>
                         }
