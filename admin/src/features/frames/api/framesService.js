@@ -36,6 +36,16 @@ export const getEstadoCamaras = async () => {
     return res.data;
 };
 
+export const probarCamara = async (payload) => {
+    const res = await api.post(`${BASE}/camaras/probar`, payload);
+    return res.data;
+};
+
+export const descubrirNvr = async (payload) => {
+    const res = await api.post(`${BASE}/nvr/canales`, payload);
+    return res.data;
+};
+
 export const urlFoto = (nombre, { alto = 360, t = 0 } = {}) => {
     const base = import.meta.env.VITE_ADMIN_API_URL || '/api/mariachi';
     return `${base}${BASE}/camaras/${encodeURIComponent(nombre)}/foto?alto=${alto}&t=${t}`;

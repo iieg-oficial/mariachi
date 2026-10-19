@@ -9,7 +9,7 @@ import FotoCamara from '../components/FotoCamara';
 import useCamarasEnVivo from '../hooks/useCamarasEnVivo';
 import { CALIDADES } from '../constants/calidades';
 
-const VIVO_PATH = '/frames/vivo';
+const VIVO_PATH = '/frames/camaras';
 const ALTA = CALIDADES[CALIDADES.length - 1].value;
 const INTERVALO_INDIVIDUAL_MS = Math.round(1000 / 15);
 

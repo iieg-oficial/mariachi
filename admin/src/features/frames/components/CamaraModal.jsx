@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-    Button, Form, Input, InputNumber, Modal, Space, Switch, Typography,
+    Button, Form, Input, InputNumber, Modal, Space, Switch, Typography, message,
 } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { ApiOutlined, EditOutlined } from '@ant-design/icons';
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 
 import ConexionCamara from './ConexionCamara';
 
+import { probarCamara } from '../api/framesService';
 import {
     CONEXION_DIRECTA,
     CONEXION_NVR,
@@ -29,6 +30,7 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
     const [modo, setModo] = useState(CONEXION_DIRECTA);
     const [manual, setManual] = useState(false);
     const [cambiandoConexion, setCambiandoConexion] = useState(false);
+    const [probando, setProbando] = useState(false);
     const edicion = Boolean(camara);
 
     const etiqueta = Form.useWatch('etiqueta', form);
@@ -77,6 +79,32 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
         };
         if (edicion && !cambiandoConexion) delete payload.rtsp_url;
         onGuardar(payload);
+    };
+
+    const urlAProbar = () => {
+        if (compuesta) return urlCompuesta;
+        if (editaConexion) return form.getFieldValue('rtsp_url');
+        return camara?.rtsp_url;
+    };
+
+    const probarAhora = async () => {
+        const url = urlAProbar();
+        if (!url) {
+            message.warning('Completa la conexión antes de probar');
+            return;
+        }
+        const payload = { rtsp_url: url };
+        if (edicion && !cambiandoConexion) payload.camara_id = camara.id;
+        setProbando(true);
+        try {
+            const res = await probarCamara(payload);
+            if (res.ok) message.success(res.detalle || 'La cámara conecta');
+            else message.warning(res.detalle || 'La cámara no conecta');
+        } catch (error) {
+            message.error(error?.response?.data?.detail || 'No se pudo probar');
+        } finally {
+            setProbando(false);
+        }
     };
 
     return (
@@ -173,6 +201,16 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
                         Volver a armarla sola
                     </Button>
                 )}
+
+                <Button
+                    icon={<ApiOutlined />}
+                    size="small"
+                    onClick={probarAhora}
+                    loading={probando}
+                    style={{ marginBottom: 16 }}
+                >
+                    Probar conexión
+                </Button>
 
                 <Form.Item name="ubicacion" label="Ubicación">
                     <Input.TextArea rows={2} placeholder="Planta baja, entrada principal" />

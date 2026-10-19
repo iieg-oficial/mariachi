@@ -5,19 +5,12 @@ const FRAMES_MANAGE = ['mariachi.frames.view'];
 
 export const buildFramesRoutes = (withSuspense) => {
     const FramesPage = lazy(() => import('@features/frames').then((m) => ({ default: m.FramesPage })));
-    const VivoPage = lazy(() => import('@features/frames').then((m) => ({ default: m.VivoPage })));
 
     return [
         {
             path: 'frames/camaras',
             element: withSuspense(
                 <PermissionRoute anyOf={FRAMES_MANAGE}><FramesPage /></PermissionRoute>,
-            ),
-        },
-        {
-            path: 'frames/vivo',
-            element: withSuspense(
-                <PermissionRoute anyOf={FRAMES_MANAGE}><VivoPage /></PermissionRoute>,
             ),
         },
     ];

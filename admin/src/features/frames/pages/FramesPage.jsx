@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Button, Col, ConfigProvider, Empty, Row, Segmented, Space, Spin, message } from 'antd';
 import {
     AppstoreOutlined,
+    CloudDownloadOutlined,
+    ExpandOutlined,
     PlusOutlined,
     TableOutlined,
     VideoCameraOutlined,
@@ -13,6 +16,9 @@ import { useAuth } from '@shared/contexts/useAuth';
 import CamaraCard from '../components/CamaraCard';
 import CamaraModal from '../components/CamaraModal';
 import EstadoFrames from '../components/EstadoFrames';
+import ImportarNvr from '../components/ImportarNvr';
+import MosaicoCamaras from '../components/MosaicoCamaras';
+import { CALIDADES } from '../constants/calidades';
 import { TEMA_FRAMES } from '../constants/tema';
 import {
     aplicar,
@@ -27,6 +33,7 @@ import {
 const VISTAS = [
     { label: 'Fichas', value: 'fichas', icon: <AppstoreOutlined /> },
     { label: 'Tabla', value: 'tabla', icon: <TableOutlined /> },
+    { label: 'En vivo', value: 'vivo', icon: <VideoCameraOutlined /> },
 ];
 
 const BUSQUEDA = ['nombre', 'etiqueta', 'ubicacion', 'rtsp_url'];
@@ -35,6 +42,7 @@ const DESCRIPCION = 'Catálogo de cámaras de videovigilancia. Lo que se guarda 
     + 'de verdad; frames lo toma al aplicar.';
 
 const FramesPage = () => {
+    const navigate = useNavigate();
     const { can } = useAuth();
     const puedeGestionar = can('mariachi.frames.manage');
     const [camaras, setCamaras] = useState([]);
@@ -43,9 +51,14 @@ const FramesPage = () => {
     const [aplicando, setAplicando] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [modalAbierto, setModalAbierto] = useState(false);
+    const [importarAbierto, setImportarAbierto] = useState(false);
     const [enEdicion, setEnEdicion] = useState(null);
     const [enVivo, setEnVivo] = useState({});
     const [vista, setVista] = useState('fichas');
+    const [alto, setAlto] = useState(360);
+    const [versionVivo, setVersionVivo] = useState(0);
+
+    const habilitadas = useMemo(() => camaras.filter((c) => c.habilitada), [camaras]);
 
     const cargar = useCallback(async () => {
         setCargando(true);
@@ -77,6 +90,11 @@ const FramesPage = () => {
     const abrirEdicion = (camara) => {
         setEnEdicion(camara);
         setModalAbierto(true);
+    };
+
+    const cambiarVista = (valor) => {
+        setVista(valor);
+        if (valor === 'vivo') setVersionVivo((v) => v + 1);
     };
 
     const guardar = async (valores) => {
@@ -128,12 +146,31 @@ const FramesPage = () => {
                 title="Cámaras"
                 description={DESCRIPCION}
                 extra={
-                    <Space size={12}>
-                        <Segmented options={VISTAS} value={vista} onChange={setVista} />
+                    <Space size={12} wrap>
+                        <Segmented options={VISTAS} value={vista} onChange={cambiarVista} />
+                        {vista === 'vivo' && (
+                            <>
+                                <Segmented options={CALIDADES} value={alto} onChange={setAlto} />
+                                <Button
+                                    icon={<ExpandOutlined />}
+                                    onClick={() => navigate('/frames/vivo/pantalla')}
+                                >
+                                    Pantalla completa
+                                </Button>
+                            </>
+                        )}
                         {puedeGestionar && (
-                            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNueva}>
-                                Nueva cámara
-                            </Button>
+                            <>
+                                <Button
+                                    icon={<CloudDownloadOutlined />}
+                                    onClick={() => setImportarAbierto(true)}
+                                >
+                                    Importar del NVR
+                                </Button>
+                                <Button type="primary" icon={<PlusOutlined />} onClick={abrirNueva}>
+                                    Nueva cámara
+                                </Button>
+                            </>
                         )}
                     </Space>
                 }
@@ -168,7 +205,9 @@ const FramesPage = () => {
                         </Row>
                     )}
                 </Spin>
-            ) : (
+            ) : null}
+
+            {vista === 'tabla' ? (
                 <div style={{ height: '60vh' }}>
                     <GridPanel
                         resource="frames-camaras"
@@ -181,7 +220,18 @@ const FramesPage = () => {
                         active={vista === 'tabla'}
                     />
                 </div>
-            )}
+            ) : null}
+
+            {vista === 'vivo' ? (
+                <Spin spinning={cargando}>
+                    <MosaicoCamaras
+                        camaras={habilitadas}
+                        estados={enVivo}
+                        alto={alto}
+                        version={versionVivo}
+                    />
+                </Spin>
+            ) : null}
 
             <CamaraModal
                 abierto={modalAbierto}
@@ -189,6 +239,15 @@ const FramesPage = () => {
                 guardando={guardando}
                 onCancelar={() => setModalAbierto(false)}
                 onGuardar={guardar}
+            />
+
+            <ImportarNvr
+                abierto={importarAbierto}
+                onCerrar={() => setImportarAbierto(false)}
+                onImportado={async () => {
+                    setImportarAbierto(false);
+                    await cargar();
+                }}
             />
         </ConfigProvider>
     );

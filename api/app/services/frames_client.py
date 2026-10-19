@@ -23,8 +23,10 @@ class FramesClient:
     def _url(self, path: str) -> str:
         return f"{self._base_url}/api/{path.lstrip('/')}"
 
-    def _client(self) -> httpx.Client:
-        return httpx.Client(timeout=self._timeout, headers={"Accept": "application/json"})
+    def _client(self, timeout: float | None = None) -> httpx.Client:
+        return httpx.Client(
+            timeout=timeout or self._timeout, headers={"Accept": "application/json"}
+        )
 
     def version(self) -> str:
         with self._client() as c:
@@ -43,15 +45,23 @@ class FramesClient:
 
     def guardar_config(self, configuracion: str, aplicar: bool) -> None:
         opcion = "restart" if aplicar else "saveonly"
-        with self._client() as c:
-            respuesta = c.post(
-                self._url("config/save"),
-                params={"save_option": opcion},
-                content=configuracion.encode("utf-8"),
-                headers={"Content-Type": "text/plain; charset=utf-8"},
-            )
-            if respuesta.status_code >= 400:
-                raise FramesError(self._detalle(respuesta))
+        espera = max(self._timeout, 30.0)
+        try:
+            with self._client(timeout=espera) as c:
+                respuesta = c.post(
+                    self._url("config/save"),
+                    params={"save_option": opcion},
+                    content=configuracion.encode("utf-8"),
+                    headers={"Content-Type": "text/plain; charset=utf-8"},
+                )
+        except httpx.TimeoutException as exc:
+            raise FramesError(
+                "frames tardo en responder al guardar; suele estar reiniciando ffmpeg"
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise FramesError(f"no se pudo hablar con frames: {str(exc)[:200]}") from exc
+        if respuesta.status_code >= 400:
+            raise FramesError(self._detalle(respuesta))
 
     def validar_config(self, configuracion: str) -> tuple[bool, str | None]:
         try:

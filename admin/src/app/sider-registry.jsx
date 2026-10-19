@@ -195,10 +195,6 @@ export const PROJECT_REGISTRY = {
                 key: '/frames/camaras', path: '/frames/camaras', label: 'Cámaras',
                 icon: <UnorderedListOutlined />,
             },
-            {
-                key: '/frames/vivo', path: '/frames/vivo', label: 'En vivo',
-                icon: <VideoCameraOutlined />,
-            },
         ],
     },
     intranet: {

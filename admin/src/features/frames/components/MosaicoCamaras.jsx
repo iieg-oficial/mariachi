@@ -57,6 +57,7 @@ const MosaicoCamaras = ({ camaras, estados, alto, version, columnas, oscuro }) =
                             etiqueta={camara.etiqueta}
                             alto={alto}
                             version={version}
+                            enLinea={estados[camara.nombre]?.en_linea}
                         />
                         {camara.ubicacion && !oscuro
                             ? <Text type="secondary">{camara.ubicacion}</Text>
