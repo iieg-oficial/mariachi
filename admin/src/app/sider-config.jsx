@@ -242,8 +242,9 @@ export function alcanceDePath(pathname) {
         ...Object.values(PROJECT_REGISTRY).flatMap((project) =>
             project.items.map((item) => ({ ...item, alcance: project.alcance }))),
     ].find((item) => item.path && coincide(pathname, item.path));
-    if (!origen) return null;
-    const alcance = alcanceDe(origen);
+    const proyecto = PROJECT_REGISTRY[pathname.split('/')[1]];
+    if (!origen && !proyecto) return null;
+    const alcance = alcanceDe(origen || proyecto);
     return alcance === ALCANCE_AMBOS ? null : alcance;
 }
 
