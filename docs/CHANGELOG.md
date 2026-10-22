@@ -97,6 +97,9 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   5 s en armar el estado y la API lo cortaba a los 2 s. Ahora espera 8, por debajo de los 10 del admin.
 - La ingesta de telemetría del MCP ya no rechaza con 422 el lote entero cuando un texto (`client_name`,
   `method`, `tool`…) excede su máximo: se trunca a la longitud de la columna y el lote se guarda.
+- Cuatro CVE CRITICAL de Pillow 11.3 (CVE-2026-112393, -112403, -112900 y -96639) y el de certifi
+  (GHSA-6q48-6c7w-9gw2): `pillow>=13.0,<14.0` y `certifi>=2026.10.19`. Las miniaturas WebP de
+  acervo no cambian; Trivy deja la imagen de la API en 0 CRITICAL.
 
 ## [2.151.1] - 2026-10-09
 
