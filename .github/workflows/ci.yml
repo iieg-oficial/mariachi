@@ -1,9 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches-ignore: [production]
-    paths-ignore: ['**.md', 'docs/**', '.gitignore', 'LICENSE']
   pull_request:
     paths-ignore: ['**.md', 'docs/**', '.gitignore', 'LICENSE']
 
@@ -17,25 +14,17 @@ jobs:
     timeout-minutes: 3
     permissions:
       contents: read
-      pull-requests: read
     outputs:
       api: ${{ steps.carpetas.outputs.api }}
       admin: ${{ steps.carpetas.outputs.admin }}
-      abiertos: ${{ steps.pr.outputs.abiertos }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - id: pr
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: echo "abiertos=$(gh pr list --repo '${{ github.repository }}' --head '${{ github.ref_name }}' --state open --json number --jq length || echo 0)" >> "$GITHUB_OUTPUT"
-
       - id: carpetas
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE: ${{ github.event.pull_request.base.sha }}
         run: bash .github/scripts/carpetas-cambiadas.sh api admin
 
   backend:
@@ -43,7 +32,7 @@ jobs:
     if: ${{ !cancelled() }}
     uses: ./.github/workflows/test-backend.yml
     with:
-      correr: ${{ needs.alcance.outputs.api != 'false' && (github.event_name != 'push' || needs.alcance.outputs.abiertos == '0') }}
+      correr: ${{ needs.alcance.outputs.api != 'false' }}
 
   admin:
     needs: alcance
@@ -51,4 +40,4 @@ jobs:
     uses: ./.github/workflows/test-frontend.yml
     with:
       app: admin
-      correr: ${{ needs.alcance.outputs.admin != 'false' && (github.event_name != 'push' || needs.alcance.outputs.abiertos == '0') }}
+      correr: ${{ needs.alcance.outputs.admin != 'false' }}

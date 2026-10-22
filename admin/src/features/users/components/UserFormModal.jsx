@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Modal, Form, Input, Divider, Segmented, Switch, Tag, Tooltip, Typography } from 'antd';
 import { LoadingOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import api from '@shared/services/api';
+import AccesoMinervaSection from './AccesoMinervaSection';
 import DependenciaSelect from './DependenciaSelect';
 import UserFormFooter from './UserFormFooter';
 import { metaFor, EXTERNAL_SUBS } from '../constants/projectAccess';
@@ -19,6 +20,8 @@ export default function UserFormModal({
     puedeAsignar = true,
     puedeEliminar = false,
     esPropio = false,
+    acceso = null,
+    onEnviarAcceso,
     onDelete,
     onCancel,
     onSubmit,
@@ -76,6 +79,7 @@ export default function UserFormModal({
                     editingUser={editingUser}
                     puedeEliminar={puedeEliminar}
                     esPropio={esPropio}
+                    onEnviarAcceso={acceso?.persona ? onEnviarAcceso : undefined}
                     onDelete={onDelete}
                     onCancel={onCancel}
                     onSubmit={() => form.submit()}
@@ -281,6 +285,8 @@ export default function UserFormModal({
                         <Form.Item name="sieej_grupo_nombre" hidden><Input /></Form.Item>
                     </>
                 )}
+
+                {acceso && <AccesoMinervaSection {...acceso} esPropio={esPropio} />}
             </Form>
         </Modal>
     );

@@ -79,3 +79,27 @@ class AplicarResponse(BaseModel):
     aplicado: bool
     reiniciado: bool
     detalle: str | None = None
+
+
+class ProbarRequest(BaseModel):
+    rtsp_url: str = Field(min_length=8)
+    camara_id: int | None = None
+
+
+class ProbarResponse(BaseModel):
+    ok: bool
+    detalle: str | None = None
+
+
+class NvrRequest(BaseModel):
+    host: str = Field(min_length=3)
+    usuario: str = Field(min_length=1)
+    contrasena: str = Field(min_length=1)
+    puerto: int = Field(default=80, ge=1, le=65535)
+
+
+class CanalNvr(BaseModel):
+    canal: int | str
+    nombre: str = ""
+    ip: str = ""
+    en_linea: bool = False

@@ -44,7 +44,7 @@ describe('CamaraPantallaPage', () => {
         montar('canal_02');
         expect(screen.getByAltText('Vista de Caseta')).toBeInTheDocument();
         expect(cabecera.actual.title).toBe('Caseta · 2 de 3');
-        expect(cabecera.actual.backTo).toBe('/frames/vivo');
+        expect(cabecera.actual.backTo).toBe('/frames/camaras');
     });
 
     it('las flechas del teclado pasan a la siguiente y a la anterior, dando la vuelta', () => {

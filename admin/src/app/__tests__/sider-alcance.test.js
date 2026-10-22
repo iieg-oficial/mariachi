@@ -35,7 +35,7 @@ describe('alcanceDePath', () => {
     it('reconoce las rutas locales', () => {
         expect(alcanceDePath('/frames/camaras')).toBe(ALCANCE_LOCAL);
         expect(alcanceDePath('/intranet/carrusel')).toBe(ALCANCE_LOCAL);
-        expect(alcanceDePath('/frames/vivo/3')).toBe(ALCANCE_LOCAL);
+        expect(alcanceDePath('/frames/vivo/pantalla/3')).toBe(ALCANCE_LOCAL);
     });
 
     it('reconoce las rutas en línea, también las hijas de un grupo', () => {

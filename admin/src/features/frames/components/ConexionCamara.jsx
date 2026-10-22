@@ -14,6 +14,14 @@ const MODOS = [
 const AYUDA_MODO = 'Por el grabador basta una credencial para todas las cámaras y el canal arma '
     + 'la ruta solo. Directo a la IP, cada cámara tiene su propia contraseña.';
 
+const AYUDA_STREAM = 'El sub-stream es baja resolución y pesa poco: es lo que conviene para ver '
+    + 'muchas cámaras a la vez sin saturar el grabador. El principal es alta resolución.';
+
+const FLUJOS = [
+    { label: 'Principal', value: 'principal' },
+    { label: 'Sub', value: 'sub' },
+];
+
 const enlace = { padding: 0, height: 'auto' };
 
 const ConexionCamara = ({
@@ -27,6 +35,8 @@ const ConexionCamara = ({
     urlCompuesta,
     urlActual,
     onCambiar,
+    sub,
+    onSub,
 }) => (
     <>
         {editaConexion && !manual && (
@@ -73,6 +83,16 @@ const ConexionCamara = ({
                         <Input.Password autoComplete="new-password" />
                     </Form.Item>
                 </div>
+
+                {porNvr ? (
+                    <Form.Item label={<TituloConAyuda titulo="Flujo" ayuda={AYUDA_STREAM} />}>
+                        <Segmented
+                            options={FLUJOS}
+                            value={sub ? 'sub' : 'principal'}
+                            onChange={(v) => onSub(v === 'sub')}
+                        />
+                    </Form.Item>
+                ) : null}
 
                 <Space size={8} style={{ marginBottom: 16 }} wrap>
                     <Text type="secondary" style={{ fontSize: 12 }}>

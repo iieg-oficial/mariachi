@@ -9,7 +9,7 @@ import MosaicoCamaras from '../components/MosaicoCamaras';
 import useCamarasEnVivo from '../hooks/useCamarasEnVivo';
 import { CALIDADES } from '../constants/calidades';
 
-const VIVO_PATH = '/frames/vivo';
+const VIVO_PATH = '/frames/camaras';
 
 const REJILLAS = [
     { label: '2', value: 2 },

@@ -21,6 +21,7 @@ from app.schemas.user import (
     UsuarioResponse,
     UsuarioUpdate,
 )
+from app.services import minerva_admin
 from app.services.actividad_service import registrar_actividad
 from app.services.sieej.pertenencia import es_miembro
 
@@ -414,6 +415,9 @@ async def eliminar_usuario(
                 "o archiva los formularios primero."
             ),
         )
+
+    if usuario.minerva_sub and has_permission(current_user, "mariachi.access.manage"):
+        await minerva_admin.retirar_acceso(current_user.minerva_access_token, usuario.minerva_sub)
 
     target_id = usuario.id
     target_username = usuario.username

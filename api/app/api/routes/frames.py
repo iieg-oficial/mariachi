@@ -13,10 +13,14 @@ from app.schemas.frames import (
     CamaraCreate,
     CamaraResponse,
     CamaraUpdate,
+    CanalNvr,
     EstadoResponse,
+    NvrRequest,
     PreviewResponse,
+    ProbarRequest,
+    ProbarResponse,
 )
-from app.services import frames_config
+from app.services import frames_config, frames_probe
 from app.services.frames_client import FramesClient, FramesError
 
 logger = logging.getLogger(__name__)
@@ -217,3 +221,27 @@ async def aplicar(
         reiniciado=True,
         detalle="frames reinicio para aplicar la configuracion",
     )
+
+
+@router.post("/camaras/probar", response_model=ProbarResponse, dependencies=_gestionar)
+def probar(
+    payload: ProbarRequest,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    url = payload.rtsp_url
+    if payload.camara_id is not None and frames_config.MASCARA in url:
+        camara = _camara(db, payload.camara_id)
+        url = frames_config.conservar_credenciales(url, camara.rtsp_url)
+    ok, detalle = frames_probe.probar_rtsp(url)
+    return ProbarResponse(ok=ok, detalle=detalle)
+
+
+@router.post("/nvr/canales", response_model=list[CanalNvr], dependencies=_gestionar)
+def nvr_canales(payload: NvrRequest, current_user: Usuario = Depends(verify_csrf)):
+    try:
+        return frames_probe.descubrir_nvr(
+            payload.host, payload.usuario, payload.contrasena, payload.puerto
+        )
+    except FramesError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc

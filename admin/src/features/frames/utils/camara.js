@@ -4,19 +4,21 @@ export const aNombreInterno = (etiqueta) => (etiqueta || '')
     .toLowerCase()
     .replace(/[áéíóúüñ]/g, (c) => SIN_ACENTO[c])
     .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .replace(/^[0-9]+/, '')
+    .replace(/^[^a-z]+/, '')
+    .replace(/_+$/, '')
     .slice(0, 20)
     .replace(/_+$/, '');
 
-export const rutaDeCanal = (canal) => `${canal}01`;
+export const rutaDeCanal = (canal, sub = false) => `${canal}${sub ? '02' : '01'}`;
 
 export const RUTA_DIRECTA = '/Streaming/Channels/101';
+export const RUTA_DIRECTA_SUB = '/Streaming/Channels/102';
 
-export const componerRtsp = ({ usuario, contrasena, host, puerto = 554, canal, ruta }) => {
+export const componerRtsp = ({ usuario, contrasena, host, puerto = 554, canal, ruta, sub = false }) => {
     if (!host) return '';
     const credencial = usuario ? `${usuario}:${contrasena || ''}@` : '';
-    const cola = canal ? `/Streaming/Channels/${rutaDeCanal(canal)}` : (ruta ?? RUTA_DIRECTA);
+    const predeterminada = sub ? RUTA_DIRECTA_SUB : RUTA_DIRECTA;
+    const cola = canal ? `/Streaming/Channels/${rutaDeCanal(canal, sub)}` : (ruta ?? predeterminada);
     return `rtsp://${credencial}${host}:${puerto}${cola}`;
 };
 

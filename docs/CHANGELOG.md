@@ -13,6 +13,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- **Acceso en minerva desde la ficha del usuario.** Con el permiso nuevo `mariachi.access.manage`, el
+  modal de edición muestra los roles de mariachi en minerva (los heredados de un grupo, bloqueados) y
+  al guardar da de alta a la persona en minerva si no existía, la vincula y fija sus roles; el
+  enlace de invitación aparece una sola vez para copiarlo. «Enviar acceso» genera un enlace de
+  restablecimiento. Al eliminar un usuario se le retiran sus roles de mariachi en minerva. Usa la
+  administración delegada de minerva (`/delegated`, minerva#201): endpoints
+  `GET /usuarios/acceso/roles`, `GET /usuarios/acceso/personas`, `PUT /usuarios/{id}/acceso` y
+  `POST /usuarios/{id}/acceso/enlace`.
 - La API puede autenticarse ante GeoServer con un token de servicio de minerva (`client_credentials`)
   en lugar de usuario y contraseña: `GEOSERVER_AUTH_MODE=minerva` y `GEOSERVER_MINERVA_AUDIENCE=sextante`.
   Usa `MINERVA_CLIENT_ID`, `MINERVA_CLIENT_SECRET` y el canal `MINERVA_ISSUER_URL`; renueva el token
@@ -30,9 +38,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - `purge_mapalab_events.py` purga también `huachicol.mcp_events` con la misma ventana de
   `MAPALAB_EVENTS_RETENTION_DAYS`; los rollups `huachicol.mcp_rollup_*` solo recalculan los últimos
   3 días y conservan el histórico.
+- **Importar del NVR** en las cámaras de frames (`POST /frames/nvr/canales`): consulta el inventario
+  del grabador por ISAPI (nombre, IP y estado de cada canal) y da de alta las elegidas apagadas con la
+  ruta RTSP del canal correcto armada sola, en vez de capturarla a mano.
+- Botón **Probar conexión** al crear o editar una cámara de frames (`POST /frames/camaras/probar`):
+  valida la URL con un sondeo RTSP (DESCRIBE con Digest) antes de guardar, así que detecta puerto mal,
+  host inalcanzable, credencial equivocada o canal inexistente. Al editar reutiliza la contraseña
+  guardada sin volver a pedirla.
+- Elegir **Principal / Sub-stream** al dar de alta o importar cámaras de frames por el NVR (el
+  sub-stream termina en `…/Channels/<canal>02`). «Importar del NVR» usa sub por omisión: pesa mucho
+  menos, así que permite ver muchas cámaras a la vez sin saturar el grabador, igual que el cliente de
+  Hikvision muestra el mosaico en sub y el principal solo al expandir.
+- Selector de **fps (15 / 30)** en la vista de una cámara a pantalla completa. La imagen se sigue
+  sirviendo por fotos (snapshots), así que el 30 depende del enlace y no equivale al stream real.
 
 ### Cambiado
 
+- El módulo de frames es ahora **una sola vista en vivo**: un mosaico con todas las cámaras del
+  catálogo (las encendidas con video, las apagadas con un recuadro «apagada»), y en el encabezado de
+  cada tarjeta los botones de **editar**, **eliminar** y pantalla completa. Se retiran las vistas
+  Fichas y Tabla, la ruta `/frames/vivo` y su entrada de menú; agregar e importar siguen en el
+  encabezado de la página. La preview de cada cámara reintenta con freno: tras tres fallos pasa a
+  reintentar cada media hora (antes insistía cada 2 s sin tope) y si el estado ya la da sin señal baja
+  al reintento lento de inmediato.
 - Guía del plugin de QGIS: desde 0.17.0 ya no pide el servidor, viene con el público del IIEG.
 - Tópico del MCP en el admin: seis tools en producción y siete en dev/beta, reglas de identificadores,
   fechas, municipios y textos sin datos de contacto, y una tarjeta de protecciones (rol de BD, GeoServer
@@ -51,6 +79,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Corregido
 
+- `POST /frames/aplicar` y `GET /frames/preview` devolvían 500 cuando frames tardaba en guardar la
+  configuración (típico mientras reinicia ffmpeg): el `ReadTimeout` de httpx no se traducía a error de
+  frames. Ahora el guardado espera hasta 30 s y un timeout se reporta como error claro (502), no como
+  fallo interno.
 - La pestaña Estadísticas de una capa manda el `db_schema` del workspace y no su alias: en `general`,
   `seguridad` y `recursos` no coinciden y la cifra calculada se rechazaba o quedaba en «—».
 - Agregar una condición a una cifra calculada ya no tumba el admin (React #31): el editor de
@@ -65,6 +97,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   5 s en armar el estado y la API lo cortaba a los 2 s. Ahora espera 8, por debajo de los 10 del admin.
 - La ingesta de telemetría del MCP ya no rechaza con 422 el lote entero cuando un texto (`client_name`,
   `method`, `tool`…) excede su máximo: se trunca a la longitud de la columna y el lote se guarda.
+- Abrir directo `/frames/vivo/pantalla` volvía a poner el menú en «En línea»: al quitar «Vivo» del
+  menú, la ruta dejó de reconocerse como local. Una ruta fuera del menú toma el alcance de su proyecto.
+- Cuatro CVE CRITICAL de Pillow 11.3 (CVE-2026-112393, -112403, -112900 y -96639) y el de certifi
+  (GHSA-6q48-6c7w-9gw2): `pillow>=13.0,<14.0` y `certifi>=2026.10.19`. Las miniaturas WebP de
+  acervo no cambian; Trivy deja la imagen de la API en 0 CRITICAL.
 
 ## [2.151.1] - 2026-10-09
 
