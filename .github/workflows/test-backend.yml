@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       correr:
-        description: 'false salta los tests (no cambió api/ o ya corren en el PR)'
+        description: 'false salta los tests (no cambió api/)'
         required: false
         type: boolean
         default: true

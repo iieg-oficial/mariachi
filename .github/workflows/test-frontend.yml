@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       correr:
-        description: 'false salta los tests (no cambió la app o ya corren en el PR)'
+        description: 'false salta los tests (no cambió la app)'
         required: false
         type: boolean
         default: true
