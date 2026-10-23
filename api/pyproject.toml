@@ -24,7 +24,7 @@ dependencies = [
     "coloredlogs>=15.0,<16.0",
     "rich>=13.7,<14.0",
     "openpyxl>=3.1,<4.0",
-    "weasyprint>=62,<66",
+    "weasyprint>=70,<71",
     "pillow>=13.0,<14.0",
     "certifi>=2026.10.19",
 ]
