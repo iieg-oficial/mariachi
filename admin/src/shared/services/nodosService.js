@@ -12,6 +12,7 @@ export const POSICIONES = {
     S3: { x: 390, y: 280, w: 132, h: 76 },
     S4: { x: 700, y: 170, w: 132, h: 76 },
     'pmx-vine-frames': { x: 390, y: 110, w: 168, h: 76 },
+    forja: { x: 700, y: 330, w: 132, h: 76 },
 };
 
 const POSICION_POR_OMISION = { x: 390, y: 380, w: 132, h: 76 };
@@ -23,6 +24,7 @@ export const NODOS_META = {
     S4: { nombreHost: 'dataengine', rol: 'dataengine', aislado: true },
     S5: { nombreHost: 'portalito', rol: 'portalito' },
     'pmx-vine-frames': { nombreHost: 'pmx-vine-frames', rol: 'vine · frames', soloProxmox: true },
+    forja: { rol: 'GitLab · minerva' },
     'sin-nodo': { rol: 'sin ONTOY_NODE declarado' },
     [NODO_INTERNET]: { rol: 'entrada pública', sintetico: true },
 };
