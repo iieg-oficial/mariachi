@@ -13,6 +13,9 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- **Nodo `forja` en la vista Servidores del inicio.** Minerva vive en la máquina del GitLab, fuera de
+  S1–S5; con huachicol 2.19.0 su target declara `"node": "forja"` y deja de caer en «sin-nodo». Va
+  abajo de S4, sin aristas.
 - **Acceso en minerva desde la ficha del usuario.** Con el permiso nuevo `mariachi.access.manage`, el
   modal de edición muestra los roles de mariachi en minerva (los heredados de un grupo, bloqueados) y
   al guardar da de alta a la persona en minerva si no existía, la vincula y fija sus roles; el
