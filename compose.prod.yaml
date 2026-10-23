@@ -33,6 +33,7 @@ services:
 
   cron-sieej:
     image: mariachi-api
+    pull_policy: never
     container_name: mariachi-cron-sieej
     command:
       - sh
