@@ -102,6 +102,8 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - Cuatro CVE CRITICAL de Pillow 11.3 (CVE-2026-112393, -112403, -112900 y -96639) y el de certifi
   (GHSA-6q48-6c7w-9gw2): `pillow>=13.0,<14.0` y `certifi>=2026.10.19`. Las miniaturas WebP de
   acervo no cambian; Trivy deja la imagen de la API en 0 CRITICAL.
+- Dos HIGH de WeasyPrint 65.1: pasa a `weasyprint>=70,<71`. Los PDF del SIEEJ (general y
+  levantamiento) salen idénticos. El nginx del admin pasa a `1.30.6-alpine`. La API queda en 0 HIGH.
 
 ## [2.151.1] - 2026-10-09
 
