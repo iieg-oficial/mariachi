@@ -13,6 +13,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- **Subida de recursos en segundo plano.** En Recursos y Tipografías de Sextante el modal acepta
+  carpetas completas (con su estructura) y recibe el arrastre en toda la ventana; lo no soportado
+  queda como omitido. La cola sigue al cerrar el modal o cambiar de página, con una bandeja flotante
+  que muestra el avance, los errores y el reintento, y el navegador avisa antes de recargar.
+
 - **Nodo `forja` en la vista Servidores del inicio.** Minerva vive en la máquina del GitLab, fuera de
   S1–S5; con huachicol 2.19.0 su target declara `"node": "forja"` y deja de caer en «sin-nodo». Va
   entre S1 y S3, que son los nodos con aristas hacia ella.
@@ -57,6 +62,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Cambiado
 
+- **Recursos de Sextante:** el ámbito se elige con un selector en lugar de una pestaña por workspace,
+  la búsqueda se puede limitar al ámbito actual (`GET /geoserver/files/search?workspace=`), y la
+  descripción pasa a un tooltip. Sin el aviso azul del modal ni el divisor del pie.
+
 - El módulo de frames es ahora **una sola vista en vivo**: un mosaico con todas las cámaras del
   catálogo (las encendidas con video, las apagadas con un recuadro «apagada»), y en el encabezado de
   cada tarjeta los botones de **editar**, **eliminar** y pantalla completa. Se retiran las vistas
@@ -81,6 +90,9 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   `session_hash` e `ip_hash` nulos, y sin la auditoría por API key retirada en mapalab 1.202.0.
 
 ### Corregido
+
+- Los nombres con acentos o eñes al subir recursos de GeoServer ya no pierden la letra:
+  `Señalética` queda `senaletica`, no `sealtica`.
 
 - `POST /frames/aplicar` y `GET /frames/preview` devolvían 500 cuando frames tardaba en guardar la
   configuración (típico mientras reinicia ffmpeg): el `ReadTimeout` de httpx no se traducía a error de

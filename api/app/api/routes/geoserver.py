@@ -737,6 +737,7 @@ async def browse_geoserver_files(
 @router.get('/files/search', response_model=GeoServerSearchResponse)
 async def search_geoserver_files(
     q: str = Query(..., min_length=1, max_length=200),
+    workspace: str | None = Query(default=None, max_length=100),
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
@@ -746,9 +747,12 @@ async def search_geoserver_files(
         return GeoServerSearchResponse(query=q, results=[], truncated=False)
 
     client = GeoServerClient()
-    workspaces = [None, RASTER_SCOPE] + [
-        ws.geoserver_workspace for ws in db.query(Workspace).order_by(Workspace.alias).all()
-    ]
+    if workspace is not None:
+        workspaces = [_validate_workspace(workspace)]
+    else:
+        workspaces = [None, RASTER_SCOPE] + [
+            ws.geoserver_workspace for ws in db.query(Workspace).order_by(Workspace.alias).all()
+        ]
 
     limit = 500
     results: list[GeoServerFileResponse] = []

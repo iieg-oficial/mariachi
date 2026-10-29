@@ -9,8 +9,9 @@ export const listGeoserverWorkspaces = async () => {
     return res.data;
 };
 
-export const searchGeoserverFiles = async (q) => {
-    const res = await api.get(`${BASE}/search`, { params: { q } });
+export const searchGeoserverFiles = async (q, workspace) => {
+    const params = workspace === undefined ? { q } : { q, workspace };
+    const res = await api.get(`${BASE}/search`, { params });
     return res.data;
 };
 
