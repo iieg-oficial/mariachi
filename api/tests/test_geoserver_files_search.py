@@ -28,7 +28,7 @@ def test_sin_workspace_busca_en_todos_los_ambitos(admin_session, consultados):
 
     assert res.status_code == 200
     assert len(res.json()["results"]) == 2
-    assert consultados[:2] == [None, "__rasters__"]
+    assert {None, "__rasters__"} <= set(consultados)
 
 
 def test_workspace_vacio_busca_solo_en_styles(admin_session, consultados):

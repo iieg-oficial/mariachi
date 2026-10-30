@@ -3,13 +3,11 @@ import { searchGeoserverFiles } from '@features/sextante/api/geoserverFilesServi
 import { SEARCH_DEBOUNCE_MS } from '@features/sextante/utils/geoserverFiles';
 import { message } from '@shared/services/message';
 
-export default function useGeoserverSearch(workspace) {
+export default function useGeoserverSearch() {
     const [search, setSearch] = useState('');
-    const [scoped, setScoped] = useState(false);
     const [results, setResults] = useState(null);
     const [searching, setSearching] = useState(false);
     const query = search.trim();
-    const scope = scoped && workspace !== null ? workspace : undefined;
 
     useEffect(() => {
         if (!query) {
@@ -20,7 +18,7 @@ export default function useGeoserverSearch(workspace) {
         setSearching(true);
         let cancelled = false;
         const timer = setTimeout(() => {
-            searchGeoserverFiles(query, scope)
+            searchGeoserverFiles(query)
                 .then((res) => { if (!cancelled) setResults(res); })
                 .catch((err) => {
                     if (cancelled) return;
@@ -33,7 +31,7 @@ export default function useGeoserverSearch(workspace) {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [query, scope]);
+    }, [query]);
 
     const dropResult = (name, ws) => setResults((prev) => prev && ({
         ...prev,
@@ -43,8 +41,6 @@ export default function useGeoserverSearch(workspace) {
     return {
         search,
         setSearch,
-        scoped,
-        setScoped,
         results,
         searching,
         isSearchMode: Boolean(query),

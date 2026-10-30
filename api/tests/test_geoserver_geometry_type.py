@@ -55,8 +55,9 @@ def test_un_tipo_desconocido_no_inventa_geometria(_cobertura):
         assert cli.geometry_type('mapa_base', 'mixta') is None
 
 
+@patch.object(GeoServerClient, '_coverage_bands', return_value=None)
 @patch.object(GeoServerClient, 'is_layer_group', return_value=False)
-def test_list_fields_sigue_normalizando(_grupo):
+def test_list_fields_sigue_normalizando(_grupo, _bandas):
     cli = _cli()
     with patch.object(cli, '_describe_properties', return_value=_propiedades('MultiPolygon', 'int')):
         assert cli.list_fields('mapa_base', 'municipios') == [

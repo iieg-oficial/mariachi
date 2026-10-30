@@ -347,7 +347,22 @@ class GeoServerClient:
             return []
         return feature_types[0].get("properties") or []
 
+    def _coverage_bands(self, workspace: str, layer: str) -> list[dict] | None:
+        url = self._rest_url(f"workspaces/{workspace}/coverages/{layer}.json")
+        with self._client() as c:
+            r = c.get(url, params={"quietOnNotFound": "true"})
+        if r.status_code != 200:
+            return None
+        dimensions = (r.json().get("coverage") or {}).get("dimensions") or {}
+        bands = dimensions.get("coverageDimension") or []
+        if isinstance(bands, dict):
+            bands = [bands]
+        return [{"name": b.get("name"), "type": "number"} for b in bands if b.get("name")]
+
     def list_fields(self, workspace: str, layer: str) -> list[dict]:
+        bands = self._coverage_bands(workspace, layer)
+        if bands is not None:
+            return bands
         return [
             {
                 "name": prop.get("name"),
