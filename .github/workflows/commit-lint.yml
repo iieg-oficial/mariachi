@@ -1,6 +1,8 @@
 name: Validate Commits
 
-on: [pull_request]
+on:
+  pull_request:
+    branches: [develop]
 
 jobs:
   commit-lint:

@@ -14,10 +14,20 @@ jobs:
     timeout-minutes: 3
     permissions:
       contents: read
+      pull-requests: read
     outputs:
-      api: ${{ steps.carpetas.outputs.api }}
-      admin: ${{ steps.carpetas.outputs.admin }}
+      api: ${{ steps.abierto.outputs.si == 'true' && steps.carpetas.outputs.api || 'false' }}
+      admin: ${{ steps.abierto.outputs.si == 'true' && steps.carpetas.outputs.admin || 'false' }}
     steps:
+      - id: abierto
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          estado=$(gh pr view "$PR" -R "$GITHUB_REPOSITORY" --json state -q .state)
+          echo "PR #$PR: $estado"
+          echo "si=$([ "$estado" = OPEN ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
@@ -41,3 +51,4 @@ jobs:
     with:
       app: admin
       correr: ${{ needs.alcance.outputs.admin != 'false' }}
+      relacionados: ${{ github.base_ref == 'develop' }}

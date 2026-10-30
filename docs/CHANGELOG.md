@@ -80,6 +80,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - Telemetría del MCP en el admin: tabla `huachicol.mcp_events`, prefijo `/api/mariachi`,
   `session_hash` e `ip_hash` nulos, y sin la auditoría por API key retirada en mapalab 1.202.0.
 
+- **CI con menos corridas.** En el PR a `develop` corren solo los tests del admin afectados por el
+  cambio (`vitest --changed`); la suite completa queda para el PR a `production`. Un PR ya cerrado o
+  mergeado no corre tests al tomar turno en el runner, Validate Commits solo corre en el PR a `develop`
+  y ESLint usa caché por contenido en el runner.
+
 ### Corregido
 
 - `POST /frames/aplicar` y `GET /frames/preview` devolvían 500 cuando frames tardaba en guardar la
