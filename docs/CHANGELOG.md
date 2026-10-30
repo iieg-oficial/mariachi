@@ -9,7 +9,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [No publicado]
+## [2.152.0] - 2026-10-30
 
 ### Agregado
 
