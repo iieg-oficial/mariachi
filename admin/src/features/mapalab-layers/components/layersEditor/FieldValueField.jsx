@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button, Input, Segmented, Select, Space, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { fieldOptionsFor, isComposed, normalizeComposeParts } from './fieldValueHelpers.jsx';
@@ -9,12 +10,22 @@ const { Text } = Typography;
 
 export const FieldSelect = ({ value, onChange, availableFields, placeholder = 'Campo', style }) => {
     const { samplesOf } = useSampleFeatures();
+    const [escrito, setEscrito] = useState('');
+    const opciones = fieldOptionsFor(availableFields, value, samplesOf);
+    const nombre = escrito.trim();
+    if (nombre && !opciones.some((o) => o.value === nombre)) {
+        opciones.push({ value: nombre, label: <span style={{ fontFamily: 'monospace' }}>{`Usar «${nombre}»`}</span> });
+    }
     return (
         <Select
             style={style}
             value={value || undefined}
-            onChange={(v) => onChange(v ?? '')}
-            options={fieldOptionsFor(availableFields, value, samplesOf)}
+            onChange={(v) => {
+                setEscrito('');
+                onChange(v ?? '');
+            }}
+            onSearch={setEscrito}
+            options={opciones}
             placeholder={placeholder}
             showSearch
             allowClear

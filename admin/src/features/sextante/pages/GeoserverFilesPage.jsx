@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Card, Layout, Typography } from 'antd';
+import { Card, Layout, Typography, theme } from 'antd';
 import { ExclamationCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 import {
     browseGeoserverFiles,
@@ -33,6 +33,7 @@ import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Text } = Typography;
+const { useToken } = theme;
 
 const GLOBAL_SCOPE = '__global__';
 const EMPTY = { path: '', workspace: null, folders: [], files: [] };
@@ -56,7 +57,8 @@ export default function GeoserverFilesPage() {
     const [deletingName, setDeletingName] = useState(null);
     const { isMobile } = useIsMobile();
     const selection = useGeoserverSelection();
-    const search = useGeoserverSearch(workspace);
+    const search = useGeoserverSearch();
+    const { token } = useToken();
 
     const refreshWorkspaces = useCallback(async () => {
         try {
@@ -196,9 +198,6 @@ export default function GeoserverFilesPage() {
                         isMobile={isMobile}
                         search={search.search}
                         onSearchChange={search.setSearch}
-                        scoped={search.scoped}
-                        onScopedChange={search.setScoped}
-                        scopeName={currentScope}
                     />
                     <GeoserverFilesToolbar
                         uploadDisabled={workspace === null || isSearchMode}
@@ -227,33 +226,35 @@ export default function GeoserverFilesPage() {
                     </Text>
                 )}
 
-                <GeoserverFilesContent
-                    gridMinWidth={gridMinWidth}
-                    isMobile={isMobile}
-                    loading={loading}
-                    searchMode={isSearchMode}
-                    searching={search.searching}
-                    searchResults={search.results}
-                    folders={visibleFolders}
-                    files={data.files}
-                    currentPath={currentPath}
-                    deletingName={deletingName}
-                    onOpenFolder={openFolder}
-                    onDownloadZip={downloadZip}
-                    onDelete={handleDelete}
-                    onDownloadFile={downloadFile}
-                    anySelected={selection.count > 0}
-                    isSelected={selection.isSelected}
-                    onToggleSelect={selection.toggle}
-                    onRename={actions.startRename}
-                    onDeleteFolder={actions.startDeleteFolder}
-                />
+                <div style={{ padding: 12, borderRadius: token.borderRadiusLG, background: token.colorFillQuaternary }}>
+                    <GeoserverFilesContent
+                        gridMinWidth={gridMinWidth}
+                        isMobile={isMobile}
+                        loading={loading}
+                        searchMode={isSearchMode}
+                        searching={search.searching}
+                        searchResults={search.results}
+                        folders={visibleFolders}
+                        files={data.files}
+                        currentPath={currentPath}
+                        deletingName={deletingName}
+                        onOpenFolder={openFolder}
+                        onDownloadZip={downloadZip}
+                        onDelete={handleDelete}
+                        onDownloadFile={downloadFile}
+                        anySelected={selection.count > 0}
+                        isSelected={selection.isSelected}
+                        onToggleSelect={selection.toggle}
+                        onRename={actions.startRename}
+                        onDeleteFolder={actions.startDeleteFolder}
+                    />
 
-                {!isSearchMode && !loading && (
-                    <Text type="secondary" style={{ display: 'block', marginTop: 16, fontSize: 12 }}>
-                        {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
-                    </Text>
-                )}
+                    {!isSearchMode && !loading && (
+                        <Text type="secondary" style={{ display: 'block', marginTop: 12, fontSize: 12 }}>
+                            {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
+                        </Text>
+                    )}
+                </div>
             </Card>
 
             <GeoserverFilesModals

@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from urllib.parse import quote
 from xml.sax.saxutils import escape
@@ -480,6 +481,7 @@ async def get_legend(
     return Response(content=content, media_type=content_type)
 
 
+_SEARCH_WORKERS = 6
 _GEOSERVER_WORKSPACE_RE = re.compile(r'^[a-zA-Z0-9_-]+$')
 _GEOSERVER_FILE_SEGMENT_RE = re.compile(r'^[a-zA-Z0-9._-]+$')
 
@@ -734,6 +736,17 @@ async def browse_geoserver_files(
     return GeoServerBrowseResponse(path=clean_path, workspace=clean_ws, folders=folders, files=files)
 
 
+def _list_scopes(client: GeoServerClient, scopes: list[str | None]) -> list[tuple[str | None, list[dict]]]:
+    def listar(scope: str | None) -> tuple[str | None, list[dict]]:
+        try:
+            return scope, client.list_all_style_files(workspace=scope)
+        except GeoServerError:
+            return scope, []
+
+    with ThreadPoolExecutor(max_workers=_SEARCH_WORKERS) as pool:
+        return list(pool.map(listar, scopes))
+
+
 @router.get('/files/search', response_model=GeoServerSearchResponse)
 async def search_geoserver_files(
     q: str = Query(..., min_length=1, max_length=200),
@@ -757,14 +770,10 @@ async def search_geoserver_files(
     limit = 500
     results: list[GeoServerFileResponse] = []
     truncated = False
-    for ws in workspaces:
+    for ws, items in await run_in_threadpool(_list_scopes, client, workspaces):
         if len(results) >= limit:
             truncated = True
             break
-        try:
-            items = client.list_all_style_files(workspace=ws)
-        except GeoServerError:
-            continue
         for it in items:
             name = it['name']
             ext = Path(name).suffix.lower().lstrip('.')
