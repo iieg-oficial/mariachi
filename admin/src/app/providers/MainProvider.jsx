@@ -3,6 +3,7 @@ import { ConfigProvider, theme, App as AntApp } from 'antd';
 import esES from 'antd/locale/es_ES';
 import { BRAND } from '@app/providers/brand';
 import MessageBridge from '@app/MessageBridge';
+import UploadTray from '@features/sextante/components/UploadTray';
 
 const THEME = {
     algorithm: theme.defaultAlgorithm,
@@ -42,6 +43,7 @@ export default function MainProvider() {
             <AntApp style={{ minHeight: '100dvh' }}>
                 <MessageBridge />
                 <Outlet />
+                <UploadTray />
             </AntApp>
         </ConfigProvider>
     );

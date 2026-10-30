@@ -1,22 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-    Alert,
-    Card,
-    Layout,
-    Tabs,
-    Typography,
-} from 'antd';
-import {
-    FileTextOutlined,
-    GlobalOutlined,
-    PictureOutlined,
-} from '@ant-design/icons';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Card, Layout, Select, Typography } from 'antd';
+import { ExclamationCircleOutlined, FileTextOutlined } from '@ant-design/icons';
 import {
     browseGeoserverFiles,
     buildGeoserverFolderZipUrl,
     deleteGeoserverFile,
     listGeoserverWorkspaces,
-    searchGeoserverFiles,
 } from '@features/sextante/api/geoserverFilesService';
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
 import GeoserverFilesContent from '@features/sextante/components/GeoserverFilesContent';
@@ -26,22 +15,28 @@ import GeoserverFilesToolbar from '@features/sextante/components/GeoserverFilesT
 import MosaicActions from '@features/sextante/components/MosaicActions';
 import ResetCachesButton from '@features/sextante/components/ResetCachesButton';
 import useGeoserverFileActions from '@features/sextante/hooks/useGeoserverFileActions';
+import useGeoserverSearch from '@features/sextante/hooks/useGeoserverSearch';
 import useGeoserverSelection from '@features/sextante/hooks/useGeoserverSelection';
+import { useOnUploaded } from '@features/sextante/hooks/useUploadQueue';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
 import {
     RASTER_ROOT,
     RASTER_SCOPE,
-    SEARCH_DEBOUNCE_MS,
     WORKSPACE_STORAGE_KEY,
     basename,
     workspaceLabel,
 } from '@features/sextante/utils/geoserverFiles';
 import PageHeading from '@shared/components/PageHeading';
+import TituloConAyuda from '@shared/components/TituloConAyuda';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Text } = Typography;
+
+const GLOBAL_SCOPE = '__global__';
+const AYUDA = 'Imágenes, fuentes y .properties sin límite de tamaño. Los SLD del mismo ámbito los '
+    + 'referencian con xlink:href="ruta/archivo.ext"; los .properties configuran los ImageMosaic.';
 
 export default function GeoserverFilesPage() {
     const [workspace, setWorkspace] = useState(() => {
@@ -54,14 +49,11 @@ export default function GeoserverFilesPage() {
     const [data, setData] = useState({ path: '', workspace: null, folders: [], files: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [search, setSearch] = useState('');
-    const [searchResults, setSearchResults] = useState(null);
-    const [searching, setSearching] = useState(false);
     const [uploadOpen, setUploadOpen] = useState(false);
     const [deletingName, setDeletingName] = useState(null);
     const { isMobile } = useIsMobile();
-    const searchTimer = useRef(null);
     const selection = useGeoserverSelection();
+    const search = useGeoserverSearch(workspace);
 
     const refreshWorkspaces = useCallback(async () => {
         try {
@@ -95,27 +87,13 @@ export default function GeoserverFilesPage() {
 
     useEffect(() => { clearSelection(); }, [currentPath, workspace, clearSelection]);
 
-    useEffect(() => {
-        if (searchTimer.current) clearTimeout(searchTimer.current);
-        if (!search.trim()) {
-            setSearchResults(null);
-            return;
-        }
-        setSearching(true);
-        searchTimer.current = setTimeout(() => {
-            searchGeoserverFiles(search.trim())
-                .then((res) => setSearchResults(res))
-                .catch((err) => {
-                    setSearchResults(null);
-                    message.error(err?.response?.data?.detail || 'Error al buscar');
-                })
-                .finally(() => setSearching(false));
-        }, SEARCH_DEBOUNCE_MS);
-        return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
-    }, [search]);
+    useOnUploaded(workspace, (names) => {
+        setPendingFolders((prev) => prev.filter((p) => !names.some((n) => n.startsWith(`${p}/`))));
+        reload();
+    });
 
     const handleWorkspaceChange = (next) => {
-        const ws = next === '__global__' ? '' : next;
+        const ws = next === GLOBAL_SCOPE ? '' : next;
         setWorkspace(ws);
         setCurrentPath('');
         setPendingFolders([]);
@@ -128,14 +106,8 @@ export default function GeoserverFilesPage() {
         try {
             await deleteGeoserverFile(name, ws);
             message.success(`Eliminado: ${basename(name)}`);
-            if (searchResults) {
-                setSearchResults((prev) => prev && ({
-                    ...prev,
-                    results: prev.results.filter((f) => !(f.name === name && (f.workspace || '') === (ws || ''))),
-                }));
-            } else {
-                await reload();
-            }
+            if (search.results) search.dropResult(name, ws);
+            else await reload();
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al eliminar');
         } finally {
@@ -150,30 +122,19 @@ export default function GeoserverFilesPage() {
         });
     };
 
-    const tabItems = useMemo(() => [
-        {
-            key: '__global__',
-            label: <span><GlobalOutlined /> Global <span style={{ color: '#999', fontSize: 11 }}>(styles/)</span></span>,
-        },
-        {
-            key: RASTER_SCOPE,
-            label: <span><PictureOutlined /> Rásters <span style={{ color: '#999', fontSize: 11 }}>({RASTER_ROOT}/)</span></span>,
-        },
+    const scopeOptions = useMemo(() => [
+        { value: GLOBAL_SCOPE, label: 'Global · styles/' },
+        { value: RASTER_SCOPE, label: `Rásters · ${RASTER_ROOT}/` },
         ...workspaces.map((w) => ({
-            key: w.geoserverWorkspace,
-            label: (
-                <span>
-                    {w.geoserverWorkspace}
-                    {w.alias && w.alias !== w.geoserverWorkspace
-                        && <span style={{ color: '#999', fontSize: 11 }}> ({w.alias})</span>}
-                </span>
-            ),
+            value: w.geoserverWorkspace,
+            label: w.alias && w.alias !== w.geoserverWorkspace
+                ? `${w.geoserverWorkspace} · ${w.alias}`
+                : w.geoserverWorkspace,
         })),
     ], [workspaces]);
 
-    const activeTab = workspace || '__global__';
     const destinationLabel = workspaceLabel(workspace);
-    const isSearchMode = Boolean(search.trim());
+    const { isSearchMode } = search;
 
     const visibleFolders = useMemo(() => {
         const seen = new Set(data.folders.map((f) => f.path));
@@ -190,19 +151,13 @@ export default function GeoserverFilesPage() {
     const downloadZip = (path) => window.open(buildGeoserverFolderZipUrl(path, workspace), '_blank');
     const downloadFile = (file) => window.open(file.downloadUrl, '_blank');
 
-
     return (
         <Content style={{ padding: isMobile ? 6 : 24 }}>
             <PageHeading
                 icon={<FileTextOutlined />}
                 title="Recursos GeoServer"
                 description={
-                    <>
-                        Imágenes, fuentes y <Text code>.properties</Text> en <Text code>{destinationLabel}</Text>, sin
-                        límite de tamaño. Los SLD del mismo ámbito los referencian con{' '}
-                        <Text code>xlink:href="ruta/archivo.ext"</Text>; los <Text code>.properties</Text> configuran
-                        los ImageMosaic.
-                    </>
+                    <TituloConAyuda titulo={`Archivos que usan los estilos de ${destinationLabel}`} ayuda={AYUDA} />
                 }
                 extra={<ResetCachesButton />}
             />
@@ -210,19 +165,32 @@ export default function GeoserverFilesPage() {
             <Card>
                 <div style={{
                     display: 'flex',
-                    flexDirection: isMobile ? 'column-reverse' : 'row',
+                    flexDirection: isMobile ? 'column' : 'row',
                     justifyContent: 'space-between',
                     alignItems: isMobile ? 'stretch' : 'center',
                     gap: 8,
-                    marginBottom: 12,
+                    marginBottom: 16,
                 }}>
-                    {currentPath
-                        ? <GeoserverPathBreadcrumb currentPath={currentPath} onNavigate={setCurrentPath} />
-                        : <span />}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 }}>
+                        <Select
+                            showSearch
+                            optionFilterProp="label"
+                            aria-label="Ámbito"
+                            value={workspace || GLOBAL_SCOPE}
+                            onChange={handleWorkspaceChange}
+                            options={scopeOptions}
+                            style={{ width: isMobile ? '100%' : 240 }}
+                        />
+                        {currentPath && !isSearchMode && (
+                            <GeoserverPathBreadcrumb currentPath={currentPath} onNavigate={setCurrentPath} />
+                        )}
+                    </div>
                     <GeoserverFilesToolbar
                         isMobile={isMobile}
-                        search={search}
-                        onSearchChange={setSearch}
+                        search={search.search}
+                        onSearchChange={search.setSearch}
+                        searchScoped={search.scoped}
+                        onSearchScopedChange={search.setScoped}
                         disabled={isSearchMode}
                         onNewFolder={handleNewFolder}
                         onUpload={() => setUploadOpen(true)}
@@ -233,23 +201,19 @@ export default function GeoserverFilesPage() {
                     />
                 </div>
 
-                <Tabs
-                    activeKey={activeTab}
-                    onChange={handleWorkspaceChange}
-                    items={tabItems}
-                    size="small"
-                    tabBarStyle={{ marginBottom: 4 }}
-                />
-
-                {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />}
+                {error && (
+                    <Text type="danger" style={{ display: 'block', marginBottom: 12 }}>
+                        <ExclamationCircleOutlined /> {error}
+                    </Text>
+                )}
 
                 <GeoserverFilesContent
                     gridMinWidth={gridMinWidth}
                     isMobile={isMobile}
                     loading={loading}
                     searchMode={isSearchMode}
-                    searching={searching}
-                    searchResults={searchResults}
+                    searching={search.searching}
+                    searchResults={search.results}
                     folders={visibleFolders}
                     files={data.files}
                     currentPath={currentPath}
@@ -266,11 +230,9 @@ export default function GeoserverFilesPage() {
                 />
 
                 {!isSearchMode && !loading && (
-                    <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 16, paddingTop: 8 }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
-                        </Text>
-                    </div>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 16, fontSize: 12 }}>
+                        {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
+                    </Text>
                 )}
             </Card>
 
@@ -286,11 +248,6 @@ export default function GeoserverFilesPage() {
                 workspace={workspace}
                 destinationLabel={destinationLabel}
                 onClose={() => setUploadOpen(false)}
-                onUploaded={(results) => {
-                    const names = (results || []).map((r) => r.name);
-                    setPendingFolders((prev) => prev.filter((p) => !names.some((n) => n.startsWith(`${p}/`))));
-                    reload();
-                }}
             />
         </Content>
     );

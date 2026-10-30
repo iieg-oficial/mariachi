@@ -1,29 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, List, Modal, Progress, Space, Tag, Typography, Upload } from 'antd';
-import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
-import { uploadGeoserverFileSmart } from '@features/sextante/api/geoserverFilesService';
-import { UPLOADABLE_EXT, formatSize } from '@features/sextante/utils/geoserverFiles';
-import { message } from '@shared/services/message';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Modal, Space, Tag, Typography, Upload, theme } from 'antd';
+import { CloudUploadOutlined, FileAddOutlined, FolderAddOutlined } from '@ant-design/icons';
+import UploadQueueList from '@features/sextante/components/UploadQueueList';
+import { useUploadQueue } from '@features/sextante/hooks/useUploadQueue';
+import { UPLOADABLE_EXT } from '@features/sextante/utils/geoserverFiles';
+import {
+    clearFinishedUploads,
+    enqueueUploads,
+    isActiveUpload,
+    removeUpload,
+    retryUpload,
+    summarizeUploads,
+} from '@features/sextante/utils/uploadQueue';
+import { describeFile, filesFromDataTransfer, joinPath } from '@features/sextante/utils/uploadEntries';
+import TituloConAyuda from '@shared/components/TituloConAyuda';
 
-const { Dragger } = Upload;
 const { Text } = Typography;
+const { useToken } = theme;
 
-const toSafeName = (raw) =>
-    (raw || '')
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9._-]/g, '');
+const AYUDA = 'Los nombres se normalizan a minúsculas, sin acentos ni espacios, y las carpetas conservan '
+    + 'su estructura. La subida sigue aunque cierres esta ventana o cambies de página.';
 
-const describe = (file, extensions) => {
-    const safe = toSafeName(file.name);
-    const pattern = new RegExp(`^[a-zA-Z0-9._-]+\\.(${extensions.join('|')})$`, 'i');
-    if (!pattern.test(safe)) {
-        return { safe, valid: false, reason: 'Nombre o extensión no soportados' };
-    }
-    return { safe, valid: true, reason: null };
-};
-
+const hasFiles = (event) => [...(event.dataTransfer?.types || [])].includes('Files');
 
 export default function FileUploadModal({
     open,
@@ -31,160 +29,198 @@ export default function FileUploadModal({
     workspace,
     destinationLabel,
     onClose,
-    onUploaded,
-    title = 'Subir archivos a GeoServer',
+    title = 'Subir a',
     extensions = UPLOADABLE_EXT,
     hint,
 }) {
-    const [entries, setEntries] = useState([]);
-    const [submitting, setSubmitting] = useState(false);
+    const { token } = useToken();
+    const [staged, setStaged] = useState([]);
+    const [dragging, setDragging] = useState(false);
+    const depth = useRef(0);
+    const seq = useRef(0);
+    const queue = useUploadQueue();
+    const summary = summarizeUploads(queue);
+    const destination = `${destinationLabel || 'styles/'}${currentPath ? `${currentPath}/` : ''}`;
 
     useEffect(() => {
-        if (!open) {
-            setEntries([]);
-            setSubmitting(false);
-        }
+        if (open) return;
+        setStaged([]);
+        setDragging(false);
+        depth.current = 0;
     }, [open]);
 
-    const draggerProps = {
-        multiple: true,
-        accept: extensions.map((e) => `.${e}`).join(','),
-        showUploadList: false,
-        beforeUpload: (file) => {
-            const meta = describe(file, extensions);
-            setEntries((prev) => {
-                if (prev.some((e) => e.uid === file.uid)) return prev;
-                return [...prev, { uid: file.uid, file, ...meta, status: 'queued', percent: 0 }];
+    useEffect(() => {
+        if (!open) return undefined;
+        const block = (event) => event.preventDefault();
+        window.addEventListener('dragover', block);
+        window.addEventListener('drop', block);
+        return () => {
+            window.removeEventListener('dragover', block);
+            window.removeEventListener('drop', block);
+        };
+    }, [open]);
+
+    const addFiles = (list) => setStaged((prev) => {
+        const known = new Set(prev.map((entry) => entry.label));
+        const next = [...prev];
+        for (const { file, relativePath } of list) {
+            const meta = describeFile(file, relativePath, extensions);
+            const label = meta.safe || file.name;
+            if (known.has(label)) continue;
+            known.add(label);
+            seq.current += 1;
+            next.push({
+                uid: seq.current,
+                file,
+                label,
+                size: file.size,
+                valid: meta.valid,
+                reason: meta.reason,
+                status: meta.valid ? 'staged' : 'skipped',
             });
-            return false;
+        }
+        return next;
+    });
+
+    const pick = (file) => {
+        addFiles([{ file, relativePath: file.webkitRelativePath || file.name }]);
+        return Upload.LIST_IGNORE;
+    };
+
+    const ready = useMemo(() => staged.filter((entry) => entry.valid), [staged]);
+    const skipped = staged.length - ready.length;
+
+    const submit = () => {
+        enqueueUploads(ready.map((entry) => ({
+            file: entry.file,
+            size: entry.size,
+            name: joinPath(currentPath, entry.label),
+            workspace,
+            label: `${destination}${entry.label}`,
+        })));
+        setStaged([]);
+    };
+
+    const dropHandlers = {
+        onDragEnter: (event) => {
+            if (!hasFiles(event)) return;
+            depth.current += 1;
+            setDragging(true);
+        },
+        onDragLeave: () => {
+            depth.current = Math.max(0, depth.current - 1);
+            if (!depth.current) setDragging(false);
+        },
+        onDragOver: (event) => event.preventDefault(),
+        onDrop: (event) => {
+            event.preventDefault();
+            depth.current = 0;
+            setDragging(false);
+            filesFromDataTransfer(event.dataTransfer).then(addFiles);
         },
     };
 
-    const removeEntry = (uid) =>
-        setEntries((prev) => prev.filter((e) => e.uid !== uid));
+    const overlay = dragging && (
+        <div style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 10,
+            pointerEvents: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            borderRadius: token.borderRadiusLG,
+            border: `2px dashed ${token.colorPrimary}`,
+            background: 'rgba(255, 255, 255, 0.94)',
+        }}>
+            <CloudUploadOutlined style={{ fontSize: 36, color: token.colorPrimary }} />
+            <Text strong>Suelta archivos o carpetas</Text>
+            <Text type="secondary">en {destination}</Text>
+        </div>
+    );
 
-    const patchEntry = (uid, patch) =>
-        setEntries((prev) => prev.map((e) => (e.uid === uid ? { ...e, ...patch } : e)));
-
-    const pending = useMemo(() => entries.filter((e) => e.valid && e.status !== 'done'), [entries]);
-
-    const handleOk = async () => {
-        if (!pending.length) {
-            message.error('Selecciona al menos un archivo válido');
-            return;
-        }
-        setSubmitting(true);
-        const uploaded = [];
-        for (const entry of pending) {
-            patchEntry(entry.uid, { status: 'uploading', percent: 0, reason: null });
-            const fullName = currentPath ? `${currentPath}/${entry.safe}` : entry.safe;
-            try {
-                const result = await uploadGeoserverFileSmart({
-                    file: entry.file,
-                    name: fullName,
-                    workspace,
-                    onProgress: (p) => patchEntry(entry.uid, { percent: p }),
-                });
-                patchEntry(entry.uid, { status: 'done', percent: 100 });
-                uploaded.push(result);
-            } catch (err) {
-                patchEntry(entry.uid, {
-                    status: 'error',
-                    reason: err?.response?.data?.detail || 'Error al subir',
-                });
-            }
-        }
-        setSubmitting(false);
-
-        if (uploaded.length) {
-            message.success(`Subido(s): ${uploaded.length} archivo(s)`);
-            onUploaded?.(uploaded);
-        }
-        const remaining = uploaded.length !== pending.length;
-        if (!remaining) onClose?.();
-    };
-
-    const statusTag = (entry) => {
-        if (entry.status === 'done') return <Tag color="green">Listo</Tag>;
-        if (entry.status === 'error') return <Tag color="red">Error</Tag>;
-        if (entry.status === 'uploading') return <Tag color="blue">Subiendo…</Tag>;
-        if (!entry.valid) return <Tag color="red">Inválido</Tag>;
-        return <Tag>En cola</Tag>;
-    };
+    const footer = (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Text type="secondary" style={{ flex: 1, textAlign: 'left', fontSize: 12 }}>
+                {staged.length > 0 && `${ready.length} por subir${skipped ? ` · ${skipped} omitido(s)` : ''}`}
+            </Text>
+            <Button shape="round" onClick={onClose}>{summary.active ? 'Segundo plano' : 'Cerrar'}</Button>
+            <Button shape="round" type="primary" disabled={!ready.length} onClick={submit}>
+                {ready.length > 1 ? `Subir ${ready.length} archivos` : 'Subir'}
+            </Button>
+        </div>
+    );
 
     return (
         <Modal
             open={open}
-            title={title}
+            title={<Space size={8}>{title}<Tag color="gold">{destination}</Tag></Space>}
             onCancel={onClose}
-            onOk={handleOk}
-            okText={pending.length > 1 ? `Subir ${pending.length} archivos` : 'Subir'}
-            cancelText="Cerrar"
-            confirmLoading={submitting}
-            okButtonProps={{ disabled: !pending.length }}
+            footer={footer}
             width={620}
             destroyOnHidden
+            modalRender={(node) => (
+                <div style={{ position: 'relative' }} {...dropHandlers}>
+                    {node}
+                    {overlay}
+                </div>
+            )}
         >
             <Space orientation="vertical" style={{ width: '100%' }} size="middle">
-                <Alert
-                    type="info"
-                    showIcon
-                    title={
-                        <span>
-                            Destino:{' '}
-                            <Tag color="gold" style={{ marginInlineStart: 4 }}>
-                                {destinationLabel || 'styles/'}{currentPath ? currentPath + '/' : ''}
-                            </Tag>
-                        </span>
-                    }
-                    description="El nombre se normaliza automáticamente. Para cambiar carpeta o ámbito, cierra y navega primero."
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    <TituloConAyuda
+                        titulo={hint || `${extensions.join(', ').toUpperCase()} · sin límite de tamaño`}
+                        ayuda={AYUDA}
+                    />
+                </Text>
+
+                <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                    <Space wrap size={8} style={{ justifyContent: 'center' }}>
+                        <Upload
+                            multiple
+                            showUploadList={false}
+                            accept={extensions.map((e) => `.${e}`).join(',')}
+                            beforeUpload={pick}
+                        >
+                            <Button shape="round" icon={<FileAddOutlined />}>Elegir archivos</Button>
+                        </Upload>
+                        <Upload directory showUploadList={false} beforeUpload={pick}>
+                            <Button shape="round" icon={<FolderAddOutlined />}>Elegir carpeta</Button>
+                        </Upload>
+                    </Space>
+                    <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                        o arrastra archivos y carpetas sobre esta ventana
+                    </Text>
+                </div>
+
+                <UploadQueueList
+                    items={staged}
+                    onRemove={(entry) => setStaged((prev) => prev.filter((e) => e.uid !== entry.uid))}
                 />
 
-                <Dragger {...draggerProps} style={{ padding: 8 }} disabled={submitting}>
-                    <p style={{ marginBottom: 8 }}><InboxOutlined style={{ fontSize: 28 }} /></p>
-                    <p>Click o arrastra uno o varios archivos</p>
-                    <p style={{ fontSize: 11, color: '#888' }}>
-                        {hint || `${extensions.join(', ').toUpperCase()} · sin límite de tamaño · los archivos grandes se suben por partes`}
-                    </p>
-                </Dragger>
-
-                {entries.length > 0 && (
-                    <List
-                        size="small"
-                        bordered
-                        dataSource={entries}
-                        renderItem={(entry) => (
-                            <List.Item
-                                actions={[
-                                    <Button
-                                        key="rm"
-                                        type="text"
-                                        size="small"
-                                        danger
-                                        icon={<DeleteOutlined />}
-                                        disabled={submitting && entry.status === 'uploading'}
-                                        onClick={() => removeEntry(entry.uid)}
-                                    />,
-                                ]}
-                            >
-                                <Space orientation="vertical" size={2} style={{ width: '100%' }}>
-                                    <Space size={8} style={{ width: '100%', justifyContent: 'space-between' }}>
-                                        <Text ellipsis style={{ maxWidth: 360 }}>{entry.safe || entry.file.name}</Text>
-                                        <Space size={4}>
-                                            <Text type="secondary" style={{ fontSize: 11 }}>{formatSize(entry.file.size)}</Text>
-                                            {statusTag(entry)}
-                                        </Space>
-                                    </Space>
-                                    {entry.status === 'uploading' && (
-                                        <Progress percent={entry.percent} size="small" />
-                                    )}
-                                    {entry.reason && (
-                                        <Text type="danger" style={{ fontSize: 11 }}>{entry.reason}</Text>
-                                    )}
-                                </Space>
-                            </List.Item>
-                        )}
-                    />
+                {queue.length > 0 && (
+                    <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Text strong style={{ flex: 1 }}>
+                                {summary.active
+                                    ? `Subiendo ${summary.position} de ${summary.total}`
+                                    : `${summary.done} subido(s)`}
+                                {summary.failed > 0 && <Text type="danger">{` · ${summary.failed} con error`}</Text>}
+                            </Text>
+                            {queue.some((item) => !isActiveUpload(item)) && (
+                                <Button type="link" size="small" onClick={clearFinishedUploads}>
+                                    Limpiar terminados
+                                </Button>
+                            )}
+                        </div>
+                        <UploadQueueList
+                            items={queue}
+                            onRetry={(item) => retryUpload(item.id)}
+                            onRemove={(item) => removeUpload(item.id)}
+                        />
+                    </Space>
                 )}
             </Space>
         </Modal>

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Button, Dropdown, Input, Popconfirm, Space } from 'antd';
+import { Button, Dropdown, Input, Popconfirm, Segmented, Space } from 'antd';
 import {
     DeleteOutlined,
     DragOutlined,
@@ -13,6 +13,8 @@ export default function GeoserverFilesToolbar({
     isMobile,
     search,
     onSearchChange,
+    searchScoped = false,
+    onSearchScopedChange,
     disabled,
     onNewFolder,
     onUpload,
@@ -62,7 +64,23 @@ export default function GeoserverFilesToolbar({
                     </Popconfirm>
                 </>
             )}
-            <div onMouseEnter={() => setSearchOpen(true)} onMouseLeave={cerrarSiVacia}>
+            <div
+                onMouseEnter={() => setSearchOpen(true)}
+                onMouseLeave={cerrarSiVacia}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+            >
+                {expandida && onSearchScopedChange && (
+                    <Segmented
+                        size="small"
+                        shape="round"
+                        value={searchScoped ? 'aqui' : 'todo'}
+                        onChange={(value) => onSearchScopedChange(value === 'aqui')}
+                        options={[
+                            { value: 'todo', label: 'Todo' },
+                            { value: 'aqui', label: 'Este ámbito' },
+                        ]}
+                    />
+                )}
                 {expandida ? (
                     <Input
                         ref={inputRef}
@@ -84,7 +102,7 @@ export default function GeoserverFilesToolbar({
                 )}
             </div>
             <Dropdown menu={{ items: menuItems }} disabled={disabled} trigger={['click']}>
-                <Button type="primary" icon={<PlusOutlined />} aria-label="Agregar" />
+                <Button type="primary" shape="circle" icon={<PlusOutlined />} aria-label="Agregar" />
             </Dropdown>
         </Space>
     );
