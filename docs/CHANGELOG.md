@@ -16,6 +16,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - **Sextante → Recursos navega por carpetas.** Los ámbitos (global, rásters y cada workspace) son carpetas en la raíz en lugar de un Select, con breadcrumb desde «Recursos»; el buscador queda siempre abierto en su lugar.
 - **El + abre directo el modal de subida.** «Nueva carpeta» pasa al pie del modal, la selección de archivos es un Dragger y los formatos admitidos van en el tooltip al inicio del título.
 - **Tarjetas de carpeta sin borde**, más compactas.
+- **El buscador de Recursos busca siempre en todo**, sin el selector de ámbito, y el área de archivos lleva un fondo sutil.
+
+### Corregido
+
+- **El buscador de Recursos dejó de cortarse a los 10 s.** Recorrer todos los ámbitos tardaba unos 12 s y bloqueaba la API; ahora se recorren en paralelo, fuera del hilo principal, y el admin espera hasta 60 s.
 
 ## [2.152.0] - 2026-10-30
 
