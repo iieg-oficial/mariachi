@@ -9,10 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [No publicado]
+## [2.152.0] - 2026-10-30
 
 ### Agregado
 
+- **`make scripts`** con la tarea `publicar-capas-raster`: da de alta en el árbol de mapalab, ocultas
+  bajo un tema oculto, las capas del workspace `raster` publicadas desde una carpeta de GeoServer
+  (`api/scripts/publicar_capas_raster.py`). Las crea como ráster sin WFS, descarga ni consulta y
+  con el nombre sacado del archivo. Antes de confirmar muestra el plan y salta las que ya tienen hoja
+  o están en la papelera.
 - **Subida de recursos en segundo plano.** En Recursos y Tipografías de Sextante el modal acepta
   carpetas completas (con su estructura) y recibe el arrastre en toda la ventana; lo no soportado
   queda como omitido. La cola sigue al cerrar el modal o cambiar de página, con una bandeja flotante

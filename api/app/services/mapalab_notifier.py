@@ -73,6 +73,10 @@ def notify_catalogo_changed() -> None:
     ).start()
 
 
+def notify_tree_changed_now() -> None:
+    _do_notify()
+
+
 def notify_tree_changed() -> None:
     global _pending_timer
     with _lock:
