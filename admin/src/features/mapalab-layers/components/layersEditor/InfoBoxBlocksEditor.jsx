@@ -29,6 +29,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { normalizeInfoboxConfig } from './infoBoxTextBlocks';
 import FormatoAnioToggle from './FormatoAnioToggle';
+import ValueAliasField from './ValueAliasField';
 import {
     camposConAnio,
     conAnio,
@@ -286,6 +287,9 @@ const NestedFieldEditor = ({ entry, onChange, onRemove, availableFields, parentS
                     />
                     <Text type="secondary" style={{ fontSize: 11 }}>parte el valor por «; »</Text>
                 </Space>
+                {!isComposed(base) && (
+                    <ValueAliasField value={base.valueMap} onChange={(valueMap) => update({ valueMap })} />
+                )}
                 <StylePicker
                     color={isObject ? entry.color : parentStyle?.color}
                     bg={isObject ? entry.bg : parentStyle?.bg}
@@ -528,6 +532,12 @@ export const CardsBlock = ({ bare = false,  value = [], columns = 1, onChange, o
                                                 </Tooltip>
                                                 <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
                                             </Space.Compact>
+                                            {!isComposed(it) && (
+                                                <ValueAliasField
+                                                    value={it.valueMap}
+                                                    onChange={(valueMap) => updateItem(idx, { valueMap })}
+                                                />
+                                            )}
                                         </Space>
                                     </div>
                                 </SortableItem>
@@ -619,6 +629,12 @@ export const ListBlock = ({ bare = false,  value = [], onChange, onRemove, onDup
                                             placeholder="Link (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
                                             addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
                                         />
+                                        {!isComposed(it) && (
+                                            <ValueAliasField
+                                                value={it.valueMap}
+                                                onChange={(valueMap) => updateItem(idx, { valueMap })}
+                                            />
+                                        )}
                                     </Space>
                                 </div>
                             </SortableItem>

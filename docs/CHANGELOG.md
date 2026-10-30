@@ -11,6 +11,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ## [No publicado]
 
+### Agregado
+
+- **Alias de valores en la tarjetita.** Los renglones, las cifras y las etiquetas guardan `valueMap` para mostrar un texto en lugar del valor exacto, por ejemplo `0` como «Sin registros». Requiere la versión de mapalab que trae el mismo `infoboxPlan.js`.
+- **Campos a mano en el editor de tarjetita.** El selector acepta un nombre que no esté en la lista.
+
 ### Cambiado
 
 - **Sextante → Recursos navega por carpetas.** Los ámbitos (global, rásters y cada workspace) son carpetas en la raíz en lugar de un Select, con breadcrumb desde «Recursos»; el buscador queda siempre abierto en su lugar.
@@ -20,6 +25,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Corregido
 
+- **Las capas ráster ya ofrecen campos en el editor.** `fields` lee las bandas reales del coverage, incluidas las renombradas en GeoServer, en lugar de fallar con WFS.
 - **El buscador de Recursos dejó de cortarse a los 10 s.** Recorrer todos los ámbitos tardaba unos 12 s y bloqueaba la API; ahora se recorren en paralelo, fuera del hilo principal, y el admin espera hasta 60 s.
 
 ## [2.152.0] - 2026-10-30

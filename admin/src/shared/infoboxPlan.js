@@ -41,6 +41,16 @@ export const aplicarFormato = (valor, formato) => (
     formato !== 'anio' || esVacio(valor) ? valor : anioDe(valor) ?? valor
 );
 
+export const aliasDeValor = (def, valor) => {
+    const alias = def?.valueMap;
+    if (!alias || typeof alias !== 'object' || esVacio(valor)) return undefined;
+    const texto = String(valor).trim();
+    if (Object.hasOwn(alias, texto)) return alias[texto];
+    const numero = Number(texto);
+    const canonico = texto !== '' && Number.isFinite(numero) ? String(numero) : null;
+    return canonico !== null && Object.hasOwn(alias, canonico) ? alias[canonico] : undefined;
+};
+
 export const formatNumber = (value) => {
     if (esVacio(value)) return value;
     const str = String(value);
@@ -273,7 +283,8 @@ const planLabelGroups = ({ items, resolve, dateValue }) => {
         });
         (grupo.fields || []).map((f) => (typeof f === 'string' ? { field: f } : f)).forEach((def) => {
             if (!def || (!def.field && !def.compose)) return;
-            const valor = aplicarFormato(resolve(def), def.formato);
+            const crudo = resolve(def);
+            const valor = aliasDeValor(def, crudo) ?? aplicarFormato(crudo, def.formato);
             if (esVacio(valor)) return;
             const comun = {
                 color: def.color || grupo.color,
@@ -296,12 +307,13 @@ const planList = ({ items, resolve, getValue, suffix }) => {
         .filter((row) => incluyeCampo(row.field, suffix))
         .map((row) => {
             const crudo = resolve(row);
+            const alias = aliasDeValor(row, crudo);
             const sinFormato = row.raw || row.formato || isJoinedDef(row);
             const conFecha = row.formato ? aplicarFormato(crudo, row.formato) : formatoPorEtiqueta(row.label, crudo);
             return {
                 label: row.label,
-                value: sinFormato ? conFecha : formatNumber(conFecha),
-                values: row.split ? splitMultivalue(crudo) : null,
+                value: alias ?? (sinFormato ? conFecha : formatNumber(conFecha)),
+                values: row.split && alias === undefined ? splitMultivalue(crudo) : null,
                 href: resolveHref(row.href, getValue),
             };
         })
@@ -347,10 +359,13 @@ const planCards = ({ items, resolve, suffix, config, variant }) => {
         .filter(Boolean)
         .filter((c) => incluyeCampo(c.field, suffix))
         .map((card) => {
-            const crudo = aplicarFormato(resolve(card), card.formato);
+            const original = resolve(card);
+            const alias = aliasDeValor(card, original);
+            const crudo = aplicarFormato(original, card.formato);
             const sinFormato = card.raw || card.formato || isJoinedDef(card);
             let valor;
-            if (sinFormato) valor = crudo ?? '';
+            if (alias !== undefined) valor = alias;
+            else if (sinFormato) valor = crudo ?? '';
             else if (card.decimals != null && typeof crudo === 'number') valor = formatNumber(crudo.toFixed(card.decimals));
             else valor = formatNumber(crudo);
             return {
