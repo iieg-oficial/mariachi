@@ -25,7 +25,7 @@ DEPLOY_POST ?= $(UP_POST)
 
 export REPO_NAME PROJECT_PROD PROJECT_DEV COMPOSE_PROD_CMD COMPOSE_DEV_CMD VERBOSE
 
-.PHONY: help up deploy down restart logs status shell clean _up-prod
+.PHONY: help up deploy down restart logs status shell scripts clean _up-prod
 
 HELP_FILES = make/common.mk $(filter-out make/common.mk,$(MAKEFILE_LIST))
 
@@ -145,3 +145,15 @@ shell: ## Terminal en un contenedor, con selector
 	fi
 	rule
 	dc "$$env" exec "$$svc" "$$(shell_for "$$env" "$$svc")"
+
+scripts: ## Correr una tarea de scripts/tareas, con selector
+	@$(LIB)
+	banner 'SCRIPTS'
+	mapfile -t tareas < <(find scripts/tareas -maxdepth 1 -type f -name '*.sh' -printf '%f\n' 2>/dev/null | sort)
+	if [ $${#tareas[@]} -eq 0 ]; then
+		printf '  %sNo hay tareas en scripts/tareas.%s\n\n' "$$C_DIM" "$$C_RESET"
+		exit 0
+	fi
+	tarea=$$(pick 'Tarea' "$${tareas[@]%.sh}") || exit 1
+	rule
+	bash "scripts/tareas/$$tarea.sh"
