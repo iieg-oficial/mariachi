@@ -68,7 +68,7 @@ export default function GeoserverFilesContent({
                 description={
                     currentPath
                         ? `La carpeta "${currentPath}" está vacía. Sube un archivo o crea una subcarpeta.`
-                        : 'No hay archivos ni carpetas aquí. Empieza con "Subir archivos" o "Nueva carpeta".'
+                        : 'No hay archivos ni carpetas aquí. Súbelos con +.'
                 }
             />
         );

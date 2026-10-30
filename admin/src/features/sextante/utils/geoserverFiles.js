@@ -6,7 +6,6 @@ export const UPLOADABLE_EXT = [...IMAGE_EXT, ...FONT_EXT, ...CONFIG_EXT];
 export const RASTER_ROOT = 'geoserver-raster';
 export const RASTER_SCOPE = '__rasters__';
 export const FOLDER_NAME_RE = /^[a-zA-Z0-9._-]+$/;
-export const WORKSPACE_STORAGE_KEY = 'mapalab.geoserverFiles.workspace';
 export const SEARCH_DEBOUNCE_MS = 350;
 
 export const extOf = (name) => (name.split('.').pop() || '').toLowerCase();
