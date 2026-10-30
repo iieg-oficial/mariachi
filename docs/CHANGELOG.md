@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Cambiado
+
+- **Sextante → Recursos navega por carpetas.** Los ámbitos (global, rásters y cada workspace) son carpetas en la raíz en lugar de un Select, con breadcrumb desde «Recursos»; el buscador queda siempre abierto en su lugar.
+- **El + abre directo el modal de subida.** «Nueva carpeta» pasa al pie del modal, la selección de archivos es un Dragger y los formatos admitidos van en el tooltip al inicio del título.
+- **Tarjetas de carpeta sin borde**, más compactas.
+
 ## [2.152.0] - 2026-10-30
 
 ### Agregado

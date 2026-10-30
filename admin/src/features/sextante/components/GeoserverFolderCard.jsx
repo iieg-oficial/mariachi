@@ -23,7 +23,7 @@ export default function GeoserverFolderCard({
     onDelete,
 }) {
     const [hover, setHover] = useState(false);
-    const disponible = !folder.pending;
+    const disponible = !folder.pending && !folder.scope;
     const showActions = disponible && (hover || isMobile);
     const showCheckbox = disponible && (showActions || selected || anySelected);
 
@@ -34,8 +34,9 @@ export default function GeoserverFolderCard({
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
             onClick={() => onOpen?.(folder.path)}
+            variant="borderless"
             style={selected ? { outline: '2px solid #5C2472', outlineOffset: -2 } : undefined}
-            styles={{ body: { padding: 8 } }}
+            styles={{ body: { padding: 0 } }}
         >
             <div
                 style={{
@@ -46,7 +47,6 @@ export default function GeoserverFolderCard({
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: '#fffbe6',
-                    border: '1px dashed #faad14',
                     borderRadius: 4,
                     marginBottom: 6,
                     gap: 4,
@@ -92,8 +92,8 @@ export default function GeoserverFolderCard({
                 <FolderOpenOutlined style={{ fontSize: 36, color: '#faad14' }} />
                 {folder.pending && <Text type="warning" style={{ fontSize: 10 }}>(pendiente)</Text>}
             </div>
-            <Tooltip title={folder.path}>
-                <Text ellipsis style={{ display: 'block', fontSize: 12 }}>
+            <Tooltip title={folder.title || folder.path}>
+                <Text ellipsis style={{ display: 'block', fontSize: 12, padding: '0 4px 4px' }}>
                     <FolderOutlined style={{ marginRight: 4 }} />
                     {folder.name}
                 </Text>

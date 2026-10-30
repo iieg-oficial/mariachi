@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Modal, Space, Tag, Typography, Upload, theme } from 'antd';
-import { CloudUploadOutlined, FileAddOutlined, FolderAddOutlined } from '@ant-design/icons';
+import { Button, Modal, Space, Tag, Tooltip, Typography, Upload, theme } from 'antd';
+import { CloudUploadOutlined, FolderAddOutlined, InboxOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import UploadQueueList from '@features/sextante/components/UploadQueueList';
 import { useUploadQueue } from '@features/sextante/hooks/useUploadQueue';
 import { UPLOADABLE_EXT } from '@features/sextante/utils/geoserverFiles';
@@ -13,13 +13,14 @@ import {
     summarizeUploads,
 } from '@features/sextante/utils/uploadQueue';
 import { describeFile, filesFromDataTransfer, joinPath } from '@features/sextante/utils/uploadEntries';
-import TituloConAyuda from '@shared/components/TituloConAyuda';
 
+const { Dragger } = Upload;
 const { Text } = Typography;
 const { useToken } = theme;
 
 const AYUDA = 'Los nombres se normalizan a minúsculas, sin acentos ni espacios, y las carpetas conservan '
     + 'su estructura. La subida sigue aunque cierres esta ventana o cambies de página.';
+const ICON_MUTED = { color: 'rgba(0, 0, 0, 0.45)', fontSize: 14, cursor: 'help' };
 
 const hasFiles = (event) => [...(event.dataTransfer?.types || [])].includes('Files');
 
@@ -29,6 +30,7 @@ export default function FileUploadModal({
     workspace,
     destinationLabel,
     onClose,
+    onNewFolder,
     title = 'Subir a',
     extensions = UPLOADABLE_EXT,
     hint,
@@ -83,7 +85,7 @@ export default function FileUploadModal({
     });
 
     const pick = (file) => {
-        addFiles([{ file, relativePath: file.webkitRelativePath || file.name }]);
+        addFiles([{ file, relativePath: file.name }]);
         return Upload.LIST_IGNORE;
     };
 
@@ -111,9 +113,13 @@ export default function FileUploadModal({
             depth.current = Math.max(0, depth.current - 1);
             if (!depth.current) setDragging(false);
         },
-        onDragOver: (event) => event.preventDefault(),
-        onDrop: (event) => {
+        onDragOverCapture: (event) => {
             event.preventDefault();
+            event.stopPropagation();
+        },
+        onDropCapture: (event) => {
+            event.preventDefault();
+            event.stopPropagation();
             depth.current = 0;
             setDragging(false);
             filesFromDataTransfer(event.dataTransfer).then(addFiles);
@@ -143,6 +149,9 @@ export default function FileUploadModal({
 
     const footer = (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {onNewFolder && (
+                <Button shape="round" icon={<FolderAddOutlined />} onClick={onNewFolder}>Nueva carpeta</Button>
+            )}
             <Text type="secondary" style={{ flex: 1, textAlign: 'left', fontSize: 12 }}>
                 {staged.length > 0 && `${ready.length} por subir${skipped ? ` · ${skipped} omitido(s)` : ''}`}
             </Text>
@@ -156,7 +165,18 @@ export default function FileUploadModal({
     return (
         <Modal
             open={open}
-            title={<Space size={8}>{title}<Tag color="gold">{destination}</Tag></Space>}
+            title={(
+                <Space size={8}>
+                    <Tooltip
+                        title={`${hint || `${extensions.join(', ').toUpperCase()} · sin límite de tamaño`}. ${AYUDA}`}
+                        styles={{ root: { maxWidth: 360 } }}
+                    >
+                        <InfoCircleOutlined tabIndex={0} aria-label="Qué se puede subir" style={ICON_MUTED} />
+                    </Tooltip>
+                    {title}
+                    <Tag color="gold">{destination}</Tag>
+                </Space>
+            )}
             onCancel={onClose}
             footer={footer}
             width={620}
@@ -169,31 +189,17 @@ export default function FileUploadModal({
             )}
         >
             <Space orientation="vertical" style={{ width: '100%' }} size="middle">
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                    <TituloConAyuda
-                        titulo={hint || `${extensions.join(', ').toUpperCase()} · sin límite de tamaño`}
-                        ayuda={AYUDA}
-                    />
-                </Text>
-
-                <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                    <Space wrap size={8} style={{ justifyContent: 'center' }}>
-                        <Upload
-                            multiple
-                            showUploadList={false}
-                            accept={extensions.map((e) => `.${e}`).join(',')}
-                            beforeUpload={pick}
-                        >
-                            <Button shape="round" icon={<FileAddOutlined />}>Elegir archivos</Button>
-                        </Upload>
-                        <Upload directory showUploadList={false} beforeUpload={pick}>
-                            <Button shape="round" icon={<FolderAddOutlined />}>Elegir carpeta</Button>
-                        </Upload>
-                    </Space>
-                    <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                        o arrastra archivos y carpetas sobre esta ventana
-                    </Text>
-                </div>
+                <Dragger
+                    multiple
+                    showUploadList={false}
+                    accept={extensions.map((e) => `.${e}`).join(',')}
+                    beforeUpload={pick}
+                >
+                    <p className="ant-upload-drag-icon">
+                        <InboxOutlined style={{ fontSize: 32, color: '#5C2472' }} />
+                    </p>
+                    <p className="ant-upload-text">Click o arrastra archivos y carpetas</p>
+                </Dragger>
 
                 <UploadQueueList
                     items={staged}

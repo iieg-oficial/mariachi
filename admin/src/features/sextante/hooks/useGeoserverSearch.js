@@ -9,7 +9,7 @@ export default function useGeoserverSearch(workspace) {
     const [results, setResults] = useState(null);
     const [searching, setSearching] = useState(false);
     const query = search.trim();
-    const scope = scoped ? workspace : undefined;
+    const scope = scoped && workspace !== null ? workspace : undefined;
 
     useEffect(() => {
         if (!query) {
