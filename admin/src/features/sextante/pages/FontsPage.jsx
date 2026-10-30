@@ -28,6 +28,7 @@ import {
     reloadGeoserverFonts,
 } from '@features/sextante/api/geoserverFilesService';
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
+import { useOnUploaded } from '@features/sextante/hooks/useUploadQueue';
 import { FONT_EXT, basename, workspaceLabel } from '@features/sextante/utils/geoserverFiles';
 import PageHeading from '@shared/components/PageHeading';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -60,6 +61,7 @@ export default function FontsPage() {
     }, []);
 
     useEffect(() => { reload(); }, [reload]);
+    useOnUploaded('', reload);
 
     const handleReload = async () => {
         setReloading(true);
@@ -266,11 +268,10 @@ export default function FontsPage() {
                 currentPath=""
                 workspace=""
                 destinationLabel={workspaceLabel('')}
-                title="Subir tipografías a GeoServer"
+                title="Subir tipografías a"
                 extensions={FONT_EXT}
                 hint="TTF, OTF · GeoServer solo lee estos dos formatos (WOFF/WOFF2 no le sirven)"
                 onClose={() => setUploadOpen(false)}
-                onUploaded={reload}
             />
         </Content>
     );
