@@ -19,6 +19,8 @@ const GRID_STYLES = `
     .mariachi-grid .dsg-cell-gutter { padding: 0 6px; }
 `;
 
+const SELECTED = '__seleccionada';
+
 const initialsOf = (name) => (name || '?')
     .split(' ')
     .filter(Boolean)
@@ -36,7 +38,7 @@ const RowGutter = ({ rowData, rowIndex, columnData }) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', overflow: 'hidden' }}>
             {selection && (
                 <Checkbox
-                    checked={selection.keys.has(rowKey)}
+                    checked={Boolean(rowData?.[SELECTED])}
                     onChange={() => selection.toggle(rowKey)}
                     onMouseDown={(event) => event.stopPropagation()}
                     aria-label={`Seleccionar ${label}`}
@@ -116,6 +118,10 @@ export default function DataGrid({
         shrink: 0,
     }), [rowKeyField, stickyMeta, presenceByRow, dirtyRows, selection]);
 
+    const rows = useMemo(() => (selection
+        ? data.map((row) => ({ ...row, [SELECTED]: selection.keys.has(row[rowKeyField]) }))
+        : data), [data, selection, rowKeyField]);
+
     const handleActiveCellChange = useCallback(({ cell }) => {
         const rowKey = cell && cell.row !== undefined && cell.row !== null
             ? (data[cell.row]?.[rowKeyField] ?? null)
@@ -129,7 +135,7 @@ export default function DataGrid({
             <style>{GRID_STYLES}</style>
             <DataSheetGrid
                 className="mariachi-grid"
-                value={data}
+                value={rows}
                 columns={columns}
                 gutterColumn={gutterColumn}
                 onChange={onChange}

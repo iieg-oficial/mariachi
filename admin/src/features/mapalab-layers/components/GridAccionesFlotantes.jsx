@@ -11,71 +11,40 @@ import {
 } from '@ant-design/icons';
 import AltaCapasDrawer from '@features/mapalab-layers/components/AltaCapasDrawer';
 import { contextoDeUbicacion, descendientes, planDeMovimiento } from '@features/mapalab-layers/utils/gridArbol';
-import useIsMobile from '@shared/hooks/useIsMobile';
+import GridBarSeparator from '@shared/components/dataGrid/GridBarSeparator';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 
-const BARRA = {
-    position: 'absolute',
-    left: '50%',
-    bottom: 16,
-    transform: 'translateX(-50%)',
-    zIndex: 5,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 2,
-    padding: 4,
-    borderRadius: 28,
-    background: '#1f1f1f',
-    boxShadow: '0 8px 28px rgba(0, 0, 0, 0.22)',
-    maxWidth: 'calc(100% - 24px)',
-};
-
-const BOTON = { color: '#fff', height: 36 };
-
 const CONTADOR = {
-    minWidth: 24,
     height: 24,
-    padding: '0 8px',
+    padding: '0 10px',
     borderRadius: 12,
-    background: '#fff',
-    color: '#1f1f1f',
+    background: 'rgba(255, 255, 255, 0.14)',
+    color: '#fff',
     fontSize: 12,
     fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 4px',
     whiteSpace: 'nowrap',
 };
 
-function Accion({ icono, texto, soloIcono, onClick, primario }) {
-    const estilo = primario ? { ...BOTON, background: '#5C2472', borderColor: '#5C2472' } : BOTON;
-    if (soloIcono) {
+function Accion({ icono, texto, iconOnly, onClick, variante = 'text' }) {
+    if (iconOnly) {
         return (
             <Tooltip title={texto}>
-                <Button
-                    shape="circle"
-                    type={primario ? 'primary' : 'text'}
-                    size="large"
-                    icon={icono}
-                    aria-label={texto}
-                    onClick={onClick}
-                    style={{ ...estilo, width: 44, height: 44 }}
-                />
+                <Button shape="circle" type={variante} icon={icono} aria-label={texto} onClick={onClick} />
             </Tooltip>
         );
     }
     return (
-        <Button shape="round" type={primario ? 'primary' : 'text'} icon={icono} onClick={onClick} style={estilo}>
+        <Button shape="round" type={variante} icon={icono} onClick={onClick}>
             {texto}
         </Button>
     );
 }
 
-export default function GridAccionesFlotantes({ data, selectedRows, setSelectedKeys, applyPatches, reload }) {
-    const { isMobile } = useIsMobile();
+export default function GridAccionesFlotantes({ data, selectedRows, setSelectedKeys, applyPatches, reload, iconOnly }) {
     const [altaOpen, setAltaOpen] = useState(false);
     const [moverOpen, setMoverOpen] = useState(false);
     const [destino, setDestino] = useState(null);
@@ -98,13 +67,13 @@ export default function GridAccionesFlotantes({ data, selectedRows, setSelectedK
             return;
         }
         applyPatches(parches);
-        if (omitidas) message.info(`${omitidas} no se movieron: temas, hijas que ya van con su padre o las que ya estaban ahí`);
+        if (omitidas) message.info(`${omitidas} sin mover: los temas van en la raíz y otras ya estaban ahí`);
         setMoverOpen(false);
         setDestino(null);
     };
 
     const panelMover = (
-        <Space orientation="vertical" size={10} style={{ width: isMobile ? 280 : 360 }}>
+        <Space orientation="vertical" size={10} style={{ width: iconOnly ? 280 : 360 }}>
             <Text strong>{`Mover ${total} ${total === 1 ? 'nodo' : 'nodos'} a…`}</Text>
             <TreeSelect
                 style={{ width: '100%' }}
@@ -129,24 +98,23 @@ export default function GridAccionesFlotantes({ data, selectedRows, setSelectedK
 
     return (
         <>
-            <div style={BARRA} role="toolbar" aria-label="Acciones de la tabla">
-                <Accion primario soloIcono={isMobile} icono={<PlusOutlined />} texto="Agregar filas" onClick={() => setAltaOpen(true)} />
-                {total > 0 && (
-                    <>
-                        <span style={CONTADOR}>{isMobile ? total : `${total} ${total === 1 ? 'seleccionada' : 'seleccionadas'}`}</span>
-                        <Popover open={moverOpen} onOpenChange={setMoverOpen} trigger="click" content={panelMover} placement="top">
-                            <span>
-                                <Accion soloIcono={isMobile} icono={<FolderOpenOutlined />} texto="Mover a…" />
-                            </span>
-                        </Popover>
-                        <Accion soloIcono={isMobile} icono={<EyeInvisibleOutlined />} texto="Ocultar" onClick={() => marcar('hidden_in_menu', true)} />
-                        <Accion soloIcono={isMobile} icono={<EyeOutlined />} texto="Mostrar" onClick={() => marcar('hidden_in_menu', false)} />
-                        <Accion soloIcono={isMobile} icono={<StopOutlined />} texto="Deshabilitar" onClick={() => marcar('disabled', true)} />
-                        <Accion soloIcono={isMobile} icono={<ApartmentOutlined />} texto="Seleccionar hijas" onClick={seleccionarHijas} />
-                        <Accion soloIcono icono={<CloseOutlined />} texto="Quitar selección" onClick={() => setSelectedKeys(new Set())} />
-                    </>
-                )}
-            </div>
+            <Accion iconOnly={iconOnly} variante="default" icono={<PlusOutlined />} texto="Agregar filas" onClick={() => setAltaOpen(true)} />
+            {total > 0 && (
+                <>
+                    <GridBarSeparator />
+                    <span style={CONTADOR}>{iconOnly ? total : `${total} ${total === 1 ? 'seleccionada' : 'seleccionadas'}`}</span>
+                    <Popover open={moverOpen} onOpenChange={setMoverOpen} trigger="click" content={panelMover} placement="top">
+                        <span>
+                            <Accion iconOnly={iconOnly} icono={<FolderOpenOutlined />} texto="Mover a…" />
+                        </span>
+                    </Popover>
+                    <Accion iconOnly={iconOnly} icono={<EyeInvisibleOutlined />} texto="Ocultar" onClick={() => marcar('hidden_in_menu', true)} />
+                    <Accion iconOnly={iconOnly} icono={<EyeOutlined />} texto="Mostrar" onClick={() => marcar('hidden_in_menu', false)} />
+                    <Accion iconOnly={iconOnly} icono={<StopOutlined />} texto="Deshabilitar" onClick={() => marcar('disabled', true)} />
+                    <Accion iconOnly={iconOnly} icono={<ApartmentOutlined />} texto="Seleccionar hijas" onClick={seleccionarHijas} />
+                    <Accion iconOnly icono={<CloseOutlined />} texto="Quitar selección" onClick={() => setSelectedKeys(new Set())} />
+                </>
+            )}
             <AltaCapasDrawer open={altaOpen} onClose={() => setAltaOpen(false)} onCreated={reload} />
         </>
     );

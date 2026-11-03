@@ -5,28 +5,26 @@ export default function ParentCell({ rowData, setRowData, focus, stopEditing, co
     const ref = useRef(null);
 
     useEffect(() => {
-        if (focus) ref.current?.focus();
+        if (focus) {
+            ref.current?.focus();
+        } else {
+            ref.current?.blur();
+        }
     }, [focus]);
-
-    if (!focus) {
-        return (
-            <span style={{ padding: '0 10px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {rowData ? columnData.pathOf(rowData) : '—'}
-            </span>
-        );
-    }
 
     return (
         <TreeSelect
             ref={ref}
             variant="borderless"
             style={{ width: '100%' }}
-            open
+            open={focus}
             value={rowData ?? undefined}
             treeData={columnData.treeData}
+            treeNodeLabelProp="ruta"
             treeDefaultExpandedKeys={rowData ? [rowData] : []}
             showSearch={{ treeNodeFilterProp: 'title' }}
             allowClear
+            placeholder="—"
             popupMatchSelectWidth={360}
             onChange={(value) => {
                 setRowData(value ?? null);

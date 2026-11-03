@@ -33,7 +33,12 @@ export function contextoDeUbicacion(filas) {
         }
         return partes.length ? partes.join(' › ') : id;
     };
-    return { treeData: buildMoveTreeData(nodosDesdeFilas(filas)), pathOf };
+    const conRuta = (nodos) => nodos.map((nodo) => ({
+        ...nodo,
+        ruta: pathOf(nodo.value),
+        children: nodo.children ? conRuta(nodo.children) : undefined,
+    }));
+    return { treeData: conRuta(buildMoveTreeData(nodosDesdeFilas(filas))), pathOf };
 }
 
 export function descendientes(filas, ids) {
@@ -88,5 +93,6 @@ export function planDeMovimiento(filas, seleccion, destino) {
         { rowKey: fila.id, column: 'parent_id', value: destino },
         { rowKey: fila.id, column: 'sort_order', value: base + i },
     ]);
-    return { parches, omitidas: seleccion.length - movibles.length, motivo: null };
+    const omitidas = seleccion.filter((fila) => !candidatas.has(fila.id) || fila.parent_id === destino).length;
+    return { parches, omitidas, motivo: null };
 }

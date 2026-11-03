@@ -40,7 +40,7 @@ describe('gridArbol', () => {
         const seleccion = [fila('acatic'), fila('acatic-23'), fila('orto')];
         const { parches, omitidas } = planDeMovimiento(FILAS, seleccion, 'orto24');
         expect(parches.map((p) => p.rowKey)).toEqual(['acatic', 'acatic']);
-        expect(omitidas).toBe(2);
+        expect(omitidas).toBe(1);
     });
 
     it('rechaza destinos que no contienen nodos o que quedan dentro de la selección', () => {

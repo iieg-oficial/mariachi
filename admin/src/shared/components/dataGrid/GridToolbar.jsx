@@ -5,26 +5,14 @@ import {
     HistoryOutlined,
     QuestionCircleOutlined,
     ReloadOutlined,
-    SaveOutlined,
-    UndoOutlined,
 } from '@ant-design/icons';
-import GridSearchDropdown from '@shared/components/dataGrid/GridSearchDropdown';
 import { EXPORT_ITEMS } from '@shared/components/dataGrid/exportItems';
 
 export const ALL_FILTER_VALUES = '__todos__';
 
 export default function GridToolbar({
     isDesktop,
-    dirtyCount,
     saving,
-    onSave,
-    onUndo,
-    canUndo,
-    search,
-    onSearchChange,
-    searchPlaceholder,
-    searchOpen,
-    onSearchOpenChange,
     filterValue,
     onFilterChange,
     filterItems,
@@ -39,36 +27,6 @@ export default function GridToolbar({
 }) {
     return (
         <Space size={6} wrap={!isDesktop}>
-            <Button
-                size="small"
-                type="primary"
-                icon={<SaveOutlined />}
-                loading={saving}
-                disabled={!dirtyCount}
-                onClick={onSave}
-                title={dirtyCount ? 'Guardar los cambios pendientes' : 'No hay cambios por guardar'}
-            >
-                {dirtyCount ? `Guardar ${dirtyCount}` : 'Sin cambios'}
-            </Button>
-
-            <Button
-                size="small"
-                type="text"
-                icon={<UndoOutlined />}
-                onClick={onUndo}
-                disabled={!canUndo}
-                aria-label="Deshacer"
-                title="Deshacer el último cambio (Ctrl+Z)"
-            />
-
-            <GridSearchDropdown
-                value={search}
-                onChange={onSearchChange}
-                placeholder={searchPlaceholder}
-                open={searchOpen}
-                onOpenChange={onSearchOpenChange}
-            />
-
             <Dropdown
                 placement="bottomRight"
                 trigger={['click']}
@@ -87,6 +45,7 @@ export default function GridToolbar({
             >
                 <Button
                     size="small"
+                    shape="round"
                     type={filterValue ? 'default' : 'text'}
                     icon={<FilterOutlined />}
                     title={`Filtrar por ${filterLabel.toLowerCase()}`}
@@ -102,6 +61,7 @@ export default function GridToolbar({
             >
                 <Button
                     size="small"
+                    shape="round"
                     type="text"
                     icon={<DownloadOutlined />}
                     loading={exporting}
@@ -113,6 +73,7 @@ export default function GridToolbar({
 
             <Button
                 size="small"
+                shape="circle"
                 type="text"
                 icon={<HistoryOutlined />}
                 onClick={onOpenHistory}
@@ -122,6 +83,7 @@ export default function GridToolbar({
 
             <Button
                 size="small"
+                shape="circle"
                 type="text"
                 icon={<ReloadOutlined />}
                 onClick={onReload}
@@ -132,6 +94,7 @@ export default function GridToolbar({
 
             <Button
                 size="small"
+                shape="circle"
                 type="text"
                 icon={<QuestionCircleOutlined />}
                 onClick={onOpenShortcuts}

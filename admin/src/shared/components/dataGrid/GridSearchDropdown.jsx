@@ -10,9 +10,15 @@ export default function GridSearchDropdown({
     width = 280,
     open,
     onOpenChange,
+    placement = 'bottomRight',
+    iconOnly = false,
 }) {
     const inputRef = useRef(null);
     const [draft, setDraft] = useState(value);
+
+    useEffect(() => {
+        setDraft(value);
+    }, [value]);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -35,7 +41,7 @@ export default function GridSearchDropdown({
 
     return (
         <Dropdown
-            placement="bottomRight"
+            placement={placement}
             trigger={['click']}
             menu={{ items: [] }}
             open={open}
@@ -63,12 +69,13 @@ export default function GridSearchDropdown({
             )}
         >
             <Button
-                size="small"
+                shape={iconOnly ? 'circle' : 'round'}
                 type={draft ? 'default' : 'text'}
                 icon={<SearchOutlined />}
                 title={label}
+                aria-label={label}
             >
-                {draft ? 'Buscando' : label}
+                {iconOnly ? null : (draft ? 'Buscando' : label)}
             </Button>
         </Dropdown>
     );

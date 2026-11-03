@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Spin } from 'antd';
 import DataGrid from '@shared/components/dataGrid/DataGrid';
+import GridFloatingBar from '@shared/components/dataGrid/GridFloatingBar';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
 import GridNotices from '@shared/components/dataGrid/GridNotices';
 import GridShortcutsModal from '@shared/components/dataGrid/GridShortcutsModal';
@@ -14,6 +15,7 @@ import useElementHeight from '@shared/hooks/useElementHeight';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
 const EMPTY_FILTERS = {};
+const BAR_SPACE = 72;
 
 export default function GridPanel({
     resource,
@@ -41,7 +43,7 @@ export default function GridPanel({
     onStatusChange,
     onDirtyCountChange,
 }) {
-    const { isDesktop } = useIsMobile();
+    const { isDesktop, isMobile } = useIsMobile();
     const [filterLocal, setFilterLocal] = useState(null);
     const [searchLocal, setSearchLocal] = useState('');
     const [selectedKeys, setSelectedKeys] = useState(() => new Set());
@@ -106,16 +108,7 @@ export default function GridPanel({
         onToolbarChange(
             <GridToolbar
                 isDesktop={isDesktop}
-                dirtyCount={dirtyCount}
                 saving={saving}
-                onSave={save}
-                onUndo={undo}
-                canUndo={canUndo}
-                search={search}
-                onSearchChange={setSearch}
-                searchPlaceholder={searchPlaceholder}
-                searchOpen={searchOpen}
-                onSearchOpenChange={setSearchOpen}
                 filterValue={filterValue}
                 onFilterChange={setFilterValue}
                 filterItems={filterItems}
@@ -130,9 +123,8 @@ export default function GridPanel({
             />,
         );
     }, [
-        active, onToolbarChange, isDesktop, dirtyCount, saving, save, undo, canUndo, search, setSearch,
-        searchPlaceholder, searchOpen, filterValue, setFilterValue, filterItems, filterLabel, filterOpen,
-        reload, handleExport, exporting,
+        active, onToolbarChange, isDesktop, saving, filterValue, setFilterValue, filterItems, filterLabel,
+        filterOpen, reload, handleExport, exporting,
     ]);
 
     useEffect(() => {
@@ -247,16 +239,33 @@ export default function GridPanel({
                         isCellDisabled={isCellDisabled}
                         columnContext={columnContext}
                         selection={selection}
-                        height={gridHeight}
+                        height={gridHeight ? Math.max(gridHeight - BAR_SPACE, 200) : undefined}
                     />
                 )}
-                {renderSelectionActions && !loading && renderSelectionActions({
-                    data,
-                    selectedRows,
-                    setSelectedKeys,
-                    applyPatches,
-                    reload,
-                })}
+                {!loading && (
+                    <GridFloatingBar
+                        iconOnly={isMobile}
+                        dirtyCount={dirtyCount}
+                        saving={saving}
+                        onSave={save}
+                        onUndo={undo}
+                        canUndo={canUndo}
+                        search={search}
+                        onSearchChange={setSearch}
+                        searchPlaceholder={searchPlaceholder}
+                        searchOpen={searchOpen}
+                        onSearchOpenChange={setSearchOpen}
+                    >
+                        {renderSelectionActions ? renderSelectionActions({
+                            data,
+                            selectedRows,
+                            setSelectedKeys,
+                            applyPatches,
+                            reload,
+                            iconOnly: isMobile,
+                        }) : null}
+                    </GridFloatingBar>
+                )}
             </div>
 
             <GridShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
