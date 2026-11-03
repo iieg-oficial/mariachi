@@ -19,6 +19,7 @@ from app.services.grid_batch import (
 from app.services.mapalab_notifier import notify_tree_changed
 
 NODE_TYPES = ('tema', 'category', 'label', 'group', 'leaf')
+PARENT_TYPES = ('tema', 'category', 'group')
 IMAGE_FORMATS = ('image/png', 'image/png8', 'image/jpeg')
 ANTIALIAS_VALUES = ('full', 'text', 'none')
 MUNICIPIO_FIELD_TYPES = ('clave', 'nombre')
@@ -30,6 +31,7 @@ LAYERS_TABLE = GridTable(
     primary_key='id',
     columns=(
         'id',
+        'parent_id',
         'label',
         'slug',
         'node_type',
@@ -187,6 +189,7 @@ def _write_search_tags(row: dict, value: Any) -> None:
 FIELDS: dict[str, GridField] = {
     item.key: item
     for item in (
+        _plain_field('parent_id', 'parent_id', max_length=100),
         _plain_field('label', 'label', max_length=255),
         _plain_field('slug', 'slug', max_length=60, coerce=_coerce_slug),
         _plain_field('node_type', 'node_type', coerce=_choice(NODE_TYPES)),
@@ -238,7 +241,7 @@ FIELDS: dict[str, GridField] = {
 
 COLUMNS_META: list[dict] = [
     {'key': 'id', 'title': 'ID de la capa', 'type': 'text', 'group': 'Identidad', 'width': 240, 'editable': False, 'sticky': True},
-    {'key': 'ruta', 'title': 'Ubicacion en el arbol', 'type': 'text', 'group': 'Identidad', 'width': 300, 'editable': False},
+    {'key': 'parent_id', 'title': 'Ubicacion en el arbol', 'type': 'parent', 'group': 'Identidad', 'width': 300},
     {'key': 'label', 'title': 'Nombre', 'type': 'text', 'group': 'Identidad', 'width': 260},
     {'key': 'slug', 'title': 'Nombre en URL', 'type': 'text', 'group': 'Identidad', 'width': 200},
     {'key': 'node_type', 'title': 'Tipo de nodo', 'type': 'select', 'optionsKey': 'nodeType', 'group': 'Identidad', 'width': 140},
@@ -286,7 +289,7 @@ _SELECT_SQL = """
         JOIN arbol padre ON hijo.parent_id = padre.id
         WHERE hijo.deleted_at IS NULL
     )
-    SELECT l.id, l.label, l.slug, l.node_type, l.sort_order, l.hidden_in_menu, l.disabled,
+    SELECT l.id, l.parent_id, l.label, l.slug, l.node_type, l.sort_order, l.hidden_in_menu, l.disabled,
            l.workspace_alias, l.geoserver_layer, l.styles, l.cql_filter, l.wms_group,
            l.tiled, l.image_format, l.antialias, l.wfs_available, l.geometry_type, l.downloadable, l.queryable,
            l.time_enabled, l.default_date, l.time_style_pattern, l.hide_periodicity, l.date_column,
@@ -327,7 +330,7 @@ def fetch_rows(
     clauses: list[str] = []
     params: dict[str, Any] = {}
     if workspace:
-        clauses.append('l.workspace_alias = :workspace')
+        clauses.append('(l.workspace_alias = :workspace OR w.geoserver_workspace = :workspace)')
         params['workspace'] = workspace
     if search:
         clauses.append(
@@ -383,6 +386,38 @@ def _is_layer_group(geoserver_workspace: str, name: str) -> bool:
         return False
 
 
+def _guard_parent(conn: Connection, state: dict, proposed: Any) -> str | None:
+    node_type = state.get('node_type')
+    if proposed is None:
+        return None if node_type == 'tema' else 'Solo un tema puede quedar en la raiz del arbol'
+    if node_type == 'tema':
+        return 'Un tema va en la raiz: no lleva ubicacion'
+    destino = str(proposed)
+    if destino == state.get('id'):
+        return 'Un nodo no puede quedar dentro de si mismo'
+    padre = conn.execute(
+        text('SELECT node_type FROM mapalab.layers WHERE id = :id AND deleted_at IS NULL'),
+        {'id': destino},
+    ).mappings().first()
+    if padre is None:
+        return f"El destino '{destino}' no existe"
+    if padre['node_type'] not in PARENT_TYPES:
+        return 'Solo un tema, una categoria o un grupo pueden contener otros nodos'
+    ciclo = conn.execute(
+        text(
+            'WITH RECURSIVE sub AS ('
+            ' SELECT id FROM mapalab.layers WHERE id = :raiz'
+            ' UNION ALL'
+            ' SELECT l.id FROM mapalab.layers l JOIN sub ON l.parent_id = sub.id'
+            ') SELECT 1 FROM sub WHERE id = :destino'
+        ),
+        {'raiz': state.get('id'), 'destino': destino},
+    ).first()
+    if ciclo is not None:
+        return 'No puedes mover un nodo dentro de uno de sus hijos'
+    return None
+
+
 def _guard(
     conn: Connection,
     states: dict[str, dict],
@@ -390,6 +425,9 @@ def _guard(
     value: Any,
 ) -> str | None:
     proposed = normalize_blank(value)
+
+    if grid_field.key == 'parent_id':
+        return _guard_parent(conn, states.get('layers') or {}, proposed)
 
     if proposed is None and grid_field.key in _REQUIRED_KEYS:
         return f"'{grid_field.key}' no puede quedar vacio"

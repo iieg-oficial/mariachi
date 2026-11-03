@@ -9,6 +9,7 @@ import GridToolbar, { ALL_FILTER_VALUES } from '@shared/components/dataGrid/Grid
 import useGridEditor from '@shared/components/dataGrid/useGridEditor';
 import useGridExport from '@shared/components/dataGrid/useGridExport';
 import useGridPresence from '@shared/components/dataGrid/useGridPresence';
+import useGridShortcuts from '@shared/components/dataGrid/useGridShortcuts';
 import useElementHeight from '@shared/hooks/useElementHeight';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
@@ -29,15 +30,25 @@ export default function GridPanel({
     isCellDisabled,
     renderNotices,
     renderStatusExtra,
-    renderToolbarExtra,
+    renderSelectionActions,
+    buildColumnContext,
+    search: searchProp,
+    onSearchChange,
+    filterValue: filterProp,
+    onFilterChange,
     active = true,
     onToolbarChange,
     onStatusChange,
     onDirtyCountChange,
 }) {
     const { isDesktop } = useIsMobile();
-    const [filterValue, setFilterValue] = useState(null);
-    const [search, setSearch] = useState('');
+    const [filterLocal, setFilterLocal] = useState(null);
+    const [searchLocal, setSearchLocal] = useState('');
+    const [selectedKeys, setSelectedKeys] = useState(() => new Set());
+    const filterValue = filterProp !== undefined ? filterProp : filterLocal;
+    const setFilterValue = onFilterChange || setFilterLocal;
+    const search = searchProp !== undefined ? searchProp : searchLocal;
+    const setSearch = onSearchChange || setSearchLocal;
     const [activeRowKey, setActiveRowKey] = useState(null);
     const [activeColumnId, setActiveColumnId] = useState(null);
     const [searchOpen, setSearchOpen] = useState(false);
@@ -59,6 +70,7 @@ export default function GridPanel({
         canUndo,
         undo,
         handleGridChange,
+        applyPatches,
         save,
         reload,
         discardDraft,
@@ -115,13 +127,12 @@ export default function GridPanel({
                 onOpenHistory={() => setHistoryOpen(true)}
                 onExport={handleExport}
                 exporting={exporting !== null}
-                extra={renderToolbarExtra ? renderToolbarExtra({ reload }) : null}
             />,
         );
     }, [
-        active, onToolbarChange, isDesktop, dirtyCount, saving, save, undo, canUndo, search,
-        searchPlaceholder, searchOpen, filterValue, filterItems, filterLabel, filterOpen,
-        reload, handleExport, exporting, renderToolbarExtra,
+        active, onToolbarChange, isDesktop, dirtyCount, saving, save, undo, canUndo, search, setSearch,
+        searchPlaceholder, searchOpen, filterValue, setFilterValue, filterItems, filterLabel, filterOpen,
+        reload, handleExport, exporting,
     ]);
 
     useEffect(() => {
@@ -140,6 +151,29 @@ export default function GridPanel({
     const onGridChange = useCallback(
         (nextRows) => handleGridChange(nextRows, visibleData),
         [handleGridChange, visibleData],
+    );
+
+    const columnContext = useMemo(
+        () => (buildColumnContext ? buildColumnContext(data) : null),
+        [buildColumnContext, data],
+    );
+
+    const selection = useMemo(() => {
+        if (!renderSelectionActions) return null;
+        return {
+            keys: selectedKeys,
+            toggle: (rowKey) => setSelectedKeys((prev) => {
+                const next = new Set(prev);
+                if (next.has(rowKey)) next.delete(rowKey);
+                else next.add(rowKey);
+                return next;
+            }),
+        };
+    }, [renderSelectionActions, selectedKeys]);
+
+    const selectedRows = useMemo(
+        () => data.filter((row) => selectedKeys.has(row[rowKeyField])),
+        [data, selectedKeys, rowKeyField],
     );
 
     const handleActiveCell = useCallback(({ columnId }) => setActiveColumnId(columnId), []);
@@ -183,43 +217,7 @@ export default function GridPanel({
         activeColumnTitle, othersEditing, visibleData.length, data, itemsLabel, renderStatusExtra,
     ]);
 
-    useEffect(() => {
-        if (!active) return undefined;
-        const onKeyDown = (event) => {
-            if (!(event.ctrlKey || event.metaKey)) return;
-            const key = event.key.toLowerCase();
-
-            if (key === 'z') {
-                event.preventDefault();
-                undo();
-                return;
-            }
-
-            if (key === 'f') {
-                event.preventDefault();
-                event.stopPropagation();
-                if (event.shiftKey) {
-                    setSearchOpen(false);
-                    setFilterOpen(true);
-                } else {
-                    setFilterOpen(false);
-                    setSearchOpen(true);
-                }
-            }
-        };
-        window.addEventListener('keydown', onKeyDown, true);
-        return () => window.removeEventListener('keydown', onKeyDown, true);
-    }, [active, undo]);
-
-    useEffect(() => {
-        if (!dirtyCount) return undefined;
-        const onBeforeUnload = (event) => {
-            event.preventDefault();
-            event.returnValue = '';
-        };
-        window.addEventListener('beforeunload', onBeforeUnload);
-        return () => window.removeEventListener('beforeunload', onBeforeUnload);
-    }, [dirtyCount]);
+    useGridShortcuts({ active, undo, dirtyCount, setSearchOpen, setFilterOpen });
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -231,7 +229,7 @@ export default function GridPanel({
                 extra={renderNotices ? renderNotices(data) : null}
             />
 
-            <div ref={gridWrapperRef} style={{ flex: 1, minHeight: 0 }}>
+            <div ref={gridWrapperRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
                 {loading ? (
                     <Spin style={{ display: 'block', margin: '48px auto' }} />
                 ) : (
@@ -247,9 +245,18 @@ export default function GridPanel({
                         onActiveCellChange={handleActiveCell}
                         presenceByRow={presenceByRow}
                         isCellDisabled={isCellDisabled}
+                        columnContext={columnContext}
+                        selection={selection}
                         height={gridHeight}
                     />
                 )}
+                {renderSelectionActions && !loading && renderSelectionActions({
+                    data,
+                    selectedRows,
+                    setSelectedKeys,
+                    applyPatches,
+                    reload,
+                })}
             </div>
 
             <GridShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

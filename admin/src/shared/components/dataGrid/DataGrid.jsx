@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { Avatar, Tooltip, Typography } from 'antd';
+import { Avatar, Checkbox, Tooltip, Typography } from 'antd';
 import { DataSheetGrid } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { buildGridColumns } from '@shared/components/dataGrid/cellTypes';
@@ -27,13 +27,21 @@ const initialsOf = (name) => (name || '?')
     .join('');
 
 const RowGutter = ({ rowData, rowIndex, columnData }) => {
-    const { rowKeyField, stickyMeta, presenceByRow, dirtyRows } = columnData;
+    const { rowKeyField, stickyMeta, presenceByRow, dirtyRows, selection } = columnData;
     const rowKey = rowData?.[rowKeyField];
     const editors = presenceByRow?.[rowKey] || [];
     const label = stickyMeta ? rowData?.[stickyMeta.key] : rowKey;
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', overflow: 'hidden' }}>
+            {selection && (
+                <Checkbox
+                    checked={selection.keys.has(rowKey)}
+                    onChange={() => selection.toggle(rowKey)}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    aria-label={`Seleccionar ${label}`}
+                />
+            )}
             <Text type="secondary" style={{ fontSize: 10, minWidth: 22, textAlign: 'right' }}>
                 {rowIndex + 1}
             </Text>
@@ -73,6 +81,8 @@ export default function DataGrid({
     onActiveCellChange,
     presenceByRow,
     isCellDisabled,
+    columnContext,
+    selection,
     height = 560,
 }) {
     const conflictKeys = useMemo(
@@ -94,16 +104,17 @@ export default function DataGrid({
         rowKeyField,
         conflictKeys,
         isCellDisabled,
-    }), [columnsMeta, catalogs, draft, rowKeyField, conflictKeys, isCellDisabled]);
+        columnContext,
+    }), [columnsMeta, catalogs, draft, rowKeyField, conflictKeys, isCellDisabled, columnContext]);
 
     const gutterColumn = useMemo(() => ({
         component: RowGutter,
-        columnData: { rowKeyField, stickyMeta, presenceByRow, dirtyRows },
+        columnData: { rowKeyField, stickyMeta, presenceByRow, dirtyRows, selection },
         basis: stickyMeta ? 260 : 60,
         minWidth: stickyMeta ? 260 : 60,
         grow: 0,
         shrink: 0,
-    }), [rowKeyField, stickyMeta, presenceByRow, dirtyRows]);
+    }), [rowKeyField, stickyMeta, presenceByRow, dirtyRows, selection]);
 
     const handleActiveCellChange = useCallback(({ cell }) => {
         const rowKey = cell && cell.row !== undefined && cell.row !== null

@@ -13,7 +13,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
-- **Alta masiva de nodos desde la captura masiva.** En la pestaña Configuración, «Agregar» abre una tabla donde se pegan desde Excel padre, nombre, tipo, orden, oculta, workspace y capa de GeoServer; el ID se arma solo con padre y nombre. `POST /layers/lote` valida el lote completo (ids repetidos, en papelera o existentes, padres que no existen o que vienen más abajo) y crea todo o nada en una transacción, con hasta 500 nodos.
+- **Acciones flotantes en Configuración.** Las filas se seleccionan con una casilla y una barra flotante agrupa Agregar filas, Mover a…, Ocultar, Mostrar, Deshabilitar y Seleccionar hijas; en móvil queda solo con iconos. Todo entra como cambio pendiente, con deshacer e historial.
+- **La ubicación en el árbol se edita desde la tabla.** La columna usa un selector de árbol y se puede pegar el ID del padre. Al mover en lote, los nodos quedan al final del destino en su orden y sus hijas viajan con ellos. El servidor rechaza ciclos, temas fuera de la raíz y destinos que no son tema, categoría o grupo.
+- **Alta masiva de nodos desde la captura masiva.** Desde «Agregar filas» se abre una tabla donde se pegan desde Excel padre, nombre, tipo, orden, oculta, workspace y capa de GeoServer; el ID se arma solo con padre y nombre. `POST /layers/lote` valida el lote completo (ids repetidos, en papelera o existentes, padres que no existen o que vienen más abajo) y crea todo o nada en una transacción, con hasta 500 nodos.
+
+### Corregido
+
+- **La búsqueda y el filtro de workspace se conservan al cambiar entre Metadatos y Configuración.**
+- **Una celda rechazada al guardar dice por qué**, no solo cuántas fallaron.
 
 ## [2.153.0] - 2026-10-30
 
