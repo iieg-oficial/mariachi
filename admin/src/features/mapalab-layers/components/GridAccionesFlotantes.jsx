@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Popover, Space, Tooltip, TreeSelect, Typography } from 'antd';
+import { Button, Popover, Space, TreeSelect, Typography } from 'antd';
 import {
     ApartmentOutlined,
     CloseOutlined,
@@ -12,6 +12,7 @@ import {
 import AltaCapasDrawer from '@features/mapalab-layers/components/AltaCapasDrawer';
 import { contextoDeUbicacion, descendientes, planDeMovimiento } from '@features/mapalab-layers/utils/gridArbol';
 import GridBarSeparator from '@shared/components/dataGrid/GridBarSeparator';
+import GridIconButton from '@shared/components/dataGrid/GridIconButton';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -29,22 +30,11 @@ const CONTADOR = {
     whiteSpace: 'nowrap',
 };
 
-function Accion({ icono, texto, iconOnly, onClick, variante = 'text' }) {
-    if (iconOnly) {
-        return (
-            <Tooltip title={texto}>
-                <Button shape="circle" type={variante} icon={icono} aria-label={texto} onClick={onClick} />
-            </Tooltip>
-        );
-    }
-    return (
-        <Button shape="round" type={variante} icon={icono} onClick={onClick}>
-            {texto}
-        </Button>
-    );
+function Accion({ icono, texto, onClick, variante = 'text' }) {
+    return <GridIconButton type={variante} icon={icono} label={texto} onClick={onClick} />;
 }
 
-export default function GridAccionesFlotantes({ data, selectedRows, setSelectedKeys, applyPatches, reload, iconOnly }) {
+export default function GridAccionesFlotantes({ data, selectedRows, setSelectedKeys, applyPatches, reload }) {
     const [altaOpen, setAltaOpen] = useState(false);
     const [moverOpen, setMoverOpen] = useState(false);
     const [destino, setDestino] = useState(null);
@@ -73,7 +63,7 @@ export default function GridAccionesFlotantes({ data, selectedRows, setSelectedK
     };
 
     const panelMover = (
-        <Space orientation="vertical" size={10} style={{ width: iconOnly ? 280 : 360 }}>
+        <Space orientation="vertical" size={10} style={{ width: 'min(360px, 80vw)' }}>
             <Text strong>{`Mover ${total} ${total === 1 ? 'nodo' : 'nodos'} a…`}</Text>
             <TreeSelect
                 style={{ width: '100%' }}
@@ -98,21 +88,21 @@ export default function GridAccionesFlotantes({ data, selectedRows, setSelectedK
 
     return (
         <>
-            <Accion iconOnly={iconOnly} variante="default" icono={<PlusOutlined />} texto="Agregar filas" onClick={() => setAltaOpen(true)} />
+            <Accion variante="default" icono={<PlusOutlined />} texto="Agregar filas" onClick={() => setAltaOpen(true)} />
             {total > 0 && (
                 <>
                     <GridBarSeparator />
-                    <span style={CONTADOR}>{iconOnly ? total : `${total} ${total === 1 ? 'seleccionada' : 'seleccionadas'}`}</span>
+                    <span style={CONTADOR}>{total}</span>
                     <Popover open={moverOpen} onOpenChange={setMoverOpen} trigger="click" content={panelMover} placement="top">
                         <span>
-                            <Accion iconOnly={iconOnly} icono={<FolderOpenOutlined />} texto="Mover a…" />
+                            <Accion icono={<FolderOpenOutlined />} texto="Mover a…" />
                         </span>
                     </Popover>
-                    <Accion iconOnly={iconOnly} icono={<EyeInvisibleOutlined />} texto="Ocultar" onClick={() => marcar('hidden_in_menu', true)} />
-                    <Accion iconOnly={iconOnly} icono={<EyeOutlined />} texto="Mostrar" onClick={() => marcar('hidden_in_menu', false)} />
-                    <Accion iconOnly={iconOnly} icono={<StopOutlined />} texto="Deshabilitar" onClick={() => marcar('disabled', true)} />
-                    <Accion iconOnly={iconOnly} icono={<ApartmentOutlined />} texto="Seleccionar hijas" onClick={seleccionarHijas} />
-                    <Accion iconOnly icono={<CloseOutlined />} texto="Quitar selección" onClick={() => setSelectedKeys(new Set())} />
+                    <Accion icono={<EyeInvisibleOutlined />} texto="Ocultar" onClick={() => marcar('hidden_in_menu', true)} />
+                    <Accion icono={<EyeOutlined />} texto="Mostrar" onClick={() => marcar('hidden_in_menu', false)} />
+                    <Accion icono={<StopOutlined />} texto="Deshabilitar" onClick={() => marcar('disabled', true)} />
+                    <Accion icono={<ApartmentOutlined />} texto="Seleccionar hijas" onClick={seleccionarHijas} />
+                    <Accion icono={<CloseOutlined />} texto="Quitar selección" onClick={() => setSelectedKeys(new Set())} />
                 </>
             )}
             <AltaCapasDrawer open={altaOpen} onClose={() => setAltaOpen(false)} onCreated={reload} />

@@ -1,25 +1,23 @@
-import { Button, Dropdown, Space } from 'antd';
+import { Dropdown, Space } from 'antd';
 import {
     DownloadOutlined,
     FilterOutlined,
     HistoryOutlined,
     QuestionCircleOutlined,
-    ReloadOutlined,
 } from '@ant-design/icons';
+import GridIconButton from '@shared/components/dataGrid/GridIconButton';
 import { EXPORT_ITEMS } from '@shared/components/dataGrid/exportItems';
 
 export const ALL_FILTER_VALUES = '__todos__';
 
 export default function GridToolbar({
     isDesktop,
-    saving,
     filterValue,
     onFilterChange,
     filterItems,
     filterLabel,
     filterOpen,
     onFilterOpenChange,
-    onReload,
     onOpenShortcuts,
     onOpenHistory,
     onExport,
@@ -43,15 +41,13 @@ export default function GridToolbar({
                     style: { maxHeight: 320, overflowY: 'auto' },
                 }}
             >
-                <Button
+                <GridIconButton
                     size="small"
-                    shape="round"
                     type={filterValue ? 'default' : 'text'}
                     icon={<FilterOutlined />}
-                    title={`Filtrar por ${filterLabel.toLowerCase()}`}
-                >
-                    {filterValue || filterLabel}
-                </Button>
+                    label={filterValue || `Filtrar por ${filterLabel.toLowerCase()}`}
+                    expanded={Boolean(filterValue)}
+                />
             </Dropdown>
 
             <Dropdown
@@ -59,47 +55,29 @@ export default function GridToolbar({
                 trigger={['click']}
                 menu={{ items: EXPORT_ITEMS, onClick: ({ key }) => onExport(key) }}
             >
-                <Button
+                <GridIconButton
                     size="small"
-                    shape="round"
                     type="text"
                     icon={<DownloadOutlined />}
+                    label="Descargar"
                     loading={exporting}
-                    title="Descargar datos e historial de cambios"
-                >
-                    Descargar
-                </Button>
+                />
             </Dropdown>
 
-            <Button
+            <GridIconButton
                 size="small"
-                shape="circle"
                 type="text"
                 icon={<HistoryOutlined />}
+                label="Historial"
                 onClick={onOpenHistory}
-                aria-label="Historial de cambios"
-                title="Ver historial de cambios"
             />
 
-            <Button
+            <GridIconButton
                 size="small"
-                shape="circle"
-                type="text"
-                icon={<ReloadOutlined />}
-                onClick={onReload}
-                disabled={saving}
-                aria-label="Recargar"
-                title="Recargar desde el servidor"
-            />
-
-            <Button
-                size="small"
-                shape="circle"
                 type="text"
                 icon={<QuestionCircleOutlined />}
+                label="Atajos"
                 onClick={onOpenShortcuts}
-                aria-label="Atajos y recomendaciones"
-                title="Atajos y recomendaciones"
             />
         </Space>
     );

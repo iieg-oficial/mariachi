@@ -3,6 +3,7 @@ import { Spin } from 'antd';
 import DataGrid from '@shared/components/dataGrid/DataGrid';
 import GridFloatingBar from '@shared/components/dataGrid/GridFloatingBar';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
+import { GRID_ICON_BUTTON_STYLES } from '@shared/components/dataGrid/gridIconButtonStyles';
 import GridNotices from '@shared/components/dataGrid/GridNotices';
 import GridShortcutsModal from '@shared/components/dataGrid/GridShortcutsModal';
 import GridStatusBar from '@shared/components/dataGrid/GridStatusBar';
@@ -15,7 +16,6 @@ import useElementHeight from '@shared/hooks/useElementHeight';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
 const EMPTY_FILTERS = {};
-const BAR_SPACE = 72;
 
 export default function GridPanel({
     resource,
@@ -43,7 +43,7 @@ export default function GridPanel({
     onStatusChange,
     onDirtyCountChange,
 }) {
-    const { isDesktop, isMobile } = useIsMobile();
+    const { isDesktop } = useIsMobile();
     const [filterLocal, setFilterLocal] = useState(null);
     const [searchLocal, setSearchLocal] = useState('');
     const [selectedKeys, setSelectedKeys] = useState(() => new Set());
@@ -108,14 +108,12 @@ export default function GridPanel({
         onToolbarChange(
             <GridToolbar
                 isDesktop={isDesktop}
-                saving={saving}
                 filterValue={filterValue}
                 onFilterChange={setFilterValue}
                 filterItems={filterItems}
                 filterLabel={filterLabel}
                 filterOpen={filterOpen}
                 onFilterOpenChange={setFilterOpen}
-                onReload={reload}
                 onOpenShortcuts={() => setShortcutsOpen(true)}
                 onOpenHistory={() => setHistoryOpen(true)}
                 onExport={handleExport}
@@ -123,8 +121,8 @@ export default function GridPanel({
             />,
         );
     }, [
-        active, onToolbarChange, isDesktop, saving, filterValue, setFilterValue, filterItems, filterLabel,
-        filterOpen, reload, handleExport, exporting,
+        active, onToolbarChange, isDesktop, filterValue, setFilterValue, filterItems, filterLabel,
+        filterOpen, handleExport, exporting,
     ]);
 
     useEffect(() => {
@@ -213,6 +211,7 @@ export default function GridPanel({
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <style>{GRID_ICON_BUTTON_STYLES}</style>
             <GridNotices
                 recoveredDraft={recoveredDraft}
                 onRestoreDraft={restoreRecoveredDraft}
@@ -239,12 +238,11 @@ export default function GridPanel({
                         isCellDisabled={isCellDisabled}
                         columnContext={columnContext}
                         selection={selection}
-                        height={gridHeight ? Math.max(gridHeight - BAR_SPACE, 200) : undefined}
+                        height={gridHeight}
                     />
                 )}
                 {!loading && (
                     <GridFloatingBar
-                        iconOnly={isMobile}
                         dirtyCount={dirtyCount}
                         saving={saving}
                         onSave={save}
@@ -262,7 +260,6 @@ export default function GridPanel({
                             setSelectedKeys,
                             applyPatches,
                             reload,
-                            iconOnly: isMobile,
                         }) : null}
                     </GridFloatingBar>
                 )}

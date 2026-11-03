@@ -1,6 +1,6 @@
-import { Badge, Button, Tooltip } from 'antd';
+import { Badge } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
-import GridBarSeparator from '@shared/components/dataGrid/GridBarSeparator';
+import GridIconButton from '@shared/components/dataGrid/GridIconButton';
 import GridSearchDropdown from '@shared/components/dataGrid/GridSearchDropdown';
 
 const BARRA = {
@@ -24,7 +24,6 @@ const BARRA = {
 };
 
 export default function GridFloatingBar({
-    iconOnly,
     dirtyCount,
     saving,
     onSave,
@@ -37,46 +36,26 @@ export default function GridFloatingBar({
     onSearchOpenChange,
     children,
 }) {
-    const guardarTexto = dirtyCount ? `Guardar ${dirtyCount}` : 'Sin cambios';
-
     return (
         <div className="mariachi-topbar" style={BARRA} role="toolbar" aria-label="Acciones de la tabla">
-            {iconOnly ? (
-                <Tooltip title={guardarTexto}>
-                    <Badge count={dirtyCount} size="small" offset={[-4, 4]}>
-                        <Button
-                            shape="circle"
-                            type="primary"
-                            icon={<SaveOutlined />}
-                            loading={saving}
-                            disabled={!dirtyCount}
-                            onClick={onSave}
-                            aria-label={guardarTexto}
-                        />
-                    </Badge>
-                </Tooltip>
-            ) : (
-                <Button
-                    shape="round"
+            <Badge count={dirtyCount} size="small" offset={[-4, 4]}>
+                <GridIconButton
                     type="primary"
                     icon={<SaveOutlined />}
+                    label={dirtyCount ? `Guardar ${dirtyCount}` : 'Sin cambios'}
                     loading={saving}
                     disabled={!dirtyCount}
                     onClick={onSave}
-                >
-                    {guardarTexto}
-                </Button>
-            )}
-            <Tooltip title="Deshacer (Ctrl+Z)">
-                <Button
-                    shape="circle"
-                    type="text"
-                    icon={<UndoOutlined />}
-                    onClick={onUndo}
-                    disabled={!canUndo}
-                    aria-label="Deshacer"
                 />
-            </Tooltip>
+            </Badge>
+            <GridIconButton
+                type="text"
+                icon={<UndoOutlined />}
+                label="Deshacer"
+                onClick={onUndo}
+                disabled={!canUndo}
+                title="Ctrl+Z"
+            />
             <GridSearchDropdown
                 value={search}
                 onChange={onSearchChange}
@@ -84,9 +63,7 @@ export default function GridFloatingBar({
                 open={searchOpen}
                 onOpenChange={onSearchOpenChange}
                 placement="top"
-                iconOnly={iconOnly}
             />
-            {children ? <GridBarSeparator /> : null}
             {children}
         </div>
     );

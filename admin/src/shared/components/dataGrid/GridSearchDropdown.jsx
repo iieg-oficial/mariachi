@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Dropdown, Input } from 'antd';
+import { Dropdown, Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import GridIconButton from '@shared/components/dataGrid/GridIconButton';
 
 export default function GridSearchDropdown({
     value = '',
@@ -11,7 +12,6 @@ export default function GridSearchDropdown({
     open,
     onOpenChange,
     placement = 'bottomRight',
-    iconOnly = false,
 }) {
     const inputRef = useRef(null);
     const [draft, setDraft] = useState(value);
@@ -68,15 +68,13 @@ export default function GridSearchDropdown({
                 </div>
             )}
         >
-            <Button
-                shape={iconOnly ? 'circle' : 'round'}
+            <GridIconButton
                 type={draft ? 'default' : 'text'}
                 icon={<SearchOutlined />}
+                label={draft || label}
+                expanded={Boolean(draft)}
                 title={label}
-                aria-label={label}
-            >
-                {iconOnly ? null : (draft ? 'Buscando' : label)}
-            </Button>
+            />
         </Dropdown>
     );
 }
