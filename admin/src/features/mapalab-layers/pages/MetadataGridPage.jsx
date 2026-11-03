@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
-import { Space, Tabs, Tooltip, Typography } from 'antd';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Button, Space, Tabs, Tooltip, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { GridPanel } from '@shared/components/dataGrid';
+import AltaCapasDrawer from '@features/mapalab-layers/components/AltaCapasDrawer';
 import { METADATA_GRID_CATALOGS } from '@features/mapalab-layers/constants/metadataCatalogs';
 import { LAYER_CONFIG_CATALOGS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -67,6 +69,8 @@ export default function MetadataGridPage() {
     const [status, setStatus] = useState(null);
     const [dirtyMetadatos, setDirtyMetadatos] = useState(0);
     const [dirtyConfiguracion, setDirtyConfiguracion] = useState(0);
+    const [altaOpen, setAltaOpen] = useState(false);
+    const recargarConfiguracion = useRef(null);
 
     useFullscreenHeader({
         title: isDesktop ? 'Capas MapaLab · captura masiva' : 'Captura masiva',
@@ -101,6 +105,21 @@ export default function MetadataGridPage() {
                     </Tooltip>
                 )}
             </Space>
+        );
+    }, []);
+
+    const renderConfigToolbarExtra = useCallback(({ reload }) => {
+        recargarConfiguracion.current = reload;
+        return (
+            <Button
+                size="small"
+                shape="round"
+                icon={<PlusOutlined />}
+                onClick={() => setAltaOpen(true)}
+                title="Dar de alta varios nodos pegando desde Excel"
+            >
+                Agregar
+            </Button>
         );
     }, []);
 
@@ -148,6 +167,7 @@ export default function MetadataGridPage() {
                     itemsLabel="nodos"
                     exportFileName="configuracion-capas"
                     rowLabelField="label"
+                    renderToolbarExtra={renderConfigToolbarExtra}
                     active={tab === 'configuracion'}
                     onToolbarChange={setToolbar}
                     onStatusChange={setStatus}
@@ -157,6 +177,7 @@ export default function MetadataGridPage() {
         },
     ], [
         tab, dirtyMetadatos, dirtyConfiguracion, isCellDisabled, renderMetadataStatusExtra,
+        renderConfigToolbarExtra,
     ]);
 
     return (
@@ -172,6 +193,11 @@ export default function MetadataGridPage() {
                 tabBarExtraContent={{ right: status }}
                 tabBarStyle={{ margin: 0, flexShrink: 0 }}
                 items={items}
+            />
+            <AltaCapasDrawer
+                open={altaOpen}
+                onClose={() => setAltaOpen(false)}
+                onCreated={() => recargarConfiguracion.current?.()}
             />
         </div>
     );

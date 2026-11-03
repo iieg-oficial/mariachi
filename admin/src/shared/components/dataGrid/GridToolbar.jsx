@@ -36,6 +36,7 @@ export default function GridToolbar({
     onOpenHistory,
     onExport,
     exporting,
+    extra,
 }) {
     return (
         <Space size={6} wrap={!isDesktop}>
@@ -50,6 +51,8 @@ export default function GridToolbar({
             >
                 {dirtyCount ? `Guardar ${dirtyCount}` : 'Sin cambios'}
             </Button>
+
+            {extra}
 
             <Button
                 size="small"

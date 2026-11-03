@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Agregado
+
+- **Alta masiva de nodos desde la captura masiva.** En la pestaña Configuración, «Agregar» abre una tabla donde se pegan desde Excel padre, nombre, tipo, orden, oculta, workspace y capa de GeoServer; el ID se arma solo con padre y nombre. `POST /layers/lote` valida el lote completo (ids repetidos, en papelera o existentes, padres que no existen o que vienen más abajo) y crea todo o nada en una transacción, con hasta 500 nodos.
+
 ## [2.153.0] - 2026-10-30
 
 ### Agregado

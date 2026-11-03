@@ -29,6 +29,7 @@ export default function GridPanel({
     isCellDisabled,
     renderNotices,
     renderStatusExtra,
+    renderToolbarExtra,
     active = true,
     onToolbarChange,
     onStatusChange,
@@ -114,12 +115,13 @@ export default function GridPanel({
                 onOpenHistory={() => setHistoryOpen(true)}
                 onExport={handleExport}
                 exporting={exporting !== null}
+                extra={renderToolbarExtra ? renderToolbarExtra({ reload }) : null}
             />,
         );
     }, [
         active, onToolbarChange, isDesktop, dirtyCount, saving, save, undo, canUndo, search,
         searchPlaceholder, searchOpen, filterValue, filterItems, filterLabel, filterOpen,
-        reload, handleExport, exporting,
+        reload, handleExport, exporting, renderToolbarExtra,
     ]);
 
     useEffect(() => {
