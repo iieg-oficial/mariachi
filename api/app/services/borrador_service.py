@@ -246,6 +246,7 @@ def _apply_layer_stats(
                 dataengine_db.connection(),
                 bind_layer_fields(row.stats_config, binding),
                 schemas=schemas_permitidos(dataengine_db.connection()),
+                binding=binding,
             )
             if valores:
                 row.values = valores

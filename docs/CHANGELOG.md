@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.154.0] - 2026-11-09
+
+### Agregado
+
+- **`@fecha` en las estadísticas de capa**, igual que mapalab 2.10.0 y el cron de dataengine. El editor lo ofrece junto a
+  `@municipio` como «la columna de fecha de la capa»; se liga a `layers.date_column` o, si no lo declara, a la columna
+  que resolvió la periodicidad (`layer_periodicity.date_column`). Sin fecha en la petición, la vista previa,
+  «Recalcular» y la aprobación de borradores usan el `default_date` de la capa. Antes `_validate_filter` lo
+  rechazaba y una `stats_config` con `@fecha` no se podía guardar.
+
 ## [2.153.0] - 2026-10-30
 
 ### Agregado
