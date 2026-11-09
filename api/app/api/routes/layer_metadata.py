@@ -99,7 +99,7 @@ async def preview_stat(
 
     binding = load_layer_binding(db.connection(), layer_key)
     bound = bind_layer_fields([validated], binding)
-    values, errors = execute_stats_batch(db.connection(), bound, context, schemas)
+    values, errors = execute_stats_batch(db.connection(), bound, context, schemas, binding=binding)
     if errors:
         raise HTTPException(status_code=502, detail=errors[0]['error'])
     return {'value': values[0]['valor'], 'config': validated, 'context': context}
@@ -128,7 +128,7 @@ async def refresh_stats(
 
     binding = load_layer_binding(db.connection(), layer_key)
     values, errors = execute_stats_batch(
-        db.connection(), bind_layer_fields(cfgs, binding), schemas=schemas_permitidos(db.connection())
+        db.connection(), bind_layer_fields(cfgs, binding), schemas=schemas_permitidos(db.connection()), binding=binding,
     )
 
     if not values:
