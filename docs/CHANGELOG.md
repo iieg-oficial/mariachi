@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.154.1] - 2026-11-09
+
+### Corregido
+
+- **Las estadísticas de capa volvían a fallar en 2.154.0** si el rol de dataengine no podía leer
+  `public.layer_periodicity`: la vista previa, «Recalcular» y la aprobación de borradores daban error en cualquier capa.
+  La lectura va ahora en un savepoint y, sin permiso, la columna de fecha cae a `layers.date_column` o `fecha`. El
+  permiso lo da la migración `0060` de dataengine.
+
 ## [2.154.0] - 2026-11-09
 
 ### Agregado
