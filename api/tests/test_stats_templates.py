@@ -493,3 +493,17 @@ class TestFechaDeLaCapa:
         from app.services.stats_templates import contexto_con_fecha, rango_de_fecha_defecto
         assert contexto_con_fecha(self.BINDING, [{'operation': 'count'}], None) is None
         assert rango_de_fecha_defecto({'year': 2024, 'month': 2}) == ('2024-02-01', '2024-02-29')
+
+
+class TestFechaSinPermiso:
+    def test_sin_acceso_a_periodicidad_cae_a_fecha(self):
+        from unittest.mock import MagicMock
+
+        from app.services import stats_templates as st
+
+        conn = MagicMock()
+        capa = MagicMock()
+        capa.first.return_value = (None, {'year': 2026})
+        conn.execute.side_effect = [capa, Exception('permission denied for table layer_periodicity')]
+        assert st._fecha_de_capa(conn, 'demografia:poblacion') == (None, {'year': 2026})
+        conn.begin_nested.return_value.rollback.assert_called_once()

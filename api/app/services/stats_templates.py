@@ -335,7 +335,7 @@ def load_layer_binding(conn: Connection, layer_key: str) -> dict | None:
         LIMIT 1
     """
     row = conn.execute(text(sql), {'layer_key': layer_key}).first()
-    fecha = conn.execute(text(_LAYER_FECHA_SQL), {'layer_key': layer_key}).first()
+    fecha = _fecha_de_capa(conn, layer_key)
     if not row and not fecha:
         return None
     return {
@@ -346,16 +346,37 @@ def load_layer_binding(conn: Connection, layer_key: str) -> dict | None:
     }
 
 
-_LAYER_FECHA_SQL = """
-    SELECT coalesce(nullif(btrim(l.date_column), ''), p.date_column), l.default_date
+_CAPA_FECHA_SQL = """
+    SELECT nullif(btrim(l.date_column), ''), l.default_date
     FROM mapalab.layers l
     JOIN mapalab.workspaces w ON w.alias = l.workspace_alias
-    LEFT JOIN public.layer_periodicity p ON p.layer_key = :layer_key
     WHERE w.geoserver_workspace || ':' || l.geoserver_layer = :layer_key
       AND l.deleted_at IS NULL
     ORDER BY l.default_date IS NULL, l.id
     LIMIT 1
 """
+
+_PERIODICIDAD_SQL = "SELECT date_column FROM public.layer_periodicity WHERE layer_key = :layer_key"
+
+
+def _columna_de_periodicidad(conn: Connection, layer_key: str) -> str | None:
+    savepoint = conn.begin_nested()
+    try:
+        columna = conn.execute(text(_PERIODICIDAD_SQL), {'layer_key': layer_key}).scalar()
+        savepoint.commit()
+        return columna
+    except Exception:
+        savepoint.rollback()
+        logger.warning('stats: sin acceso a layer_periodicity; la fecha cae a layers.date_column o fecha')
+        return None
+
+
+def _fecha_de_capa(conn: Connection, layer_key: str) -> tuple[str | None, Any] | None:
+    capa = conn.execute(text(_CAPA_FECHA_SQL), {'layer_key': layer_key}).first()
+    if not capa:
+        return None
+    columna = capa[0] or _columna_de_periodicidad(conn, layer_key)
+    return columna, capa[1]
 
 
 def usa_fecha(stats_config: list | None) -> bool:
