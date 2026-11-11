@@ -64,12 +64,21 @@ def test_revisar_capa_inexistente():
     assert fila.errores == ['La capa no existe en GeoServer']
 
 
-def test_revisar_capa_repetida():
+def test_revisar_capa_compartida_nombra_el_estilo_por_campo():
     filas = estilos_lote.revisar(
         f'{CABECERA}\n{FILA_OK}\n{FILA_OK}', _dataengine(('s', 'seguridad_y_proteccion')), _cliente(),
     )
+    assert [f.errores for f in filas] == [[], []]
+    assert [f.style_name for f in filas] == ['homicidio', 'homicidio_tasa']
+    assert [f.predeterminado for f in filas] == [True, False]
+    assert filas[1].borrador_data()['default_style'] is False
+
+
+def test_revisar_estilo_repetido():
+    con_estilo = f'{CABECERA},nombre_estilo\n{FILA_OK},mio\n{FILA_OK},mio'
+    filas = estilos_lote.revisar(con_estilo, _dataengine(('s', 'seguridad_y_proteccion')), _cliente())
     assert filas[0].errores == []
-    assert filas[1].errores == ['La capa ya viene en la fila 2']
+    assert filas[1].errores == ['El estilo «mio» ya viene en la fila 2']
 
 
 def test_crear_borradores_rechaza_lote_con_errores():

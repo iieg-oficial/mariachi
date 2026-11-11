@@ -5,3 +5,4 @@ export { default as BulkIngestPage } from './pages/BulkIngestPage';
 export { default as StylesBatchPage } from './pages/StylesBatchPage';
 export { default as MetadataGridPage } from './pages/MetadataGridPage';
 export { default as BorradorCapaRevisionModal } from './components/BorradorCapaRevisionModal';
+export { default as SldDraftReviewModal } from './components/stylesBatch/SldDraftReviewModal';

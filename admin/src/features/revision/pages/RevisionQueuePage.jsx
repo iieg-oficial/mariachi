@@ -10,6 +10,8 @@ const { Title } = Typography;
 
 const BorradorCapaRevisionModal = lazy(() => import('@features/mapalab-layers')
     .then((m) => ({ default: m.BorradorCapaRevisionModal })));
+const SldDraftReviewModal = lazy(() => import('@features/mapalab-layers')
+    .then((m) => ({ default: m.SldDraftReviewModal })));
 
 const TIPOS_DE_CAPA = {
     layer: 'Capa',
@@ -117,6 +119,7 @@ export default function RevisionQueue() {
     const isHomeSection = (record) => record?.resource_type === 'home_section';
     const isSld = (record) => record?.resource_type === 'sld';
     const isLayerDraft = (record) => Boolean(TIPOS_DE_CAPA[record?.resource_type]);
+    const isBatchSld = (record) => isSld(record) && !record.data?.layer_id;
     const layerDraftName = (record) => `${TIPOS_DE_CAPA[record.resource_type]}: ${record.data?.label || record.resource_id}`;
 
     const tipoTag = (record) => {
@@ -157,7 +160,7 @@ export default function RevisionQueue() {
         || (!isEvento(record) && !isHomeSection(record) && !isSld(record) && !isLayerDraft(record));
 
     const handleRevisar = (record) => {
-        if (isLayerDraft(record)) setBorradorCapa(record);
+        if (isLayerDraft(record) || isBatchSld(record)) setBorradorCapa(record);
         else navigate(editPath(record));
     };
 
@@ -170,6 +173,8 @@ export default function RevisionQueue() {
         if (isLayerDraft(record)) return `${TIPOS_DE_CAPA[record.resource_type].toLowerCase()} "${record.data?.label || record.resource_id}"`;
         return record.data?.title;
     };
+
+    const ReviewModal = isBatchSld(borradorCapa) ? SldDraftReviewModal : BorradorCapaRevisionModal;
 
     const columns = [
         {
@@ -274,7 +279,7 @@ export default function RevisionQueue() {
 
             {borradorCapa && (
                 <Suspense fallback={null}>
-                    <BorradorCapaRevisionModal
+                    <ReviewModal
                         borrador={borradorCapa}
                         onClose={() => setBorradorCapa(null)}
                         onAprobar={handleAprobarCapa}

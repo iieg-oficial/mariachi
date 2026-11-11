@@ -9,6 +9,39 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.156.0] - 2026-11-11
+
+### Agregado
+
+- **Estilos en lote: pestañas «Sin publicar» e «Historial».** Lista los borradores del lote con autor y
+  fecha, para verlos, publicarlos (uno o todos) o descartarlos, y lo ya publicado, con «Volver a este».
+  Rutas `GET /geoserver/estilos-lote/{sin-publicar,historial}`.
+- **Excel directo.** Se arrastra el `.xlsx` (o el CSV, también en Latin-1) y lo lee
+  `POST /geoserver/estilos-lote/leer-archivo`; un archivo de otro tipo avisa en vez de ignorarse.
+- **Pegar como tabla.** El cuadro de texto se cambió por una tabla tipo Excel.
+- **Rampa propia.** El selector de colores tiene «Catálogo» y «Propia», un color por clase; viaja en la
+  columna opcional `colores` y no se invierte.
+- En la revisión se editan el nombre y la capa, se quita una fila o todas las que tienen error.
+- **Revisión de borradores del lote.** En la Cola de revisión, «Revisar» abre hoy contra borrador con la
+  leyenda y los botones de aprobar y rechazar; antes mandaba al árbol de capas y no abría nada.
+
+### Cambiado
+
+- **Una capa en varias filas** (personas desaparecidas: total, mujeres, hombres). La primera conserva el
+  nombre de la capa y queda como predeterminada; las demás se llaman `capa_campo`. La columna opcional
+  `nombre_estilo` lo fija a mano. Antes se marcaba error.
+- **Cortes con palabras.** «y menos», «menos de», «y más», «más de», «sin límite» abren la clase;
+  `%`, `$`, comillas y espacios de miles se ignoran.
+- Editar una fila solo pone a revisar esa fila, y la revisión reutiliza por dos minutos lo que ya
+  preguntó a GeoServer.
+- El lote en curso se guarda en el navegador: salir de la sección ya no lo pierde.
+
+### Corregido
+
+- **La vista previa no cargaba con lotes grandes.** Pedía los 65 mapas a la vez y GeoServer no alcanzaba;
+  ahora pinta solo lo visible, tres a la vez, con «Reintentar». Un timeout de GeoServer responde 504 en vez
+  de 500, y el render espera hasta 45 s.
+
 ## [2.155.0] - 2026-11-11
 
 ### Agregado
