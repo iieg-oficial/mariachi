@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.155.0] - 2026-11-11
+
+### Agregado
+
+- **Estilos en lote** (MapaLab → Estilos en lote, con `mariachi.geoserver.manage`). Se sube o se pega de
+  Excel la misma tabla del pipeline `estilos-coropleticos-mapalab` y se revisa fila por fila: colores
+  por familia y severidad, cortes, qué es mejor (↓ ↑ ◎ –) y los errores en una frase, corregibles en la
+  misma pantalla. La vista previa pinta la capa real en GeoServer con el SLD nuevo y, si ya tenía
+  estilo, lo compara contra el de hoy. Cada fila queda como borrador `sld` pendiente de aprobación y se
+  publica desde Revisión o, con `mariachi.mapalab.manage`, todas de golpe. Al publicarse, el estilo
+  queda como predeterminado de la capa.
+- Rutas `POST /geoserver/estilos-lote/{revisar,borradores,vista-previa}`. La vista previa usa el
+  reflector WMS de GeoServer con `SLD_BODY` por POST.
+- Cortes con la primera clase abierta (`[null, -30, …]`) y etiquetas `< x`, `> x` y `0` como en el
+  pipeline.
+
+### Cambiado
+
+- **Seis paletas nuevas** del equipo de Estadística en `paletas_simbologia.csv` (`S_VERDE_LIMA_5_CRITICA`,
+  `S_TURQUESA_AZUL_5_SENSIBLE` y cuatro de siete pasos). Las que ya existían no se tocan: en la copia
+  del equipo nueve tienen colores dañados por Excel (`2E+017`, `650000000`).
+- `palette_service` rellena con ceros los colores que perdieron los iniciales (`6466` → `#006466`).
+
 ## [2.154.2] - 2026-11-11
 
 ### Corregido

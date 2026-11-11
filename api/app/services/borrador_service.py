@@ -414,6 +414,8 @@ def _apply_sld(
     client = GeoServerClient()
     try:
         sha = client.put_sld(workspace, style_name, xml)
+        if data.get('default_style') and data.get('layer_name'):
+            client.set_layer_default_style(workspace, data['layer_name'], style_name)
     except GeoServerError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

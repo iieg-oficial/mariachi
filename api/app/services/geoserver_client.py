@@ -259,6 +259,33 @@ class GeoServerClient:
             )
         return local_hash
 
+    def set_layer_default_style(self, workspace: str, layer: str, style_name: str) -> None:
+        url = self._rest_url(f"workspaces/{workspace}/layers/{layer}.json")
+        payload = {"layer": {"defaultStyle": {"name": style_name, "workspace": workspace}}}
+        with self._client() as c:
+            r = c.put(url, json=payload)
+        if r.status_code not in (200, 201):
+            raise GeoServerError(
+                f"No se pudo fijar el estilo por defecto de {workspace}:{layer}: HTTP {r.status_code}"
+            )
+
+    def render_map(
+        self, workspace: str, layer: str, sld_body: str | None = None, width: int = 360,
+    ) -> bytes:
+        params = {
+            "LAYERS": f"{workspace}:{layer}",
+            "FORMAT": "image/png",
+            "TRANSPARENT": "true",
+            "WIDTH": str(width),
+        }
+        if sld_body:
+            params["SLD_BODY"] = sld_body
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.post(self._ows_url(f"{workspace}/wms/reflect"), data=params)
+        if r.status_code != 200 or not r.headers.get("content-type", "").startswith("image/"):
+            raise GeoServerError(f"No se pudo pintar {workspace}:{layer}: HTTP {r.status_code}")
+        return r.content
+
     def find_layers_using_style(self, workspace: str, style_name: str) -> list[str]:
         layer_names = self.list_layers(workspace)
         sharing: list[str] = []

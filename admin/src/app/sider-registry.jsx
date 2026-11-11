@@ -72,6 +72,11 @@ export const PROJECT_REGISTRY = {
                 label: 'Ingesta masiva', icon: <InboxOutlined />, showBetaBadge: true,
             },
             {
+                key: '/mapalab/layers/estilos-en-lote', path: '/mapalab/layers/estilos-en-lote',
+                label: 'Estilos en lote', icon: <BgColorsOutlined />, showBetaBadge: true,
+                permissions: ['mariachi.geoserver.manage'],
+            },
+            {
                 key: '/mapalab/catalogo', path: '/mapalab/catalogo', label: 'Capas catálogo',
                 icon: <UnorderedListOutlined />, showBetaBadge: true,
             },
