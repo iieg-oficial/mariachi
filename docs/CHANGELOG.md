@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.154.2] - 2026-11-11
+
+### Corregido
+
+- **La clase del cero de los coropléticos no pintaba nada.** Con el primer corte repetido (`0, 0, …`) la regla
+  salía como `>= 0 y < 0`, que nunca se cumple, y los ceros caían en la clase siguiente. Ahora es `= 0` y la
+  siguiente empieza en `> 0`. El parser lee los dos formatos, así que los 24 estilos publicados con el viejo se
+  corrigen al volver a publicarlos desde el editor.
+
 ## [2.154.1] - 2026-11-09
 
 ### Corregido
