@@ -168,7 +168,20 @@ def _parse_filter(filter_elem: ET.Element) -> dict[str, Any]:
     and_node = filter_elem.find(_t("ogc:And"))
     target_parent: ET.Element = and_node if and_node is not None else filter_elem
 
+    equal_node = target_parent.find(_t("ogc:PropertyIsEqualTo"))
+    if equal_node is not None:
+        value = _to_number(_text(equal_node.find(_t("ogc:Literal"))))
+        return {
+            "kind": "range",
+            "attribute": _text(equal_node.find(_t("ogc:PropertyName"))),
+            "lower": value,
+            "upper": value,
+            "upper_inclusive": True,
+        }
+
     lower_node = target_parent.find(_t("ogc:PropertyIsGreaterThanOrEqualTo"))
+    if lower_node is None:
+        lower_node = target_parent.find(_t("ogc:PropertyIsGreaterThan"))
     upper_lt = target_parent.find(_t("ogc:PropertyIsLessThan"))
     upper_lte = target_parent.find(_t("ogc:PropertyIsLessThanOrEqualTo"))
 
