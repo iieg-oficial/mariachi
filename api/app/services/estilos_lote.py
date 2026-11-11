@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import re
+import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.time import utcnow
 from app.models.borrador import Borrador
@@ -26,6 +29,10 @@ TIPOS_NUMERICOS = {'integer', 'number'}
 ESTADOS_ACTIVOS = ('en_progreso', 'pendiente_revision', 'rechazado')
 ESTADO_LOTE = 'pendiente_revision'
 HILOS = 6
+CACHE_SEGUNDOS = 120.0
+LIMITE_HISTORIAL = 200
+
+_cache: dict[tuple, tuple[float, object]] = {}
 
 
 class LoteConErroresError(TablaInvalidaError):
@@ -38,14 +45,45 @@ def revisar(texto: str, dataengine_db: Session, client: GeoServerClient | None =
     paletas = paletas_por_nombre(load_palettes())
     filas = [interpretar_fila(i + 2, fila, paletas) for i, fila in enumerate(leer_tabla(texto))]
     aliases = {w.geoserver_workspace: w.alias for w in dataengine_db.query(Workspace).all()}
+    consultar = _consultar_sin_cache if client else _consultar_con_cache
     cliente = client or GeoServerClient()
+    _nombrar_estilos(filas)
     with ThreadPoolExecutor(max_workers=HILOS) as pool:
-        list(pool.map(lambda f: _verificar_en_geoserver(f, aliases, cliente), filas))
+        list(pool.map(lambda f: _verificar_en_geoserver(f, aliases, cliente, consultar), filas))
     _marcar_repetidas(filas)
     return filas
 
 
-def _verificar_en_geoserver(fila: FilaLote, aliases: dict[str, str], client: GeoServerClient) -> None:
+def _consultar_sin_cache(_clave: tuple, funcion: Callable[[], object]) -> object:
+    return funcion()
+
+
+def _consultar_con_cache(clave: tuple, funcion: Callable[[], object]) -> object:
+    ahora = time.monotonic()
+    guardado = _cache.get(clave)
+    if guardado and ahora - guardado[0] < CACHE_SEGUNDOS:
+        return guardado[1]
+    valor = funcion()
+    _cache[clave] = (ahora, valor)
+    return valor
+
+
+def _nombrar_estilos(filas: list[FilaLote]) -> None:
+    vistas: set[tuple[str, str]] = set()
+    for fila in filas:
+        clave = (fila.workspace, fila.layer_name)
+        if not all(clave):
+            continue
+        if clave in vistas:
+            fila.predeterminado = False
+            fila.estilo_calculado = f'{fila.layer_name}_{re.sub(r"[^A-Za-z0-9_-]", "_", fila.attribute)}'
+        else:
+            vistas.add(clave)
+
+
+def _verificar_en_geoserver(
+    fila: FilaLote, aliases: dict[str, str], client: GeoServerClient, consultar: Callable,
+) -> None:
     if not fila.workspace or not fila.layer_name:
         return
     fila.alias = aliases.get(fila.workspace)
@@ -53,7 +91,11 @@ def _verificar_en_geoserver(fila: FilaLote, aliases: dict[str, str], client: Geo
         fila.errores.append(f'El workspace «{fila.workspace}» no está conectado al catálogo')
         return
     try:
-        campos = {c['name']: c['type'] for c in client.list_fields(fila.workspace, fila.layer_name)}
+        listado = consultar(
+            ('campos', fila.workspace, fila.layer_name),
+            lambda: client.list_fields(fila.workspace, fila.layer_name),
+        )
+        campos = {c['name']: c['type'] for c in listado}
     except (GeoServerError, httpx.HTTPError):
         fila.errores.append('La capa no existe en GeoServer')
         return
@@ -64,7 +106,10 @@ def _verificar_en_geoserver(fila: FilaLote, aliases: dict[str, str], client: Geo
         elif tipo not in TIPOS_NUMERICOS:
             fila.errores.append(f'El campo «{fila.attribute}» no es numérico')
     try:
-        fila.reemplaza = client.style_exists(fila.workspace, fila.style_name)
+        fila.reemplaza = consultar(
+            ('estilo', fila.workspace, fila.style_name),
+            lambda: client.style_exists(fila.workspace, fila.style_name),
+        )
     except (GeoServerError, httpx.HTTPError):
         fila.errores.append('No se pudo consultar el estilo actual')
 
@@ -72,11 +117,11 @@ def _verificar_en_geoserver(fila: FilaLote, aliases: dict[str, str], client: Geo
 def _marcar_repetidas(filas: list[FilaLote]) -> None:
     vistas: dict[tuple[str, str], int] = {}
     for fila in filas:
-        clave = (fila.workspace, fila.layer_name)
+        clave = (fila.workspace, fila.style_name)
         if not all(clave):
             continue
         if clave in vistas:
-            fila.errores.append(f'La capa ya viene en la fila {vistas[clave]}')
+            fila.errores.append(f'El estilo «{fila.style_name}» ya viene en la fila {vistas[clave]}')
         else:
             vistas[clave] = fila.fila
 
@@ -145,3 +190,28 @@ def vista_previa(
 ) -> bytes:
     cliente = client or GeoServerClient()
     return cliente.render_map(workspace, layer, sld_de_fila(fila) if fila else None, width)
+
+
+def _del_lote(borradores: list[Borrador]) -> list[Borrador]:
+    return [b for b in borradores if (b.data or {}).get('origen') == 'lote']
+
+
+def borradores_sin_publicar(db: Session) -> list[Borrador]:
+    return _del_lote(
+        db.query(Borrador)
+        .options(joinedload(Borrador.usuario))
+        .filter(Borrador.resource_type == 'sld', Borrador.estado.in_(ESTADOS_ACTIVOS))
+        .order_by(Borrador.actualizado_en.desc())
+        .all()
+    )
+
+
+def historial(db: Session) -> list[Borrador]:
+    return _del_lote(
+        db.query(Borrador)
+        .options(joinedload(Borrador.usuario))
+        .filter(Borrador.resource_type == 'sld', Borrador.estado == 'aprobado')
+        .order_by(Borrador.actualizado_en.desc())
+        .limit(LIMITE_HISTORIAL * 5)
+        .all()
+    )[:LIMITE_HISTORIAL]

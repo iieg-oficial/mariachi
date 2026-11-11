@@ -14,6 +14,8 @@ RASTER_ROOT = "geoserver-raster"
 RASTER_SCOPE = "__rasters__"
 
 
+RENDER_TIMEOUT = 45.0
+
 class GeoServerError(Exception):
     pass
 
@@ -280,7 +282,7 @@ class GeoServerClient:
         }
         if sld_body:
             params["SLD_BODY"] = sld_body
-        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+        with httpx.Client(auth=self._auth, timeout=max(self._timeout, RENDER_TIMEOUT)) as c:
             r = c.post(self._ows_url(f"{workspace}/wms/reflect"), data=params)
         if r.status_code != 200 or not r.headers.get("content-type", "").startswith("image/"):
             raise GeoServerError(f"No se pudo pintar {workspace}:{layer}: HTTP {r.status_code}")

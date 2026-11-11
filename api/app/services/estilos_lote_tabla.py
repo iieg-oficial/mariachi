@@ -2,14 +2,22 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from dataclasses import dataclass, field
 
 Number = int | float
 Cut = Number | None
 
-COLUMNAS_REQUERIDAS = ('capa', 'nombre_capa_geoserver', 'campo', 'paleta', 'cortes_rangos')
+COLUMNAS_REQUERIDAS = ('capa', 'nombre_capa_geoserver', 'campo', 'cortes_rangos')
 ORIENTACIONES_INVERTIDAS = {'superior', 'invertir'}
-VACIOS = {'', 'null', 'none', 'y más', 'y mas', '+'}
+ABIERTOS = {
+    '', 'null', 'none', 'nan', '+', '-', 'y más', 'y mas', 'y menos', 'más', 'mas', 'menos',
+    'más de', 'mas de', 'menos de', 'sin límite', 'sin limite', 'abierto', '∞', '-∞', '+∞', 'inf', '-inf',
+}
+NO_PERMITIDOS = re.compile(r'[^0-9a-záéíóúñ.\-+∞ ]')
+NUMERO = re.compile(r'[-+]?(\d+(\.\d*)?|\.\d+)')
+COLOR = re.compile(r'#?[0-9a-fA-F]{6}')
+NOMBRE_ESTILO = re.compile(r'[A-Za-z0-9_\-]+')
 
 DEFAULT_STROKE = {'color': '#FFFFFF', 'width': 0.35, 'opacity': 1.0, 'linejoin': 'bevel'}
 DEFAULT_NULL_STYLE = {
@@ -48,10 +56,14 @@ class FilaLote:
     errores: list[str] = field(default_factory=list)
     alias: str | None = None
     reemplaza: bool = False
+    estilo: str = ''
+    estilo_calculado: str = ''
+    colores_propios: str = ''
+    predeterminado: bool = True
 
     @property
     def style_name(self) -> str:
-        return self.layer_name
+        return self.estilo or self.estilo_calculado or self.layer_name
 
     @property
     def resource_id(self) -> str:
@@ -69,7 +81,7 @@ class FilaLote:
             'colors': self.colores,
             'stroke': dict(DEFAULT_STROKE),
             'null_style': dict(DEFAULT_NULL_STYLE),
-            'default_style': True,
+            'default_style': self.predeterminado,
             'origen': 'lote',
         }
 
@@ -81,6 +93,9 @@ class FilaLote:
             'alias': self.alias,
             'layer_name': self.layer_name,
             'style_name': self.style_name,
+            'estilo': self.estilo,
+            'predeterminado': self.predeterminado,
+            'colores_propios': self.colores_propios,
             'attribute': self.attribute,
             'unidades': self.unidades,
             'paleta': self.paleta,
@@ -120,11 +135,29 @@ def _numero(texto: str) -> Number:
     return int(valor) if valor.is_integer() else valor
 
 
+def _corte(parte: str) -> Cut:
+    limpia = ' '.join(NO_PERMITIDOS.sub('', parte.lower().replace('−', '-')).split())
+    if limpia in ABIERTOS:
+        return None
+    sin_espacios = limpia.replace(' ', '')
+    if NUMERO.fullmatch(sin_espacios):
+        return _numero(sin_espacios)
+    raise ValueError(parte.strip())
+
+
 def leer_cortes(texto: str) -> list[Cut]:
-    partes = [p.strip() for p in (texto or '').strip().strip('[]').split(',')]
-    if partes == ['']:
+    partes = (texto or '').strip().strip('[]').split(',')
+    if [p.strip() for p in partes] == ['']:
         return []
-    return [None if p.lower() in VACIOS else _numero(p) for p in partes]
+    return [_corte(p) for p in partes]
+
+
+def leer_colores(texto: str) -> list[str]:
+    partes = [p for p in re.split(r'[\s,;]+', (texto or '').strip()) if p]
+    for parte in partes:
+        if not COLOR.fullmatch(parte):
+            raise ValueError(parte)
+    return ['#' + p.lstrip('#').upper() for p in partes]
 
 
 def validar_cortes(cortes: list[Cut]) -> list[str]:
@@ -189,6 +222,8 @@ def interpretar_fila(numero: int, fila: dict[str, str], paletas: dict[str, dict]
         paleta=fila.get('paleta', ''),
         orientacion=fila.get('orientacion_favorable', ''),
         cortes_texto=fila.get('cortes_rangos', ''),
+        estilo=fila.get('nombre_estilo', ''),
+        colores_propios=fila.get('colores', ''),
     )
     if not resultado.nombre:
         resultado.errores.append('Falta el nombre de la capa')
@@ -196,10 +231,12 @@ def interpretar_fila(numero: int, fila: dict[str, str], paletas: dict[str, dict]
         resultado.errores.append('nombre_capa_geoserver debe ser workspace:capa')
     if not resultado.attribute:
         resultado.errores.append('Falta el campo')
+    if resultado.estilo and not NOMBRE_ESTILO.fullmatch(resultado.estilo):
+        resultado.errores.append('El nombre del estilo solo admite letras sin acento, números, _ y -')
     try:
         resultado.cortes = leer_cortes(fila.get('cortes_rangos', ''))
-    except ValueError:
-        resultado.errores.append('Hay un corte que no es número')
+    except ValueError as exc:
+        resultado.errores.append(f'No entiendo el corte «{exc}»')
         return resultado
     errores_cortes = validar_cortes(resultado.cortes)
     resultado.errores.extend(errores_cortes)
@@ -210,12 +247,15 @@ def interpretar_fila(numero: int, fila: dict[str, str], paletas: dict[str, dict]
 
 
 def _resolver_colores(fila: FilaLote, paletas: dict[str, dict]) -> None:
+    clases = len(fila.cortes) - 1
+    if fila.colores_propios:
+        _colores_propios(fila, clases)
+        return
     paleta = paletas.get(fila.paleta)
     if paleta is None:
-        fila.errores.append(f'La paleta «{fila.paleta}» no existe' if fila.paleta else 'Falta la paleta')
+        fila.errores.append(f'La paleta «{fila.paleta}» no existe' if fila.paleta else 'Faltan los colores')
         return
     orientacion = fila.orientacion.strip().lower()
-    clases = len(fila.cortes) - 1
     if clases < 1:
         return
     colores = list(paleta.get('colors') or [])
@@ -224,3 +264,15 @@ def _resolver_colores(fila: FilaLote, paletas: dict[str, dict]) -> None:
         return
     colores = colores[:clases]
     fila.colores = list(reversed(colores)) if orientacion in ORIENTACIONES_INVERTIDAS else colores
+
+
+def _colores_propios(fila: FilaLote, clases: int) -> None:
+    try:
+        colores = leer_colores(fila.colores_propios)
+    except ValueError as exc:
+        fila.errores.append(f'El color «{exc}» no es válido')
+        return
+    if clases >= 1 and len(colores) != clases:
+        fila.errores.append(f'Hay {len(colores)} colores y {clases} clases')
+        return
+    fila.colores = colores
