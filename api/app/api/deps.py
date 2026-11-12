@@ -2,6 +2,8 @@ import logging
 
 import httpx
 from fastapi import Cookie, Depends, HTTPException, Request, status
+from minerva_sdk.config import settings as minerva_settings
+from minerva_sdk.fastapi import _decode, _fetch_permissions
 from sqlalchemy.orm import Session
 
 from app.core import minerva_session, oidc
@@ -12,8 +14,6 @@ from app.core.time import utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
-from minerva_sdk.config import settings as minerva_settings
-from minerva_sdk.fastapi import _decode, _fetch_permissions
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
