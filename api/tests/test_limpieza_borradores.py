@@ -18,6 +18,18 @@ def test_quita_los_campos_de_metadatos_iguales_a_lo_publicado():
     assert sorted(campos_sin_cambio('layer_metadata', data, row)) == ['descripcion', 'fuentes']
 
 
+def test_una_lista_de_uno_con_llaves_vacias_es_el_objeto_publicado():
+    publicado = {'corto': 'INEGI', 'largo': 'Marco Geoestadístico', 'enlace': 'https://x'}
+    row = SimpleNamespace(fuentes=publicado)
+    data = {'fuentes': [{**publicado, 'enlace_label': ''}]}
+    assert campos_sin_cambio('layer_metadata', data, row) == ['fuentes']
+
+
+def test_una_fecha_distinta_no_se_quita():
+    row = SimpleNamespace(fecha_ultima='2012-12-01')
+    assert campos_sin_cambio('layer_metadata', {'fecha_ultima': '2012'}, row) == []
+
+
 def test_un_vacio_y_un_none_cuentan_como_iguales():
     row = SimpleNamespace(texto_leyenda=None)
     assert campos_sin_cambio('layer_metadata', {'texto_leyenda': ''}, row) == ['texto_leyenda']

@@ -17,8 +17,17 @@ def _vacio(valor: Any) -> bool:
     return False
 
 
+def _sin_vacios(valor: Any) -> Any:
+    if isinstance(valor, dict):
+        return {k: _sin_vacios(v) for k, v in valor.items() if not _vacio(v)}
+    if isinstance(valor, list):
+        limpios = [_sin_vacios(v) for v in valor if not _vacio(v)]
+        return limpios[0] if len(limpios) == 1 else limpios
+    return valor
+
+
 def _norma(valor: Any) -> str | None:
-    valor = jsonable_encoder(valor)
+    valor = _sin_vacios(jsonable_encoder(valor))
     if _vacio(valor):
         return None
     if isinstance(valor, (list, dict)):
