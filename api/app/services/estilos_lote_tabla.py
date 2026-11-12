@@ -18,6 +18,8 @@ NO_PERMITIDOS = re.compile(r'[^0-9a-záéíóúñ.\-+∞ ]')
 NUMERO = re.compile(r'[-+]?(\d+(\.\d*)?|\.\d+)')
 COLOR = re.compile(r'#?[0-9a-fA-F]{6}')
 NOMBRE_ESTILO = re.compile(r'[A-Za-z0-9_\-]+')
+SEVERIDAD = re.compile(r'(SENSIBLE|COMPARATIVA|CRITICA)')
+SEVERIDADES = {'SENSIBLE': 'Sensible', 'COMPARATIVA': 'Comparativa', 'CRITICA': 'Crítico'}
 
 DEFAULT_STROKE = {'color': '#FFFFFF', 'width': 0.35, 'opacity': 1.0, 'linejoin': 'bevel'}
 DEFAULT_NULL_STYLE = {
@@ -60,6 +62,13 @@ class FilaLote:
     estilo_calculado: str = ''
     colores_propios: str = ''
     predeterminado: bool = True
+    tipo: str = ''
+    severidad: str = ''
+    severidad_2: str = ''
+
+    @property
+    def numero_clases(self) -> int:
+        return max(len(self.cortes) - 1, 0)
 
     @property
     def style_name(self) -> str:
@@ -93,6 +102,10 @@ class FilaLote:
             'campo': self.attribute,
             'unidades': self.unidades,
             'paleta': self.paleta,
+            'tipo': self.tipo,
+            'numero_clases': str(self.numero_clases or ''),
+            'severidad': self.severidad,
+            'severidad_2': self.severidad_2,
             'orientacion_favorable': self.orientacion,
             'cortes_rangos': self.cortes_texto,
             'nombre_estilo': self.estilo,
@@ -113,6 +126,10 @@ class FilaLote:
             'attribute': self.attribute,
             'unidades': self.unidades,
             'paleta': self.paleta,
+            'tipo': self.tipo,
+            'numero_clases': self.numero_clases,
+            'severidad': self.severidad,
+            'severidad_2': self.severidad_2,
             'orientacion': self.orientacion,
             'cortes_texto': self.cortes_texto,
             'cortes': self.cortes,
@@ -238,6 +255,9 @@ def interpretar_fila(numero: int, fila: dict[str, str], paletas: dict[str, dict]
         cortes_texto=fila.get('cortes_rangos', ''),
         estilo=fila.get('nombre_estilo', ''),
         colores_propios=fila.get('colores', ''),
+        tipo=fila.get('tipo', ''),
+        severidad=fila.get('severidad', ''),
+        severidad_2=fila.get('severidad_2', ''),
     )
     if not resultado.nombre:
         resultado.errores.append('Falta el nombre de la capa')
@@ -263,12 +283,14 @@ def interpretar_fila(numero: int, fila: dict[str, str], paletas: dict[str, dict]
 def _resolver_colores(fila: FilaLote, paletas: dict[str, dict]) -> None:
     clases = len(fila.cortes) - 1
     if fila.colores_propios:
+        fila.tipo = 'personalizada'
         _colores_propios(fila, clases)
         return
     paleta = paletas.get(fila.paleta)
     if paleta is None:
         fila.errores.append(f'La paleta «{fila.paleta}» no existe' if fila.paleta else 'Faltan los colores')
         return
+    _describir_paleta(fila, paleta)
     orientacion = fila.orientacion.strip().lower()
     if clases < 1:
         return
@@ -278,6 +300,15 @@ def _resolver_colores(fila: FilaLote, paletas: dict[str, dict]) -> None:
         return
     colores = colores[:clases]
     fila.colores = list(reversed(colores)) if orientacion in ORIENTACIONES_INVERTIDAS else colores
+
+
+def _describir_paleta(fila: FilaLote, paleta: dict) -> None:
+    fila.tipo = paleta.get('tipo') or fila.tipo
+    lados = [SEVERIDADES[s] for s in SEVERIDAD.findall(fila.paleta.upper())]
+    if not lados:
+        return
+    fila.severidad = lados[0]
+    fila.severidad_2 = lados[1] if len(lados) > 1 else ''
 
 
 def _colores_propios(fila: FilaLote, clases: int) -> None:

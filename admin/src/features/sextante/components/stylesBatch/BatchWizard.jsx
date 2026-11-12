@@ -19,14 +19,28 @@ const SAVED_TIP = 'Aún no cambia nada en el visor. Se publican desde Sin public
 export default function BatchWizard({ canPublish }) {
     const [saved] = useState(loadBatch);
     const [step, setStep] = useState(saved?.step ?? 0);
+    const [reached, setReached] = useState(saved?.reached ?? saved?.step ?? 0);
     const [drafts, setDrafts] = useState(saved?.drafts ?? []);
     const [replacing, setReplacing] = useState(saved?.replacing ?? []);
     const [loading, setLoading] = useState(false);
     const { rows, setRows, checkingRows, checking, withErrors, changeRow, removeRows } = useBatchRows(saved?.rows ?? []);
 
     useEffect(() => {
-        saveBatch(step === 0 && !rows.length ? null : { step, rows, drafts, replacing });
-    }, [step, rows, drafts, replacing]);
+        saveBatch(step === 0 && !rows.length ? null : { step, reached, rows, drafts, replacing });
+    }, [step, reached, rows, drafts, replacing]);
+
+    const goTo = (next) => {
+        if (step === 3 && next < 3) setReplacing((prev) => [...new Set([...prev, ...drafts.map((d) => d.id)])]);
+        setStep(next);
+        setReached((prev) => Math.max(prev, next));
+    };
+
+    const canOpen = (index) => {
+        if (index === 0) return true;
+        if (index > reached || !rows.length) return false;
+        if (index >= 2 && (withErrors.length > 0 || checking)) return false;
+        return index < 3 || drafts.length > 0;
+    };
 
     const withLoading = (task, fallback) => async (...args) => {
         setLoading(true);
@@ -41,7 +55,7 @@ export default function BatchWizard({ canPublish }) {
 
     const review = async (text) => {
         setRows(await reviewTable(text));
-        setStep(1);
+        goTo(1);
     };
 
     const handleFile = withLoading(async (file) => review(await readTableFile(file)), 'No se pudo leer el archivo');
@@ -52,12 +66,12 @@ export default function BatchWizard({ canPublish }) {
         try {
             setDrafts(await createDrafts(rowsToTable(rows), replacing));
             setReplacing([]);
-            setStep(3);
+            goTo(3);
         } catch (err) {
             const filas = err?.response?.data?.detail?.filas;
             if (filas?.length) {
                 setRows(filas);
-                setStep(1);
+                goTo(1);
             }
             message.error(batchErrorMessage(err, 'No se pudieron guardar los borradores'));
         } finally {
@@ -70,11 +84,12 @@ export default function BatchWizard({ canPublish }) {
         setDrafts([]);
         setReplacing([]);
         setStep(0);
+        setReached(0);
     };
 
     const back = (
         <Tooltip title="Atrás">
-            <Button shape="circle" icon={<ArrowLeftOutlined />} aria-label="Atrás" onClick={() => setStep(step - 1)} />
+            <Button shape="circle" icon={<ArrowLeftOutlined />} aria-label="Atrás" onClick={() => goTo(step - 1)} />
         </Tooltip>
     );
 
@@ -111,7 +126,7 @@ export default function BatchWizard({ canPublish }) {
                     icon={<ArrowRightOutlined />}
                     iconPlacement="end"
                     disabled={withErrors.length > 0 || checking || !rows.length}
-                    onClick={() => setStep(2)}
+                    onClick={() => goTo(2)}
                 >
                     Ver cómo quedan
                 </Button>
@@ -127,7 +142,12 @@ export default function BatchWizard({ canPublish }) {
 
     return (
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-            <Steps current={step} items={STEPS} size="small" />
+            <Steps
+                current={step}
+                size="small"
+                onChange={goTo}
+                items={STEPS.map((item, index) => ({ ...item, disabled: !canOpen(index) }))}
+            />
             <Card title={title} extra={extra}>
                 {step === 0 && <UploadStep loading={loading} onFile={handleFile} onSubmit={handleTable} />}
                 {step === 1 && (

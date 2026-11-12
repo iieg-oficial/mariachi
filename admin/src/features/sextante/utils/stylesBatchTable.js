@@ -4,6 +4,10 @@ export const TABLE_COLUMNS = [
     'campo',
     'unidades',
     'paleta',
+    'tipo',
+    'numero_clases',
+    'severidad',
+    'severidad_2',
     'orientacion_favorable',
     'cortes_rangos',
 ];
@@ -65,6 +69,10 @@ export const rowsToTable = (rows) => [
         row.attribute,
         row.unidades,
         row.paleta,
+        row.tipo,
+        row.numero_clases,
+        row.severidad,
+        row.severidad_2,
         row.orientacion,
         row.cortes_texto,
         row.estilo,
@@ -106,7 +114,10 @@ export const draftToRow = (draft) => ({
     cortes: draft.data?.cortes || [],
     labels: draft.data?.labels || [],
     colores: draft.data?.colors || [],
+    xml: draft.data?.shape === 'xml' ? draft.data.xml : undefined,
     reemplaza: true,
 });
+
+export const isXmlDraft = (draft) => draft.data?.shape === 'xml';
 
 export const emptyGrid = (count = 6) => Array.from({ length: count }, () => ({}));

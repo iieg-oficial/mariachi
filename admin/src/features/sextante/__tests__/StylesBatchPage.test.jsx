@@ -101,6 +101,17 @@ describe('StylesBatchPage', () => {
         expect(screen.getByText('Pendiente de aprobación')).toBeTruthy();
     });
 
+    it('goes back to a finished step from its label', async () => {
+        reviewTable.mockResolvedValue([row()]);
+        const { container } = renderPage();
+        pasteTable(container);
+        expect(await screen.findByText('Ver cómo quedan')).toBeTruthy();
+        fireEvent.click(screen.getByText('Subir tabla'));
+        expect(await screen.findByText('Sube tu tabla')).toBeTruthy();
+        fireEvent.click(screen.getByText('Revisar filas'));
+        expect(await screen.findByText('Ver cómo quedan')).toBeTruthy();
+    });
+
     it('removes rows and keeps the batch after leaving the page', async () => {
         reviewTable.mockResolvedValue([row(), row({ fila: 3, nombre: 'Robo', errores: ['La capa no existe en GeoServer'] })]);
         const { container, unmount } = renderPage();

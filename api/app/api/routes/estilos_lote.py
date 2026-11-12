@@ -11,7 +11,7 @@ from app.core.database import get_dataengine_db
 from app.models.layer import Workspace
 from app.models.user import Usuario
 from app.schemas.borrador import BorradorResponse
-from app.services import estilos_lote
+from app.services import estilos_lote, estilos_lote_estilo
 from app.services.estilos_lote_archivo import leer_archivo
 from app.services.estilos_lote_tabla import TablaInvalidaError
 from app.services.geoserver_client import GeoServerError
@@ -40,6 +40,24 @@ class VistaPreviaIn(BaseModel):
     alias: str
     layer_name: str
     fila: dict | None = None
+    sld: str | None = Field(default=None, max_length=MAX_TABLA)
+
+
+class EstiloIn(BaseModel):
+    alias: str
+    estilo: str
+
+
+class XmlIn(EstiloIn):
+    capa: str = ''
+    xml: str = Field(min_length=1, max_length=MAX_TABLA)
+
+
+def _workspace(dataengine_db: Session, alias: str) -> str:
+    ws = dataengine_db.query(Workspace).filter(Workspace.alias == alias).first()
+    if ws is None:
+        raise HTTPException(status_code=404, detail=f"Workspace alias '{alias}' no existe")
+    return ws.geoserver_workspace
 
 
 def _tabla_invalida(exc: TablaInvalidaError) -> HTTPException:
@@ -113,6 +131,41 @@ async def editar_borradores(
     return {'filas': [f.to_dict() for f in filas]}
 
 
+@router.post('/desde-estilo')
+async def desde_estilo(
+    pedido: EstiloIn,
+    dataengine_db: Session = Depends(get_dataengine_db),
+    _user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_geoserver_manage),
+    _rl: Usuario = Depends(_lote_rate_limit),
+):
+    workspace = _workspace(dataengine_db, pedido.alias)
+    try:
+        texto = await run_in_threadpool(estilos_lote_estilo.tabla_de_estilo, workspace, pedido.estilo)
+        filas = await run_in_threadpool(estilos_lote.revisar, texto, dataengine_db)
+    except TablaInvalidaError as exc:
+        raise _tabla_invalida(exc) from exc
+    except GeoServerError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    return {'filas': [f.to_dict() for f in filas]}
+
+
+@router.post('/xml', response_model=BorradorResponse, status_code=201)
+async def guardar_xml(
+    pedido: XmlIn,
+    db: Session = Depends(get_db),
+    dataengine_db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_geoserver_manage),
+    _rl: Usuario = Depends(_lote_rate_limit),
+):
+    _workspace(dataengine_db, pedido.alias)
+    try:
+        return estilos_lote_estilo.guardar_xml(db, pedido.alias, pedido.estilo, pedido.capa, pedido.xml, current_user)
+    except TablaInvalidaError as exc:
+        raise _tabla_invalida(exc) from exc
+
+
 @router.post('/borradores', response_model=list[BorradorResponse], status_code=201)
 async def crear_borradores(
     tabla: TablaIn,
@@ -139,12 +192,10 @@ async def vista_previa(
     _admin: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_preview_rate_limit),
 ):
-    ws = dataengine_db.query(Workspace).filter(Workspace.alias == pedido.alias).first()
-    if ws is None:
-        raise HTTPException(status_code=404, detail=f"Workspace alias '{pedido.alias}' no existe")
+    workspace = _workspace(dataengine_db, pedido.alias)
     try:
         imagen = await run_in_threadpool(
-            estilos_lote.vista_previa, ws.geoserver_workspace, pedido.layer_name, pedido.fila, width,
+            estilos_lote.vista_previa, workspace, pedido.layer_name, pedido.fila, width, None, pedido.sld,
         )
     except httpx.TimeoutException as exc:
         raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail='GeoServer tardó demasiado') from exc
