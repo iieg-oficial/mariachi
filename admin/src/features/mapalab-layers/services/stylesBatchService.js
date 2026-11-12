@@ -38,10 +38,6 @@ export const fetchHistory = async () => (await api.get(`${BASE}/historial`)).dat
 
 export const approveDraft = async (id) => (await api.post(`/borradores/por-id/${id}/aprobar`)).data;
 
-export const rejectDraft = async (id, comentario = '') => (
-    await api.post(`/borradores/por-id/${id}/rechazar`, { comentario })
-).data;
-
 export const discardDraft = async (id) => (await api.delete(`/borradores/por-id/${id}`)).data;
 
 export const reapplyDraft = async (id) => (await api.post(`/borradores/por-id/${id}/re-aplicar`)).data;
