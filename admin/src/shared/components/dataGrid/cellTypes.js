@@ -1,4 +1,5 @@
 import { checkboxColumn, keyColumn, textColumn } from 'react-datasheet-grid';
+import ParentCell from '@shared/components/dataGrid/cells/ParentCell';
 import SelectCell from '@shared/components/dataGrid/cells/SelectCell';
 import TextAreaCell from '@shared/components/dataGrid/cells/TextAreaCell';
 
@@ -28,7 +29,18 @@ const textAreaColumn = (meta) => ({
     isCellEmpty: ({ rowData }) => !rowData,
 });
 
-const baseColumnFor = (meta, catalogs) => {
+const parentColumn = (context) => ({
+    component: ParentCell,
+    columnData: { treeData: context?.treeData || [], pathOf: context?.pathOf || ((id) => id) },
+    disableKeys: true,
+    keepFocus: true,
+    deleteValue: () => null,
+    copyValue: ({ rowData }) => rowData ?? '',
+    pasteValue: ({ value }) => String(value ?? '').trim() || null,
+});
+
+const baseColumnFor = (meta, catalogs, context) => {
+    if (meta.type === 'parent') return parentColumn(context);
     if (meta.type === 'bool') return checkboxColumn;
     if (meta.type === 'select') return selectColumn(catalogs?.[meta.optionsKey] || []);
     if (meta.type === 'textarea') return textAreaColumn(meta);
@@ -42,10 +54,11 @@ export const buildGridColumns = ({
     rowKeyField,
     conflictKeys,
     isCellDisabled,
+    columnContext,
 }) => columnsMeta
     .filter((meta) => !meta.sticky)
     .map((meta) => ({
-        ...keyColumn(meta.key, baseColumnFor(meta, catalogs)),
+        ...keyColumn(meta.key, baseColumnFor(meta, catalogs, columnContext)),
         title: meta.title,
         minWidth: meta.width || 160,
         basis: meta.width || 160,

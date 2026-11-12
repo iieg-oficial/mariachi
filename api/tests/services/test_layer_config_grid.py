@@ -236,3 +236,51 @@ def test_spec_notifica_al_visor():
     assert SPEC.on_commit is not None
     assert SPEC.key == 'layer-config'
     assert SPEC.row_key_field == 'id'
+
+
+class FakeTreeConnection:
+    def __init__(self, nodos: dict, descendientes: dict | None = None):
+        self.nodos = nodos
+        self.descendientes = descendientes or {}
+
+    def execute(self, statement, params=None):
+        sql = str(statement)
+        if 'RECURSIVE' in sql:
+            dentro = params['destino'] in self.descendientes.get(params['raiz'], set())
+            return FakeResult([{'x': 1}] if dentro else [])
+        tipo = self.nodos.get(params['id'])
+        return FakeResult([{'node_type': tipo}] if tipo else [])
+
+
+class TestGuardUbicacion:
+    nodos = {'ortofotos': 'tema', 'acatic': 'category', 'acatic-2023': 'leaf'}
+
+    def _mover(self, row, destino, descendientes=None):
+        conn = FakeTreeConnection(self.nodos, descendientes)
+        return _guard(conn, {'layers': row}, FIELDS['parent_id'], destino)
+
+    def test_categoria_a_tema_existente(self):
+        assert self._mover(_layer_row(id='ameca', node_type='category'), 'ortofotos') is None
+
+    def test_destino_inexistente(self):
+        assert 'no existe' in self._mover(_layer_row(id='ameca', node_type='category'), 'ortofotox')
+
+    def test_capa_y_etiqueta_no_contienen_nodos(self):
+        assert self._mover(_layer_row(id='ameca', node_type='category'), 'acatic-2023') is not None
+        self.nodos = {**self.nodos, 'etiqueta': 'label'}
+        assert self._mover(_layer_row(id='ameca', node_type='leaf'), 'etiqueta') is not None
+
+    def test_tema_no_lleva_ubicacion_y_solo_el_tema_va_a_la_raiz(self):
+        assert self._mover(_layer_row(id='t', node_type='tema'), 'ortofotos') is not None
+        assert self._mover(_layer_row(id='t', node_type='tema'), '') is None
+        assert self._mover(_layer_row(id='ameca', node_type='category'), '') is not None
+
+    def test_no_se_mueve_dentro_de_si_ni_de_sus_hijos(self):
+        assert self._mover(_layer_row(id='acatic', node_type='category'), 'acatic') is not None
+        assert self._mover(
+            _layer_row(id='acatic', node_type='category'), 'acatic-2023',
+        ) is not None
+        nodos_con_grupo = {**self.nodos, 'grupo': 'group'}
+        conn = FakeTreeConnection(nodos_con_grupo, {'acatic': {'acatic', 'grupo'}})
+        row = _layer_row(id='acatic', node_type='category')
+        assert _guard(conn, {'layers': row}, FIELDS['parent_id'], 'grupo') is not None

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Spin } from 'antd';
 import DataGrid from '@shared/components/dataGrid/DataGrid';
+import GridFloatingBar from '@shared/components/dataGrid/GridFloatingBar';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
+import { GRID_ICON_BUTTON_STYLES } from '@shared/components/dataGrid/gridIconButtonStyles';
 import GridNotices from '@shared/components/dataGrid/GridNotices';
 import GridShortcutsModal from '@shared/components/dataGrid/GridShortcutsModal';
 import GridStatusBar from '@shared/components/dataGrid/GridStatusBar';
@@ -9,6 +11,7 @@ import GridToolbar, { ALL_FILTER_VALUES } from '@shared/components/dataGrid/Grid
 import useGridEditor from '@shared/components/dataGrid/useGridEditor';
 import useGridExport from '@shared/components/dataGrid/useGridExport';
 import useGridPresence from '@shared/components/dataGrid/useGridPresence';
+import useGridShortcuts from '@shared/components/dataGrid/useGridShortcuts';
 import useElementHeight from '@shared/hooks/useElementHeight';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
@@ -29,14 +32,26 @@ export default function GridPanel({
     isCellDisabled,
     renderNotices,
     renderStatusExtra,
+    renderSelectionActions,
+    buildColumnContext,
+    search: searchProp,
+    onSearchChange,
+    filterValue: filterProp,
+    onFilterChange,
+    renderToolbarExtra,
     active = true,
     onToolbarChange,
     onStatusChange,
     onDirtyCountChange,
 }) {
     const { isDesktop } = useIsMobile();
-    const [filterValue, setFilterValue] = useState(null);
-    const [search, setSearch] = useState('');
+    const [filterLocal, setFilterLocal] = useState(null);
+    const [searchLocal, setSearchLocal] = useState('');
+    const [selectedKeys, setSelectedKeys] = useState(() => new Set());
+    const filterValue = filterProp !== undefined ? filterProp : filterLocal;
+    const setFilterValue = onFilterChange || setFilterLocal;
+    const search = searchProp !== undefined ? searchProp : searchLocal;
+    const setSearch = onSearchChange || setSearchLocal;
     const [activeRowKey, setActiveRowKey] = useState(null);
     const [activeColumnId, setActiveColumnId] = useState(null);
     const [searchOpen, setSearchOpen] = useState(false);
@@ -58,6 +73,7 @@ export default function GridPanel({
         canUndo,
         undo,
         handleGridChange,
+        applyPatches,
         save,
         reload,
         discardDraft,
@@ -93,33 +109,22 @@ export default function GridPanel({
         onToolbarChange(
             <GridToolbar
                 isDesktop={isDesktop}
-                dirtyCount={dirtyCount}
-                saving={saving}
-                onSave={save}
-                onUndo={undo}
-                canUndo={canUndo}
-                search={search}
-                onSearchChange={setSearch}
-                searchPlaceholder={searchPlaceholder}
-                searchOpen={searchOpen}
-                onSearchOpenChange={setSearchOpen}
                 filterValue={filterValue}
                 onFilterChange={setFilterValue}
                 filterItems={filterItems}
                 filterLabel={filterLabel}
                 filterOpen={filterOpen}
                 onFilterOpenChange={setFilterOpen}
-                onReload={reload}
                 onOpenShortcuts={() => setShortcutsOpen(true)}
                 onOpenHistory={() => setHistoryOpen(true)}
                 onExport={handleExport}
                 exporting={exporting !== null}
+                extra={renderToolbarExtra ? renderToolbarExtra({ data, applyPatches, saving }) : null}
             />,
         );
     }, [
-        active, onToolbarChange, isDesktop, dirtyCount, saving, save, undo, canUndo, search,
-        searchPlaceholder, searchOpen, filterValue, filterItems, filterLabel, filterOpen,
-        reload, handleExport, exporting,
+        active, onToolbarChange, isDesktop, filterValue, setFilterValue, filterItems, filterLabel,
+        filterOpen, handleExport, exporting, renderToolbarExtra, data, applyPatches, saving,
     ]);
 
     useEffect(() => {
@@ -138,6 +143,29 @@ export default function GridPanel({
     const onGridChange = useCallback(
         (nextRows) => handleGridChange(nextRows, visibleData),
         [handleGridChange, visibleData],
+    );
+
+    const columnContext = useMemo(
+        () => (buildColumnContext ? buildColumnContext(data) : null),
+        [buildColumnContext, data],
+    );
+
+    const selection = useMemo(() => {
+        if (!renderSelectionActions) return null;
+        return {
+            keys: selectedKeys,
+            toggle: (rowKey) => setSelectedKeys((prev) => {
+                const next = new Set(prev);
+                if (next.has(rowKey)) next.delete(rowKey);
+                else next.add(rowKey);
+                return next;
+            }),
+        };
+    }, [renderSelectionActions, selectedKeys]);
+
+    const selectedRows = useMemo(
+        () => data.filter((row) => selectedKeys.has(row[rowKeyField])),
+        [data, selectedKeys, rowKeyField],
     );
 
     const handleActiveCell = useCallback(({ columnId }) => setActiveColumnId(columnId), []);
@@ -181,46 +209,11 @@ export default function GridPanel({
         activeColumnTitle, othersEditing, visibleData.length, data, itemsLabel, renderStatusExtra,
     ]);
 
-    useEffect(() => {
-        if (!active) return undefined;
-        const onKeyDown = (event) => {
-            if (!(event.ctrlKey || event.metaKey)) return;
-            const key = event.key.toLowerCase();
-
-            if (key === 'z') {
-                event.preventDefault();
-                undo();
-                return;
-            }
-
-            if (key === 'f') {
-                event.preventDefault();
-                event.stopPropagation();
-                if (event.shiftKey) {
-                    setSearchOpen(false);
-                    setFilterOpen(true);
-                } else {
-                    setFilterOpen(false);
-                    setSearchOpen(true);
-                }
-            }
-        };
-        window.addEventListener('keydown', onKeyDown, true);
-        return () => window.removeEventListener('keydown', onKeyDown, true);
-    }, [active, undo]);
-
-    useEffect(() => {
-        if (!dirtyCount) return undefined;
-        const onBeforeUnload = (event) => {
-            event.preventDefault();
-            event.returnValue = '';
-        };
-        window.addEventListener('beforeunload', onBeforeUnload);
-        return () => window.removeEventListener('beforeunload', onBeforeUnload);
-    }, [dirtyCount]);
+    useGridShortcuts({ active, undo, dirtyCount, setSearchOpen, setFilterOpen });
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <style>{GRID_ICON_BUTTON_STYLES}</style>
             <GridNotices
                 recoveredDraft={recoveredDraft}
                 onRestoreDraft={restoreRecoveredDraft}
@@ -229,7 +222,7 @@ export default function GridPanel({
                 extra={renderNotices ? renderNotices(data) : null}
             />
 
-            <div ref={gridWrapperRef} style={{ flex: 1, minHeight: 0 }}>
+            <div ref={gridWrapperRef} style={{ flex: 1, minHeight: 0, position: 'relative' }}>
                 {loading ? (
                     <Spin style={{ display: 'block', margin: '48px auto' }} />
                 ) : (
@@ -245,8 +238,32 @@ export default function GridPanel({
                         onActiveCellChange={handleActiveCell}
                         presenceByRow={presenceByRow}
                         isCellDisabled={isCellDisabled}
+                        columnContext={columnContext}
+                        selection={selection}
                         height={gridHeight}
                     />
+                )}
+                {!loading && (
+                    <GridFloatingBar
+                        dirtyCount={dirtyCount}
+                        saving={saving}
+                        onSave={save}
+                        onUndo={undo}
+                        canUndo={canUndo}
+                        search={search}
+                        onSearchChange={setSearch}
+                        searchPlaceholder={searchPlaceholder}
+                        searchOpen={searchOpen}
+                        onSearchOpenChange={setSearchOpen}
+                    >
+                        {renderSelectionActions ? renderSelectionActions({
+                            data,
+                            selectedRows,
+                            setSelectedKeys,
+                            applyPatches,
+                            reload,
+                        }) : null}
+                    </GridFloatingBar>
                 )}
             </div>
 

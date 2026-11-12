@@ -11,6 +11,7 @@ import PermissionRoute from '@app/guards/PermissionRoute';
 import ErrorBoundary from '@app/guards/ErrorBoundary';
 import MainLayout from '@app/MainLayout';
 import FullscreenLayout from '@app/FullscreenLayout';
+import { esEntornoTesting } from '@app/sider-alcance';
 import { Navigate } from 'react-router';
 import Login from '@features/auth/pages/LoginPage';
 import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
@@ -282,6 +283,8 @@ const router = createBrowserRouter([
         ],
     },
 ], { basename: '/mariachi' });
+
+if (esEntornoTesting()) document.title = `Testing · ${document.title}`;
 
 createRoot(document.getElementById('root')).render(
     <AuthProvider>

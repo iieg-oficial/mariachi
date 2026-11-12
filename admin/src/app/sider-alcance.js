@@ -4,6 +4,8 @@ export const ALCANCE_AMBOS = 'ambos';
 
 export const ENTORNO_NO_PROD = ['dev', 'beta'].includes(import.meta.env.VITE_APP_ENV);
 
+export const esEntornoTesting = () => import.meta.env.VITE_APP_ENV === 'testing';
+
 export const alcanceDe = (origen) => origen.alcance || ALCANCE_EN_LINEA;
 
 export const visibleEn = (origen, alcance) => {
