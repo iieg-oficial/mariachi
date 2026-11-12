@@ -30,6 +30,18 @@ export const useLayerDrafts = () => {
 
     useEffect(() => { reload(); }, [reload]);
 
+    useEffect(() => {
+        const alVolver = () => {
+            if (document.visibilityState === 'visible') reload();
+        };
+        document.addEventListener('visibilitychange', alVolver);
+        window.addEventListener('focus', alVolver);
+        return () => {
+            document.removeEventListener('visibilitychange', alVolver);
+            window.removeEventListener('focus', alVolver);
+        };
+    }, [reload]);
+
     const pendingCount = useMemo(
         () => drafts.reduce((acc, d) => acc + draftFields(d).length, 0),
         [drafts],

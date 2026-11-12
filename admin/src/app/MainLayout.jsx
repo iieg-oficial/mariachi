@@ -12,6 +12,7 @@ import VersionNotesModal from '@features/inicio/components/VersionNotesModal';
 import MisBorradoresModal from '@features/inicio/components/MisBorradoresModal';
 import { BRAND } from '@app/providers/brand';
 import UserMenu from '@app/UserMenu';
+import MarcaEntorno from '@app/MarcaEntorno';
 import SiderAlcanceSegmented from '@app/SiderAlcanceSegmented';
 import { useAlcanceMenu } from '@app/useAlcanceMenu';
 import {
@@ -130,6 +131,7 @@ export default function MainLayout() {
                     Mariachi
                 </span>
             )}
+            <MarcaEntorno compact={isCollapsedView} />
         </div>
     );
 

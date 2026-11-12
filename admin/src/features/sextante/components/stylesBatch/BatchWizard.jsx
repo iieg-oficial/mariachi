@@ -141,7 +141,7 @@ export default function BatchWizard({ canPublish }) {
     }[step];
 
     return (
-        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 24 }}>
             <Steps
                 current={step}
                 size="small"
@@ -151,11 +151,11 @@ export default function BatchWizard({ canPublish }) {
             <Card title={title} extra={extra}>
                 {step === 0 && <UploadStep loading={loading} onFile={handleFile} onSubmit={handleTable} />}
                 {step === 1 && (
-                    <ReviewStep rows={rows} checkingRows={checkingRows} onChangeRow={changeRow} onRemoveRows={removeRows} />
+                    <ReviewStep rows={rows} checkingRows={checkingRows} onChangeRow={changeRow} onRemoveRows={removeRows} fill />
                 )}
                 {step === 2 && <PreviewStep rows={rows} />}
                 {step === 3 && <ResultStep drafts={drafts} canPublish={canPublish} />}
             </Card>
-        </Space>
+        </div>
     );
 }

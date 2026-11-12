@@ -9,6 +9,50 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.162.0] - 2026-11-12
+
+### Agregado
+
+- **Quién y cuándo en la captura masiva.** Las celdas con un cambio guardado llevan una esquina morada; al pasar el mouse dicen quién, cuándo, desde dónde y qué valor había. Las que están sin guardar dicen su valor anterior. Nuevo `GET /grid/{recurso}/ultimos-cambios`.
+- **Historial con buscador y filtros.** El drawer de historial (Capas y captura masiva) busca por capa, campo, valor o persona y filtra por campo, origen, quién y fechas; la descarga baja solo lo filtrado.
+- **Script `limpiar_borradores_compartidos.py`.** Quita de los borradores de capas los campos iguales a lo publicado; corre en simulación y con `--aplicar` escribe.
+- **Acciones flotantes en Configuración.** Las filas se seleccionan con una casilla y una barra flotante agrupa Agregar filas, Mover a…, Ocultar, Mostrar, Deshabilitar y Seleccionar hijas; en móvil queda solo con iconos. Todo entra como cambio pendiente, con deshacer e historial.
+- **La ubicación en el árbol se edita desde la tabla.** La columna usa un selector de árbol y se puede pegar el ID del padre. Al mover en lote, los nodos quedan al final del destino en su orden y sus hijas viajan con ellos. El servidor rechaza ciclos, temas fuera de la raíz y destinos que no son tema, categoría o grupo.
+- **Alta masiva de nodos desde la captura masiva.** Desde «Agregar filas» se abre una tabla donde se pegan desde Excel padre, nombre, tipo, orden, oculta, workspace y capa de GeoServer; el ID se arma solo con padre y nombre. `POST /layers/lote` valida el lote completo (ids repetidos, en papelera o existentes, padres que no existen o que vienen más abajo) y crea todo o nada en una transacción, con hasta 500 nodos.
+
+### Cambiado
+
+- **Estilos: el filtro es un ícono dentro del buscador.** Workspace e «Incluir los globales» se abren en un popover; el ícono se marca cuando hay filtros activos.
+
+### Corregido
+
+- **La búsqueda y el filtro de workspace se conservan al cambiar entre Metadatos y Configuración.**
+- **Los metadatos ya no ensucian el borrador compartido.** Guardaban la ficha completa a cada cambio, aunque solo se abriera una sección; ahora solo mandan los campos tocados que difieren de lo publicado, y quitan los que vuelven a su valor.
+- **Un borrador en revisión queda congelado.** Cualquier autoguardado lo regresaba a «en progreso» y lo sacaba de la cola; ahora el guardado responde 409 hasta que lo aprueben o rechacen.
+- **Los editores comparan contra lo publicado.** Su línea base incluía el borrador, y tocar un campo de otra persona sin cambiarlo se lo borraba.
+- **El contador de borradores se refresca** al volver a la pestaña, así lo aprobado desaparece sin recargar.
+- **La tabla de captura masiva actualiza sus columnas.** Usaba el `DataSheetGrid` estático, que congela las columnas del primer render: catálogos, árbol de ubicaciones, selección y presencia que llegaban después no se veían.
+- **Una celda rechazada al guardar dice por qué**, no solo cuántas fallaron.
+
+## [2.161.0] - 2026-11-12
+
+### Agregado
+- `VITE_APP_ENV=testing` para el espejo de Proxmox: el admin se comporta como producción y muestra una píldora «Testing» junto a «Mariachi» (punto con la barra colapsada) y el prefijo «Testing ·» en la pestaña.
+- `VITE_PRODUCCION_URL`: el tooltip de la píldora enlaza a producción. Obligatoria en el `.env`, puede ir vacía.
+
+## [2.160.0] - 2026-11-12
+
+### Agregado
+- Captura masiva, pestaña Configuración: columna de solo lectura «Fecha por contrato», marcada cuando la tabla de la capa tiene `fecha_periodo_seleccion` de tipo fecha.
+- Botón «Fecha por contrato» en la barra del grid: lista las capas con la columna del contrato y sin columna de fecha configurada, y las marca como cambios pendientes (`date_column = fecha_periodo_seleccion`). Se guardan con «Guardar», con historial y refresco de periodicidad.
+- `GridPanel` acepta `renderToolbarExtra` y `useGridEditor` expone `applyPatches`.
+
+## [2.159.1] - 2026-11-12
+
+### Corregido
+- Estilos en lote: la tabla y los pasos ya no se salen del ancho de la pantalla.
+- Estilos en lote: la página no hace scroll vertical; la tabla de revisión ocupa el alto que queda, con encabezado fijo, scroll propio y solo pinta las filas visibles.
+
 ## [2.159.0] - 2026-11-12
 
 ### Agregado

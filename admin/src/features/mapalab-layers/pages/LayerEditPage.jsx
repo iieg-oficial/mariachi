@@ -143,6 +143,8 @@ export default function LayerEditPage() {
     const [baseline, setBaseline] = useState(null);
     const tocadosRef = useRef(new Set());
     const asentadoRef = useRef(false);
+    const publicadoRef = useRef(null);
+    const camposDelBorradorRef = useRef(new Set());
     const [shellHeight, setShellHeight] = useState(null);
     const [eventoLayerId, setEventoLayerId] = useState(null);
 
@@ -332,13 +334,17 @@ export default function LayerEditPage() {
         setLoading(true);
         setLoadError(null);
         setLayer(null);
+        publicadoRef.current = null;
+        camposDelBorradorRef.current = new Set();
         (async () => {
             try {
                 const fresh = await getLayer(layerId);
                 if (cancelled) return;
+                publicadoRef.current = fresh;
                 if (!isAdmin) {
                     const draft = await getLayerDraft(layerId);
                     if (draft?.data) {
+                        camposDelBorradorRef.current = new Set(Object.keys(draft.data));
                         setLayer({ ...fresh, ...draft.data, id: fresh.id, _draftEstado: draft.estado });
                         return;
                     }
@@ -358,8 +364,10 @@ export default function LayerEditPage() {
 
     useEffect(() => {
         if (loading || !layer) return;
-        populate(layer);
+        const publicado = publicadoRef.current;
+        populate(publicado || layer);
         setBaseline(form.getFieldsValue());
+        if (publicado && publicado !== layer) populate(layer);
         tocadosRef.current = new Set();
         asentadoRef.current = false;
         const asentar = setTimeout(() => { asentadoRef.current = true; }, 1500);
@@ -374,7 +382,12 @@ export default function LayerEditPage() {
         if (!layerId || loading || loadError) return;
 
         if (!asentadoRef.current) {
-            setBaseline(form.getFieldsValue());
+            setBaseline((prev) => {
+                const actual = form.getFieldsValue();
+                if (!prev) return actual;
+                camposDelBorradorRef.current.forEach((k) => { if (k in prev) actual[k] = prev[k]; });
+                return actual;
+            });
             return;
         }
         Object.keys(changedValues || {}).forEach((k) => tocadosRef.current.add(k));

@@ -87,7 +87,7 @@ export default function StylesBatchPage() {
     );
 
     return (
-        <Content style={{ padding: isMobile ? 6 : 24, display: 'grid', gap: 16 }}>
+        <Content style={{ padding: isMobile ? 6 : 24, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', alignContent: 'start', gap: 16 }}>
             <PageHeader
                 title="Estilos en lote"
                 tip={PAGE_TIP}

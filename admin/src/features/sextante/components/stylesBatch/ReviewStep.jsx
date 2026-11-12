@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Segmented, Space, Table, Tooltip } from 'antd';
 import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { ORIENTATIONS, classCount } from '@features/sextante/utils/stylesBatchTable';
+import useFillHeight from '@features/sextante/hooks/useFillHeight';
 import ColorRamp from './ColorRamp';
 import OrientationHelp from './OrientationHelp';
 import PaletteModal from './PaletteModal';
@@ -10,6 +11,9 @@ import { CutsCell, GeoserverCell, SeverityCell, StatusCell, TextCell } from './R
 const CUTS_TIP = 'Repite el primer corte (0, 0, …) para que el cero tenga su color. Escribe «y menos» al principio o «y más» al final para dejar abierta la primera o la última clase.';
 const STATUS_TIP = 'Nuevo: el estilo no existe y se crea. Reemplaza: ya existe y se sobrescribe al publicar. En rojo: algo que corregir antes de seguir.';
 
+const PAGE_BOTTOM = 56;
+const HEADER_HEIGHT = 56;
+
 const withTip = (label, tip, ariaLabel = tip) => (
     <Space size={4}>
         {label}
@@ -17,8 +21,9 @@ const withTip = (label, tip, ariaLabel = tip) => (
     </Space>
 );
 
-export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRows, scrollY = 'calc(100vh - 400px)' }) {
+export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRows, fill = false }) {
     const [paletteRow, setPaletteRow] = useState(null);
+    const [fillRef, height] = useFillHeight(PAGE_BOTTOM);
 
     const change = (row, changes) => onChangeRow(row.fila, changes);
 
@@ -109,17 +114,22 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
         },
     ].filter(Boolean);
 
+    const width = columns.reduce((total, column) => total + (column.width || 0), 0);
+
     return (
         <>
-            <Table
-                rowKey="fila"
-                size="middle"
-                columns={columns}
-                dataSource={rows}
-                pagination={false}
-                sticky
-                scroll={{ x: 'max-content', y: scrollY || undefined }}
-            />
+            <div ref={fill ? fillRef : undefined}>
+                <Table
+                    rowKey="fila"
+                    size="middle"
+                    columns={columns}
+                    dataSource={rows}
+                    pagination={false}
+                    sticky
+                    virtual={fill}
+                    scroll={fill ? { x: width, y: height - HEADER_HEIGHT } : { x: 'max-content' }}
+                />
+            </div>
             {paletteRow && (
                 <PaletteModal
                     key={paletteRow.fila}

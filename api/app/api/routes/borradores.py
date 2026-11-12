@@ -336,6 +336,14 @@ def _guardar_compartido(
     borrador_in: BorradorUpsert,
     current_user: Usuario,
 ) -> Borrador | None:
+    if borrador is not None and borrador.estado == 'pendiente_revision':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Los cambios de esta capa están en revisión. "
+                "Espera a que los aprueben o rechacen para seguir editando."
+            ),
+        )
     resultado = combinar(
         borrador.data if borrador else None,
         borrador.autores if borrador else None,

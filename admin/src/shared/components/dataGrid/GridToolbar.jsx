@@ -1,73 +1,32 @@
-import { Button, Dropdown, Space } from 'antd';
+import { Dropdown, Space } from 'antd';
 import {
     DownloadOutlined,
     FilterOutlined,
     HistoryOutlined,
     QuestionCircleOutlined,
-    ReloadOutlined,
-    SaveOutlined,
-    UndoOutlined,
 } from '@ant-design/icons';
-import GridSearchDropdown from '@shared/components/dataGrid/GridSearchDropdown';
+import GridIconButton from '@shared/components/dataGrid/GridIconButton';
 import { EXPORT_ITEMS } from '@shared/components/dataGrid/exportItems';
 
 export const ALL_FILTER_VALUES = '__todos__';
 
 export default function GridToolbar({
     isDesktop,
-    dirtyCount,
-    saving,
-    onSave,
-    onUndo,
-    canUndo,
-    search,
-    onSearchChange,
-    searchPlaceholder,
-    searchOpen,
-    onSearchOpenChange,
     filterValue,
     onFilterChange,
     filterItems,
     filterLabel,
     filterOpen,
     onFilterOpenChange,
-    onReload,
     onOpenShortcuts,
     onOpenHistory,
     onExport,
     exporting,
+    extra,
 }) {
     return (
         <Space size={6} wrap={!isDesktop}>
-            <Button
-                size="small"
-                type="primary"
-                icon={<SaveOutlined />}
-                loading={saving}
-                disabled={!dirtyCount}
-                onClick={onSave}
-                title={dirtyCount ? 'Guardar los cambios pendientes' : 'No hay cambios por guardar'}
-            >
-                {dirtyCount ? `Guardar ${dirtyCount}` : 'Sin cambios'}
-            </Button>
-
-            <Button
-                size="small"
-                type="text"
-                icon={<UndoOutlined />}
-                onClick={onUndo}
-                disabled={!canUndo}
-                aria-label="Deshacer"
-                title="Deshacer el último cambio (Ctrl+Z)"
-            />
-
-            <GridSearchDropdown
-                value={search}
-                onChange={onSearchChange}
-                placeholder={searchPlaceholder}
-                open={searchOpen}
-                onOpenChange={onSearchOpenChange}
-            />
+            {extra}
 
             <Dropdown
                 placement="bottomRight"
@@ -85,14 +44,13 @@ export default function GridToolbar({
                     style: { maxHeight: 320, overflowY: 'auto' },
                 }}
             >
-                <Button
+                <GridIconButton
                     size="small"
                     type={filterValue ? 'default' : 'text'}
                     icon={<FilterOutlined />}
-                    title={`Filtrar por ${filterLabel.toLowerCase()}`}
-                >
-                    {filterValue || filterLabel}
-                </Button>
+                    label={filterValue || `Filtrar por ${filterLabel.toLowerCase()}`}
+                    expanded={Boolean(filterValue)}
+                />
             </Dropdown>
 
             <Dropdown
@@ -100,43 +58,29 @@ export default function GridToolbar({
                 trigger={['click']}
                 menu={{ items: EXPORT_ITEMS, onClick: ({ key }) => onExport(key) }}
             >
-                <Button
+                <GridIconButton
                     size="small"
                     type="text"
                     icon={<DownloadOutlined />}
+                    label="Descargar"
                     loading={exporting}
-                    title="Descargar datos e historial de cambios"
-                >
-                    Descargar
-                </Button>
+                />
             </Dropdown>
 
-            <Button
+            <GridIconButton
                 size="small"
                 type="text"
                 icon={<HistoryOutlined />}
+                label="Historial"
                 onClick={onOpenHistory}
-                aria-label="Historial de cambios"
-                title="Ver historial de cambios"
             />
 
-            <Button
-                size="small"
-                type="text"
-                icon={<ReloadOutlined />}
-                onClick={onReload}
-                disabled={saving}
-                aria-label="Recargar"
-                title="Recargar desde el servidor"
-            />
-
-            <Button
+            <GridIconButton
                 size="small"
                 type="text"
                 icon={<QuestionCircleOutlined />}
+                label="Atajos"
                 onClick={onOpenShortcuts}
-                aria-label="Atajos y recomendaciones"
-                title="Atajos y recomendaciones"
             />
         </Space>
     );

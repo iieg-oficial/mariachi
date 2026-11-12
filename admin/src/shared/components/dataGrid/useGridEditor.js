@@ -253,7 +253,9 @@ export default function useGridEditor({ resource, rowKeyField = 'layer_key', fil
                 );
             }
             if (rejectedList.length > 0) {
-                message.warning(`${rejectedSet.size} celda(s) no se pudieron guardar`);
+                message.warning(
+                    `${rejectedSet.size} celda(s) no se pudieron guardar: ${rejectedList[0].reason}`,
+                );
             }
             if ((result.conflicts || []).length > 0) {
                 message.warning(
@@ -275,11 +277,13 @@ export default function useGridEditor({ resource, rowKeyField = 'layer_key', fil
         loading,
         saving,
         draft,
+        baseByKey,
         dirtyCount,
         conflicts,
         canUndo: undoDepth > 0,
         undo,
         handleGridChange,
+        applyPatches,
         save,
         reload: load,
         discardDraft,
