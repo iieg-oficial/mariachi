@@ -24,6 +24,7 @@ IMAGE_FORMATS = ('image/png', 'image/png8', 'image/jpeg')
 ANTIALIAS_VALUES = ('full', 'text', 'none')
 MUNICIPIO_FIELD_TYPES = ('clave', 'nombre')
 GEOMETRY_TYPES = ('point', 'line', 'polygon', 'raster')
+CONTRACT_DATE_COLUMN = 'fecha_periodo_seleccion'
 
 LAYERS_TABLE = GridTable(
     key='layers',
@@ -267,6 +268,7 @@ COLUMNS_META: list[dict] = [
     {'key': 'time_style_pattern', 'title': 'Patron de estilo temporal', 'type': 'text', 'group': 'Temporalidad', 'width': 200},
     {'key': 'hide_periodicity', 'title': 'Ocultar periodicidad', 'type': 'bool', 'group': 'Temporalidad', 'width': 140},
     {'key': 'date_column', 'title': 'Columna de fecha', 'type': 'text', 'group': 'Temporalidad', 'width': 150},
+    {'key': 'fecha_contrato', 'title': 'Fecha por contrato', 'type': 'bool', 'group': 'Temporalidad', 'width': 140, 'editable': False},
     {'key': 'has_municipio', 'title': 'Filtro por municipio', 'type': 'bool', 'group': 'Busqueda', 'width': 140},
     {'key': 'municipio_field', 'title': 'Campo de municipio', 'type': 'text', 'group': 'Busqueda', 'width': 170},
     {'key': 'municipio_field_type', 'title': 'Tipo de campo', 'type': 'select', 'optionsKey': 'municipioFieldType', 'group': 'Busqueda', 'width': 130},
@@ -296,7 +298,21 @@ _SELECT_SQL = """
            l.search_tags, l.has_municipio, l.municipio_field, l.municipio_field_type,
            l.icon_url, l.highlight_color, l.highlight_shape,
            l.infobox_config, l.notice, l.badge, l.updated_at, l.updated_by,
-           w.geoserver_workspace, a.ruta_padre, a.ruta
+           w.geoserver_workspace, a.ruta_padre, a.ruta,
+           EXISTS (
+               SELECT 1
+               FROM pg_namespace n
+               JOIN pg_class c ON c.relnamespace = n.oid
+               JOIN pg_attribute att ON att.attrelid = c.oid
+               JOIN pg_type t ON t.oid = att.atttypid
+               WHERE n.nspname = w.db_schema
+                 AND c.relname = l.geoserver_layer
+                 AND c.relkind IN ('r', 'm', 'v')
+                 AND att.attname = :contract_date_column
+                 AND att.attnum > 0
+                 AND NOT att.attisdropped
+                 AND t.typname IN ('date', 'timestamp', 'timestamptz')
+           ) AS fecha_contrato
     FROM mapalab.layers l
     LEFT JOIN arbol a ON a.id = l.id
     LEFT JOIN mapalab.workspaces w ON w.alias = l.workspace_alias
@@ -328,7 +344,7 @@ def fetch_rows(
     search: str | None = None,
 ) -> list[dict]:
     clauses: list[str] = []
-    params: dict[str, Any] = {}
+    params: dict[str, Any] = {'contract_date_column': CONTRACT_DATE_COLUMN}
     if workspace:
         clauses.append('(l.workspace_alias = :workspace OR w.geoserver_workspace = :workspace)')
         params['workspace'] = workspace
@@ -355,6 +371,7 @@ def fetch_rows(
             'badge_resumen': _flag_resumen(record['badge'], 'con badge'),
             'updated_at': record['updated_at'].isoformat() if record['updated_at'] else None,
             'updated_by': record['updated_by'],
+            'fecha_contrato': bool(record['fecha_contrato']),
         }
         for key, grid_field in FIELDS.items():
             row[key] = grid_field.read(state)

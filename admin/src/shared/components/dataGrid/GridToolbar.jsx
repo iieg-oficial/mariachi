@@ -22,9 +22,12 @@ export default function GridToolbar({
     onOpenHistory,
     onExport,
     exporting,
+    extra,
 }) {
     return (
         <Space size={6} wrap={!isDesktop}>
+            {extra}
+
             <Dropdown
                 placement="bottomRight"
                 trigger={['click']}

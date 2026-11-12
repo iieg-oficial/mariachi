@@ -12,3 +12,9 @@ export const opcionesColumnaFecha = (fields, actual) => {
     if (otras.length) grupos.push({ label: 'Otras columnas', options: otras });
     return grupos;
 };
+
+export const CONTRACT_DATE_COLUMN = 'fecha_periodo_seleccion';
+
+export const candidatasPorContrato = (rows) => rows.filter(
+    (row) => row.fecha_contrato && !String(row.date_column || '').trim(),
+);

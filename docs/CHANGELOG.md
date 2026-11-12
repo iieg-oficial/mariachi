@@ -28,6 +28,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - Estilos en lote: la tabla y los pasos ya no se salen del ancho de la pantalla.
 - Estilos en lote: la página no hace scroll vertical; la tabla de revisión ocupa el alto que queda, con encabezado fijo, scroll propio y solo pinta las filas visibles.
 
+## [2.160.0] - 2026-11-12
+
+### Agregado
+- Captura masiva, pestaña Configuración: columna de solo lectura «Fecha por contrato», marcada cuando la tabla de la capa tiene `fecha_periodo_seleccion` de tipo fecha.
+- Botón «Fecha por contrato» en la barra del grid: lista las capas con la columna del contrato y sin columna de fecha configurada, y las marca como cambios pendientes (`date_column = fecha_periodo_seleccion`). Se guardan con «Guardar», con historial y refresco de periodicidad.
+- `GridPanel` acepta `renderToolbarExtra` y `useGridEditor` expone `applyPatches`.
+
 ## [2.159.0] - 2026-11-12
 
 ### Agregado

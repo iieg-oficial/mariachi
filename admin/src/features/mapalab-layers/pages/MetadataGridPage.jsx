@@ -5,6 +5,7 @@ import GridAccionesFlotantes from '@features/mapalab-layers/components/GridAccio
 import { contextoDeUbicacion } from '@features/mapalab-layers/utils/gridArbol';
 import { METADATA_GRID_CATALOGS } from '@features/mapalab-layers/constants/metadataCatalogs';
 import { LAYER_CONFIG_CATALOGS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
+import FechaPorContratoAction from '@features/mapalab-layers/components/FechaPorContratoAction';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useFullscreenHeader } from '@app/fullscreenHeader';
 
@@ -109,6 +110,9 @@ export default function MetadataGridPage() {
     }, []);
 
     const renderAcciones = useCallback((props) => <GridAccionesFlotantes {...props} />, []);
+    const renderConfigToolbarExtra = useCallback(({ data, applyPatches, saving }) => (
+        <FechaPorContratoAction data={data} applyPatches={applyPatches} disabled={saving} />
+    ), []);
 
     const items = useMemo(() => [
         {
@@ -164,6 +168,7 @@ export default function MetadataGridPage() {
                     itemsLabel="nodos"
                     exportFileName="configuracion-capas"
                     rowLabelField="label"
+                    renderToolbarExtra={renderConfigToolbarExtra}
                     active={tab === 'configuracion'}
                     onToolbarChange={setToolbar}
                     onStatusChange={setStatus}
@@ -173,7 +178,7 @@ export default function MetadataGridPage() {
         },
     ], [
         tab, dirtyMetadatos, dirtyConfiguracion, isCellDisabled, renderMetadataStatusExtra,
-        search, workspace, renderAcciones,
+        search, workspace, renderAcciones, renderConfigToolbarExtra,
     ]);
 
     return (
