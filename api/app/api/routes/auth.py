@@ -19,6 +19,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import RedirectResponse
+from minerva_sdk.fastapi import _decode
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -46,7 +47,6 @@ from app.schemas.user import (
 from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.actividad_service import registrar_actividad
-from minerva_sdk.fastapi import _decode
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/autenticacion", tags=["autenticación"])

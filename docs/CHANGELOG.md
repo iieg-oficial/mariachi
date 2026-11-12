@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.162.1] - 2026-11-12
+
+### Cambiado
+
+- **`minerva_sdk` pasa de 0.2.0 a 0.3.0 y se instala del tag `sdk-v0.3.0` de minerva** en lugar de la copia en `api/minerva_sdk/`. La 0.3.0 solo agrega (`MinervaOIDC`, helpers públicos, `settings.validate`); `_decode`, `_fetch_permissions` y `_get_jwks`, que mariachi importa, no cambian. Subir de versión es cambiar el tag en `pyproject.toml`.
+
+### Corregido
+
+- **La limpieza de borradores iguala un objeto publicado con su lista de uno.** Fuentes y metodología llegan del formulario como lista con `enlace_label` vacío y la limpieza los dejaba como cambio.
+
 ## [2.162.0] - 2026-11-12
 
 ### Agregado

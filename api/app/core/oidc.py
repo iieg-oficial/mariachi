@@ -7,11 +7,11 @@ from typing import Any
 
 import httpx
 from jose import JWTError, jwt
+from minerva_sdk.config import settings as minerva_settings
+from minerva_sdk.fastapi import _get_jwks
 
 from app.core.settings import get_settings
 from app.core.time import utcnow
-from minerva_sdk.config import settings as minerva_settings
-from minerva_sdk.fastapi import _get_jwks
 
 settings = get_settings()
 
