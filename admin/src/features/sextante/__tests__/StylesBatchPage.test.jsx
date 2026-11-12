@@ -105,12 +105,11 @@ describe('StylesBatchPage', () => {
         reviewTable.mockResolvedValue([row()]);
         const { container } = renderPage();
         pasteTable(container);
-        fireEvent.click(await screen.findByRole('button', { name: /Ver cómo quedan/ }));
-        expect(await screen.findByText('Hoy en el visor')).toBeTruthy();
+        expect(await screen.findByText('Ver cómo quedan')).toBeTruthy();
+        fireEvent.click(screen.getByText('Subir tabla'));
+        expect(await screen.findByText('Sube tu tabla')).toBeTruthy();
         fireEvent.click(screen.getByText('Revisar filas'));
-        expect(await screen.findByRole('button', { name: /Ver cómo quedan/ })).toBeTruthy();
-        fireEvent.click(screen.getByText('Vista previa'));
-        expect(await screen.findByRole('button', { name: /Guardar 1 borradores/ })).toBeTruthy();
+        expect(await screen.findByText('Ver cómo quedan')).toBeTruthy();
     });
 
     it('removes rows and keeps the batch after leaving the page', async () => {
