@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Empty, List, Modal, Space, Tooltip, Typography } from 'antd';
+import { Button, Empty, Modal, Space, Tooltip, Typography } from 'antd';
 import { CalendarOutlined, CheckOutlined } from '@ant-design/icons';
 import {
     CONTRACT_DATE_COLUMN,
@@ -7,6 +7,10 @@ import {
 } from '@features/mapalab-layers/utils/columnaFecha';
 
 const { Text } = Typography;
+
+const LISTA = { marginTop: 12, maxHeight: 320, overflowY: 'auto' };
+
+const FILA = { padding: '8px 0', borderBottom: '1px solid rgba(5, 5, 5, 0.06)' };
 
 const DESCRIPCION = 'Capas cuya tabla tiene fecha_periodo_seleccion de tipo fecha y aún no tienen columna '
     + 'de fecha configurada. Se marcan como cambios pendientes; se guardan con Guardar.';
@@ -59,21 +63,17 @@ export default function FechaPorContratoAction({ data, applyPatches, disabled })
             >
                 <Text type="secondary">{DESCRIPCION}</Text>
                 {candidatas.length ? (
-                    <List
-                        size="small"
-                        style={{ marginTop: 12, maxHeight: 320, overflowY: 'auto' }}
-                        dataSource={candidatas}
-                        renderItem={(row) => (
-                            <List.Item>
-                                <Space direction="vertical" size={0}>
-                                    <Text>{row.label || row.id}</Text>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        {`${row.workspace_alias || '—'} · ${row.geoserver_layer || '—'}`}
-                                    </Text>
-                                </Space>
-                            </List.Item>
-                        )}
-                    />
+                    <div style={LISTA}>
+                        {candidatas.map((row) => (
+                            <div key={row.id} style={FILA}>
+                                <Text>{row.label || row.id}</Text>
+                                <br />
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {`${row.workspace_alias || '—'} · ${row.geoserver_layer || '—'}`}
+                                </Text>
+                            </div>
+                        ))}
+                    </div>
                 ) : (
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
