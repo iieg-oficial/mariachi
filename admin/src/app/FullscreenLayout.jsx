@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router';
 import { Button, Space, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { FullscreenHeaderContext } from '@app/fullscreenHeader';
+import MarcaEntorno from '@app/MarcaEntorno';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
 const { Text } = Typography;
@@ -84,6 +85,7 @@ export default function FullscreenLayout() {
                         <span style={{ fontSize: 15, fontWeight: 'bold', letterSpacing: 0.5, color: '#fff' }}>
                             Mariachi
                         </span>
+                        <MarcaEntorno />
                         <Button
                             type="text"
                             size="small"

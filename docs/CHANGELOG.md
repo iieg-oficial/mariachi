@@ -22,11 +22,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - **La búsqueda y el filtro de workspace se conservan al cambiar entre Metadatos y Configuración.**
 - **Una celda rechazada al guardar dice por qué**, no solo cuántas fallaron.
 
-## [2.159.1] - 2026-11-12
+## [2.161.0] - 2026-11-12
 
-### Corregido
-- Estilos en lote: la tabla y los pasos ya no se salen del ancho de la pantalla.
-- Estilos en lote: la página no hace scroll vertical; la tabla de revisión ocupa el alto que queda, con encabezado fijo, scroll propio y solo pinta las filas visibles.
+### Agregado
+- `VITE_APP_ENV=testing` para el espejo de Proxmox: el admin se comporta como producción y muestra una píldora «Testing» junto a «Mariachi» (punto con la barra colapsada) y el prefijo «Testing ·» en la pestaña.
+- `VITE_PRODUCCION_URL`: el tooltip de la píldora enlaza a producción. Obligatoria en el `.env`, puede ir vacía.
 
 ## [2.160.0] - 2026-11-12
 
@@ -34,6 +34,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - Captura masiva, pestaña Configuración: columna de solo lectura «Fecha por contrato», marcada cuando la tabla de la capa tiene `fecha_periodo_seleccion` de tipo fecha.
 - Botón «Fecha por contrato» en la barra del grid: lista las capas con la columna del contrato y sin columna de fecha configurada, y las marca como cambios pendientes (`date_column = fecha_periodo_seleccion`). Se guardan con «Guardar», con historial y refresco de periodicidad.
 - `GridPanel` acepta `renderToolbarExtra` y `useGridEditor` expone `applyPatches`.
+
+## [2.159.1] - 2026-11-12
+
+### Corregido
+- Estilos en lote: la tabla y los pasos ya no se salen del ancho de la pantalla.
+- Estilos en lote: la página no hace scroll vertical; la tabla de revisión ocupa el alto que queda, con encabezado fijo, scroll propio y solo pinta las filas visibles.
 
 ## [2.159.0] - 2026-11-12
 

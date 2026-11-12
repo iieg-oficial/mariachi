@@ -55,6 +55,7 @@ services:
       VITE_MAPALAB_PROXY_URL: ${VITE_MAPALAB_PROXY_URL:?}
       VITE_CARTO_API_KEY: ${VITE_CARTO_API_KEY?}
       VITE_APP_ENV: ${VITE_APP_ENV:?}
+      VITE_PRODUCCION_URL: ${VITE_PRODUCCION_URL?}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
