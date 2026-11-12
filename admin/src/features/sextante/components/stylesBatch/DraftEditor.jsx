@@ -39,7 +39,7 @@ export default function DraftEditor({ load, replacing = [], savedText = 'Borrado
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <ReviewStep rows={rows} checkingRows={checkingRows} onChangeRow={changeRow} scrollY={null} />
+            <ReviewStep rows={rows} checkingRows={checkingRows} onChangeRow={changeRow} />
             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
                 <Button shape="round" onClick={onCancel}>Cancelar</Button>
                 <Button
