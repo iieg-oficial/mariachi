@@ -24,10 +24,16 @@ _preview_rate_limit = rate_limit(max_requests=240, window_seconds=60.0, scope='e
 
 MAX_TABLA = 500_000
 MAX_ARCHIVO = 5_000_000
+MAX_FILAS = 500
 
 
 class TablaIn(BaseModel):
     texto: str = Field(max_length=MAX_TABLA)
+    reemplazar: list[int] = Field(default_factory=list, max_length=MAX_FILAS)
+
+
+class EditarIn(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=MAX_FILAS)
 
 
 class VistaPreviaIn(BaseModel):
@@ -90,6 +96,23 @@ async def revisar_tabla(
     return {'filas': [f.to_dict() for f in filas]}
 
 
+@router.post('/editar')
+async def editar_borradores(
+    pedido: EditarIn,
+    db: Session = Depends(get_db),
+    dataengine_db: Session = Depends(get_dataengine_db),
+    _user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_geoserver_manage),
+    _rl: Usuario = Depends(_lote_rate_limit),
+):
+    try:
+        texto = estilos_lote.tabla_de_borradores(pedido.ids, db, dataengine_db)
+        filas = await run_in_threadpool(estilos_lote.revisar, texto, dataengine_db)
+    except TablaInvalidaError as exc:
+        raise _tabla_invalida(exc) from exc
+    return {'filas': [f.to_dict() for f in filas]}
+
+
 @router.post('/borradores', response_model=list[BorradorResponse], status_code=201)
 async def crear_borradores(
     tabla: TablaIn,
@@ -101,7 +124,7 @@ async def crear_borradores(
 ):
     try:
         return await run_in_threadpool(
-            estilos_lote.crear_borradores, tabla.texto, db, dataengine_db, current_user,
+            estilos_lote.crear_borradores, tabla.texto, db, dataengine_db, current_user, None, tabla.reemplazar,
         )
     except TablaInvalidaError as exc:
         raise _tabla_invalida(exc) from exc

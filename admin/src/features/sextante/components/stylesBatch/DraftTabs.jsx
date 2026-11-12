@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button } from 'antd';
+import { Button, Space } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import {
     approveDraft,
@@ -7,7 +8,7 @@ import {
     fetchHistory,
     fetchUnpublished,
     reapplyDraft,
-} from '@features/mapalab-layers/services/stylesBatchService';
+} from '@features/sextante/api/stylesBatchService';
 import DraftList from './DraftList';
 
 const PUBLISH = { label: 'Publicar', confirm: '¿Publicar este estilo en el visor?', done: 'Publicado', run: (d) => approveDraft(d.id) };
@@ -38,13 +39,34 @@ function PublishAll({ items, reload }) {
     );
 }
 
-export function UnpublishedTab({ canPublish }) {
+function UnpublishedHeader({ items, reload, canPublish, onEdit }) {
+    const [opening, setOpening] = useState(false);
+    const editAll = async () => {
+        setOpening(true);
+        await onEdit(items);
+        setOpening(false);
+    };
+    return (
+        <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
+            <Button shape="round" icon={<EditOutlined />} loading={opening} onClick={editAll}>
+                Editar {items.length}
+            </Button>
+            {canPublish && <PublishAll items={items} reload={reload} />}
+        </Space>
+    );
+}
+
+export function UnpublishedTab({ canPublish, onEdit, onCount }) {
     return (
         <DraftList
             load={fetchUnpublished}
             actions={canPublish ? [PUBLISH, DISCARD] : []}
             empty="No hay estilos sin publicar"
-            header={canPublish ? (items, reload) => <PublishAll items={items} reload={reload} /> : undefined}
+            onEdit={onEdit}
+            onCount={onCount}
+            header={(items, reload) => (
+                <UnpublishedHeader items={items} reload={reload} canPublish={canPublish} onEdit={onEdit} />
+            )}
         />
     );
 }

@@ -6,12 +6,12 @@ import {
     createDrafts,
     readTableFile,
     reviewTable,
-} from '@features/mapalab-layers/services/stylesBatchService';
-import { removeRows, rowsToTable, updateRow } from '@features/mapalab-layers/utils/stylesBatchTable';
-import { loadBatch, saveBatch } from '@features/mapalab-layers/utils/stylesBatchStorage';
+} from '@features/sextante/api/stylesBatchService';
+import { removeRows, rowsToTable, updateRow } from '@features/sextante/utils/stylesBatchTable';
+import { loadBatch, saveBatch } from '@features/sextante/utils/stylesBatchStorage';
 import UploadStep from './UploadStep';
 import ReviewStep from './ReviewStep';
-import PreviewCard from './PreviewCard';
+import PreviewStep from './PreviewStep';
 import ResultStep from './ResultStep';
 
 const STEPS = [{ title: 'Subir tabla' }, { title: 'Revisar filas' }, { title: 'Vista previa' }, { title: 'Borradores' }];
@@ -22,14 +22,15 @@ export default function BatchWizard({ canPublish }) {
     const [step, setStep] = useState(saved?.step ?? 0);
     const [rows, setRows] = useState(saved?.rows ?? []);
     const [drafts, setDrafts] = useState(saved?.drafts ?? []);
+    const [replacing, setReplacing] = useState(saved?.replacing ?? []);
     const [loading, setLoading] = useState(false);
     const [checkingRows, setCheckingRows] = useState([]);
     const recheck = useRef(null);
 
     useEffect(() => () => clearTimeout(recheck.current), []);
     useEffect(() => {
-        saveBatch(step === 0 && !rows.length ? null : { step, rows, drafts });
-    }, [step, rows, drafts]);
+        saveBatch(step === 0 && !rows.length ? null : { step, rows, drafts, replacing });
+    }, [step, rows, drafts, replacing]);
 
     const withErrors = rows.some((row) => row.errores.length);
 
@@ -77,7 +78,8 @@ export default function BatchWizard({ canPublish }) {
     const handleSave = async () => {
         setLoading(true);
         try {
-            setDrafts(await createDrafts(rowsToTable(rows)));
+            setDrafts(await createDrafts(rowsToTable(rows), replacing));
+            setReplacing([]);
             setStep(3);
         } catch (err) {
             const filas = err?.response?.data?.detail?.filas;
@@ -94,6 +96,7 @@ export default function BatchWizard({ canPublish }) {
     const restart = () => {
         setRows([]);
         setDrafts([]);
+        setReplacing([]);
         setStep(0);
     };
 
@@ -112,7 +115,7 @@ export default function BatchWizard({ canPublish }) {
         ),
         2: (
             <Button type="primary" shape="round" loading={loading} onClick={handleSave}>
-                Guardar {rows.length} borradores
+                {replacing.length ? `Actualizar ${rows.length} borradores` : `Guardar ${rows.length} borradores`}
             </Button>
         ),
         3: <Button shape="round" onClick={restart}>Otro lote</Button>,
@@ -126,11 +129,7 @@ export default function BatchWizard({ canPublish }) {
                 {step === 1 && (
                     <ReviewStep rows={rows} checkingRows={checkingRows} onChangeRow={handleChangeRow} onRemoveRows={handleRemoveRows} />
                 )}
-                {step === 2 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
-                        {rows.map((row) => <PreviewCard key={row.fila} row={row} />)}
-                    </div>
-                )}
+                {step === 2 && <PreviewStep rows={rows} />}
                 {step === 3 && <ResultStep drafts={drafts} canPublish={canPublish} />}
             </Card>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>

@@ -33,7 +33,6 @@ const RevisionQueue = lazy(() => import('@features/revision'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
 const BulkIngestPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.BulkIngestPage })));
-const StylesBatchPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.StylesBatchPage })));
 const MetadataGridPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.MetadataGridPage })));
 const CatalogoCapasPage = lazy(() => import('@features/mapalab-catalogo').then((m) => ({ default: m.CatalogoCapasPage })));
 const InfoboxPropuestasPage = lazy(() => import('@features/mapalab-infobox').then((m) => ({ default: m.InfoboxPropuestasPage })));
@@ -154,14 +153,6 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <PermissionRoute anyOf={['mariachi.mapalab.manage']}>
                                 <BulkIngestPage />
-                            </PermissionRoute>
-                        )
-                    },
-                    {
-                        path: 'mapalab/layers/estilos-en-lote',
-                        element: withSuspense(
-                            <PermissionRoute anyOf={['mariachi.geoserver.manage']}>
-                                <StylesBatchPage />
                             </PermissionRoute>
                         )
                     },
