@@ -28,10 +28,22 @@ export const editDrafts = async (ids) => {
     return res.data.filas;
 };
 
+export const rowsFromStyle = async (alias, style) => {
+    const res = await api.post(`${BASE}/desde-estilo`, { alias, estilo: style }, { timeout: LONG_TIMEOUT });
+    return res.data.filas;
+};
+
+export const saveXmlDraft = async ({ alias, style, layerName, xml }) => (
+    await api.post(`${BASE}/xml`, { alias, estilo: style, capa: layerName || '', xml })
+).data;
+
 export const fetchPreview = async ({ alias, layerName, row, width = 360 }) => {
+    const body = row?.xml
+        ? { alias, layer_name: layerName, sld: row.xml }
+        : { alias, layer_name: layerName, fila: row || null };
     const res = await api.post(
         `${BASE}/vista-previa`,
-        { alias, layer_name: layerName, fila: row || null },
+        body,
         { params: { width }, responseType: 'blob', timeout: LONG_TIMEOUT },
     );
     return URL.createObjectURL(res.data);

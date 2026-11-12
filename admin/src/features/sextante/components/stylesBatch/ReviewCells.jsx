@@ -48,31 +48,41 @@ export function CutsCell({ row, onChange }) {
     );
 }
 
-export function LayerCell({ row, onChange }) {
+export function TextCell({ value, label, mono, onChange }) {
+    return (
+        <Text
+            type={mono ? 'secondary' : undefined}
+            style={mono ? MONO : EDITABLE}
+            editable={{ tooltip: `Editar ${label}`, onChange: (next) => next.trim() !== (value || '') && onChange(next.trim()) }}
+        >
+            {value || '—'}
+        </Text>
+    );
+}
+
+export function GeoserverCell({ row, onChange }) {
     const layer = `${row.workspace}:${row.layer_name}`;
     return (
         <Space orientation="vertical" size={0}>
-            <Text style={EDITABLE} editable={{ onChange: (nombre) => nombre !== row.nombre && onChange({ nombre }), tooltip: 'Editar nombre' }}>
-                {row.nombre || '—'}
-            </Text>
-            <Text
-                type="secondary"
-                style={MONO}
-                editable={{
-                    tooltip: 'Cambiar capa (workspace:capa)',
-                    onChange: (value) => {
-                        const [workspace, ...rest] = value.trim().split(':');
-                        if (value.trim() !== layer) onChange({ workspace, layer_name: rest.join(':') });
-                    },
+            <TextCell
+                value={layer}
+                label="capa (workspace:capa)"
+                mono
+                onChange={(value) => {
+                    const [workspace, ...rest] = value.split(':');
+                    onChange({ workspace, layer_name: rest.join(':') });
                 }}
-            >
-                {layer}
-            </Text>
+            />
             {row.style_name && row.style_name !== row.layer_name && (
                 <Text type="secondary" style={MONO}>estilo {row.style_name}</Text>
             )}
         </Space>
     );
+}
+
+export function SeverityCell({ row }) {
+    const values = [row.severidad, row.severidad_2].filter(Boolean);
+    return values.length ? values.join(' / ') : <Text type="secondary">—</Text>;
 }
 
 export function StatusCell({ row, checking }) {

@@ -8,6 +8,10 @@ const TITLES = {
     campo: 'Campo',
     unidades: 'Unidades',
     paleta: 'Paleta',
+    tipo: 'Tipo',
+    numero_clases: 'Clases',
+    severidad: 'Severidad',
+    severidad_2: 'Severidad 2',
     orientacion_favorable: 'Mejor',
     cortes_rangos: 'Cortes',
 };

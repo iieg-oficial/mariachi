@@ -1,16 +1,34 @@
-import { useState } from 'react';
-import { Empty, Space, Spin, Typography } from 'antd';
+import { useCallback, useState } from 'react';
+import { Empty, Space, Spin, Tag, Typography } from 'antd';
 import { EditOutlined, EyeOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
-import { batchErrorMessage } from '@features/sextante/api/stylesBatchService';
+import { batchErrorMessage, editDrafts } from '@features/sextante/api/stylesBatchService';
+import { isXmlDraft } from '@features/sextante/utils/stylesBatchTable';
 import ColorRamp from './ColorRamp';
 import DraftEditor from './DraftEditor';
 import DraftPreview from './DraftPreview';
 import IconAction from './IconAction';
+import XmlEditor from './XmlEditor';
 
 const { Text } = Typography;
 
 const ITEM_STYLE = { padding: '8px 12px', border: '1px solid var(--ant-color-border)', borderRadius: 8, display: 'grid', gap: 12 };
+
+function DraftEdit({ item, onDone, onCancel }) {
+    const load = useCallback(() => editDrafts([item.id]), [item.id]);
+    if (!isXmlDraft(item)) return <DraftEditor load={load} replacing={[item.id]} onSaved={onDone} onCancel={onCancel} />;
+    const [alias, style] = item.resource_id.split(':');
+    return (
+        <XmlEditor
+            alias={alias}
+            style={style}
+            layerName={item.data?.layer_name}
+            initial={item.data?.xml}
+            onSaved={onDone}
+            onCancel={onCancel}
+        />
+    );
+}
 
 const when = (date) => new Date(date).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -45,7 +63,7 @@ export default function DraftList({ items, reload, actions, empty, editable = fa
                     <li key={item.id} style={ITEM_STYLE}>
                         <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
                             <Space wrap>
-                                <ColorRamp colors={item.data?.colors || []} />
+                                {isXmlDraft(item) ? <Tag>XML</Tag> : <ColorRamp colors={item.data?.colors || []} />}
                                 <Text strong>{item.data?.style_title || item.resource_id}</Text>
                                 <Text type="secondary">{when(item.actualizado_en)} · {item.usuario?.name || '—'}</Text>
                             </Space>
@@ -69,10 +87,10 @@ export default function DraftList({ items, reload, actions, empty, editable = fa
                         </Space>
                         {mode === 'ver' && <DraftPreview borrador={item} />}
                         {mode === 'editar' && (
-                            <DraftEditor
-                                borrador={item}
+                            <DraftEdit
+                                item={item}
                                 onCancel={() => setOpen(null)}
-                                onSaved={() => {
+                                onDone={() => {
                                     setOpen(null);
                                     reload();
                                 }}
