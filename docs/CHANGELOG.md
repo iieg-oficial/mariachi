@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.159.1] - 2026-11-12
+
+### Corregido
+- Estilos en lote: la tabla y los pasos ya no se salen del ancho de la pantalla.
+- Estilos en lote: la página no hace scroll vertical; la tabla de revisión ocupa el alto que queda, con encabezado fijo, scroll propio y solo pinta las filas visibles.
+
 ## [2.159.0] - 2026-11-12
 
 ### Agregado
