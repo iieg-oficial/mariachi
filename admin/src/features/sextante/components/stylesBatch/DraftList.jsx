@@ -1,41 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Empty, Popconfirm, Space, Spin, Typography } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { useState } from 'react';
+import { Empty, Space, Spin, Typography } from 'antd';
+import { EditOutlined, EyeOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { batchErrorMessage } from '@features/sextante/api/stylesBatchService';
 import ColorRamp from './ColorRamp';
-import SldDraftReviewModal from './SldDraftReviewModal';
+import DraftEditor from './DraftEditor';
+import DraftPreview from './DraftPreview';
+import IconAction from './IconAction';
 
 const { Text } = Typography;
 
-const ITEM_STYLE = { padding: '8px 12px', border: '1px solid var(--ant-color-border)', borderRadius: 8 };
+const ITEM_STYLE = { padding: '8px 12px', border: '1px solid var(--ant-color-border)', borderRadius: 8, display: 'grid', gap: 12 };
 
 const when = (date) => new Date(date).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 
-export default function DraftList({ load, actions, empty, header, onEdit, onCount }) {
-    const [items, setItems] = useState(null);
-    const [viewing, setViewing] = useState(null);
+export default function DraftList({ items, reload, actions, empty, editable = false }) {
+    const [open, setOpen] = useState(null);
     const [busy, setBusy] = useState(null);
 
-    const reload = useCallback(() => load()
-        .then((list) => {
-            setItems(list);
-            onCount?.(list.length);
-        })
-        .catch((err) => {
-            setItems([]);
-            message.error(batchErrorMessage(err, 'No se pudo cargar la lista'));
-        }), [load, onCount]);
-
-    useEffect(() => {
-        reload();
-    }, [reload]);
+    const toggle = (id, mode) => setOpen((prev) => (prev?.id === id && prev.mode === mode ? null : { id, mode }));
 
     const run = async (item, action) => {
-        setBusy(`${item.id}-${action.label}`);
+        setBusy(`${item.id}-${action.key}`);
         try {
             await action.run(item);
             message.success(action.done);
+            setOpen(null);
             await reload();
         } catch (err) {
             message.error(batchErrorMessage(err, 'No se pudo completar'));
@@ -44,20 +34,14 @@ export default function DraftList({ load, actions, empty, header, onEdit, onCoun
         }
     };
 
-    const edit = async (item) => {
-        setBusy(`${item.id}-editar`);
-        await onEdit([item]);
-        setBusy(null);
-    };
-
     if (items === null) return <Spin />;
     if (!items.length) return <Empty description={empty} />;
 
     return (
-        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            {header?.(items, reload)}
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
-                {items.map((item) => (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+            {items.map((item) => {
+                const mode = open?.id === item.id ? open.mode : null;
+                return (
                     <li key={item.id} style={ITEM_STYLE}>
                         <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
                             <Space wrap>
@@ -65,37 +49,38 @@ export default function DraftList({ load, actions, empty, header, onEdit, onCoun
                                 <Text strong>{item.data?.style_title || item.resource_id}</Text>
                                 <Text type="secondary">{when(item.actualizado_en)} · {item.usuario?.name || '—'}</Text>
                             </Space>
-                            <Space wrap>
-                                <Button size="small" shape="round" onClick={() => setViewing(item)}>Ver</Button>
-                                {onEdit && (
-                                    <Button
-                                        size="small"
-                                        shape="round"
-                                        icon={<EditOutlined />}
-                                        loading={busy === `${item.id}-editar`}
-                                        onClick={() => edit(item)}
-                                    >
-                                        Editar
-                                    </Button>
+                            <Space size={6}>
+                                <IconAction title="Ver hoy contra borrador" icon={<EyeOutlined />} active={mode === 'ver'} onClick={() => toggle(item.id, 'ver')} />
+                                {editable && (
+                                    <IconAction title="Editar aquí" icon={<EditOutlined />} active={mode === 'editar'} onClick={() => toggle(item.id, 'editar')} />
                                 )}
                                 {actions.map((action) => (
-                                    <Popconfirm key={action.label} title={action.confirm} onConfirm={() => run(item, action)}>
-                                        <Button
-                                            size="small"
-                                            shape="round"
-                                            danger={action.danger}
-                                            loading={busy === `${item.id}-${action.label}`}
-                                        >
-                                            {action.label}
-                                        </Button>
-                                    </Popconfirm>
+                                    <IconAction
+                                        key={action.key}
+                                        title={action.label}
+                                        icon={action.icon}
+                                        confirm={action.confirm}
+                                        danger={action.danger}
+                                        loading={busy === `${item.id}-${action.key}`}
+                                        onClick={() => run(item, action)}
+                                    />
                                 ))}
                             </Space>
                         </Space>
+                        {mode === 'ver' && <DraftPreview borrador={item} />}
+                        {mode === 'editar' && (
+                            <DraftEditor
+                                borrador={item}
+                                onCancel={() => setOpen(null)}
+                                onSaved={() => {
+                                    setOpen(null);
+                                    reload();
+                                }}
+                            />
+                        )}
                     </li>
-                ))}
-            </ul>
-            {viewing && <SldDraftReviewModal borrador={viewing} onClose={() => setViewing(null)} />}
-        </Space>
+                );
+            })}
+        </ul>
     );
 }

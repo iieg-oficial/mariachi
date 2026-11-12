@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Button, Progress, Space, Tag, Tooltip, Typography } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Button, Progress, Space, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router';
 import { approveDraft, batchErrorMessage } from '@features/sextante/api/stylesBatchService';
 import ColorRamp from './ColorRamp';
@@ -14,8 +13,6 @@ const STATUS = {
 };
 
 const ITEM_STYLE = { padding: '8px 12px', border: '1px solid var(--ant-color-border)', borderRadius: 8 };
-
-const SAVED_TIP = 'Aún no cambia nada en el visor. Se publican desde Revisión, uno por uno o todos.';
 
 export default function ResultStep({ drafts, canPublish }) {
     const navigate = useNavigate();
@@ -41,10 +38,6 @@ export default function ResultStep({ drafts, canPublish }) {
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Space wrap>
-                <Text strong>{drafts.length} borradores guardados</Text>
-                <Tooltip title={SAVED_TIP}><InfoCircleOutlined aria-label={SAVED_TIP} /></Tooltip>
-            </Space>
             <Space wrap>
                 <Button shape="round" onClick={() => navigate('/revision')}>Ir a Revisión</Button>
                 {canPublish && (

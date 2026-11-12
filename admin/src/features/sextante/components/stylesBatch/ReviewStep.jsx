@@ -1,26 +1,24 @@
 import { useState } from 'react';
-import { Button, Segmented, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Segmented, Space, Table, Tooltip } from 'antd';
 import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { ORIENTATIONS, classCount } from '@features/sextante/utils/stylesBatchTable';
 import ColorRamp from './ColorRamp';
+import OrientationHelp from './OrientationHelp';
 import PaletteModal from './PaletteModal';
 import { CutsCell, LayerCell, StatusCell } from './ReviewCells';
 
-const { Text } = Typography;
-
 const CUTS_TIP = 'Repite el primer corte (0, 0, …) para que el cero tenga su color. Escribe «y menos» al principio o «y más» al final para dejar abierta la primera o la última clase.';
-const BETTER_TIP = ORIENTATIONS.map((o) => `${o.icon} ${o.label}`).join(' · ');
+const STATUS_TIP = 'Nuevo: el estilo no existe y se crea. Reemplaza: ya existe y se sobrescribe al publicar. En rojo: algo que corregir antes de seguir.';
 
-const withTip = (label, tip) => (
+const withTip = (label, tip, ariaLabel = tip) => (
     <Space size={4}>
         {label}
-        <Tooltip title={tip}><InfoCircleOutlined aria-label={tip} /></Tooltip>
+        <Tooltip title={tip}><InfoCircleOutlined aria-label={ariaLabel} /></Tooltip>
     </Space>
 );
 
-export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRows }) {
+export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRows, scrollY = 'calc(100vh - 400px)' }) {
     const [paletteRow, setPaletteRow] = useState(null);
-    const withErrors = rows.filter((row) => row.errores.length).map((row) => row.fila);
 
     const columns = [
         {
@@ -43,7 +41,7 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
             render: (_, row) => <CutsCell row={row} onChange={(text) => onChangeRow(row.fila, { cortes_texto: text })} />,
         },
         {
-            title: withTip('Mejor', BETTER_TIP),
+            title: withTip('Mejor', <OrientationHelp />, 'Qué es mejor'),
             key: 'orientacion',
             render: (_, row) => (
                 <Segmented
@@ -59,11 +57,11 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
         },
         { title: 'Clases', key: 'clases', align: 'center', render: (_, row) => classCount(row.cortes_texto) },
         {
-            title: '',
+            title: withTip('Estado', STATUS_TIP),
             key: 'estado',
             render: (_, row) => <StatusCell row={row} checking={checkingRows.includes(row.fila)} />,
         },
-        {
+        onRemoveRows && {
             title: '',
             key: 'quitar',
             width: 48,
@@ -80,21 +78,10 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
                 </Tooltip>
             ),
         },
-    ];
+    ].filter(Boolean);
 
     return (
-        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Space wrap>
-                <Text strong>{rows.length} estilos</Text>
-                {withErrors.length > 0 && (
-                    <>
-                        <Tag color="error">{withErrors.length} por corregir</Tag>
-                        <Button size="small" shape="round" onClick={() => onRemoveRows(withErrors)}>
-                            Quitar las {withErrors.length} con error
-                        </Button>
-                    </>
-                )}
-            </Space>
+        <>
             <Table
                 rowKey="fila"
                 size="middle"
@@ -102,7 +89,7 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
                 dataSource={rows}
                 pagination={false}
                 sticky
-                scroll={{ x: 960, y: 'calc(100vh - 420px)' }}
+                scroll={{ x: 960, y: scrollY || undefined }}
             />
             {paletteRow && (
                 <PaletteModal
@@ -115,6 +102,6 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
                     }}
                 />
             )}
-        </Space>
+        </>
     );
 }
