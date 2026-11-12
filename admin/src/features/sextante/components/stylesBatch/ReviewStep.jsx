@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Segmented, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { ORIENTATIONS, classCount } from '@features/mapalab-layers/utils/stylesBatchTable';
+import { ORIENTATIONS, classCount } from '@features/sextante/utils/stylesBatchTable';
 import ColorRamp from './ColorRamp';
 import PaletteModal from './PaletteModal';
 import { CutsCell, LayerCell, StatusCell } from './ReviewCells';
@@ -72,6 +72,7 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
                     <Button
                         type="text"
                         size="small"
+                        danger
                         icon={<DeleteOutlined />}
                         aria-label={`Quitar ${row.nombre}`}
                         onClick={() => onRemoveRows([row.fila])}
@@ -100,7 +101,8 @@ export default function ReviewStep({ rows, checkingRows, onChangeRow, onRemoveRo
                 columns={columns}
                 dataSource={rows}
                 pagination={false}
-                scroll={{ x: 960 }}
+                sticky
+                scroll={{ x: 960, y: 'calc(100vh - 420px)' }}
             />
             {paletteRow && (
                 <PaletteModal

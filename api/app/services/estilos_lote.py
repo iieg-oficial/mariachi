@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import re
 import time
 from collections.abc import Callable
@@ -26,6 +28,10 @@ from app.services.palette_service import load_palettes
 from app.services.sld_generator import build_sld_xml
 
 TIPOS_NUMERICOS = {'integer', 'number'}
+COLUMNAS_TABLA = (
+    'capa', 'nombre_capa_geoserver', 'campo', 'unidades', 'paleta',
+    'orientacion_favorable', 'cortes_rangos', 'nombre_estilo', 'colores',
+)
 ESTADOS_ACTIVOS = ('en_progreso', 'pendiente_revision', 'rechazado')
 ESTADO_LOTE = 'pendiente_revision'
 HILOS = 6
@@ -74,11 +80,14 @@ def _nombrar_estilos(filas: list[FilaLote]) -> None:
         clave = (fila.workspace, fila.layer_name)
         if not all(clave):
             continue
-        if clave in vistas:
-            fila.predeterminado = False
+        if fila.estilo:
+            if fila.estilo == fila.layer_name:
+                vistas.add(clave)
+        elif clave in vistas:
             fila.estilo_calculado = f'{fila.layer_name}_{re.sub(r"[^A-Za-z0-9_-]", "_", fila.attribute)}'
         else:
             vistas.add(clave)
+        fila.predeterminado = fila.style_name == fila.layer_name
 
 
 def _verificar_en_geoserver(
@@ -132,11 +141,15 @@ def crear_borradores(
     dataengine_db: Session,
     usuario: Usuario,
     client: GeoServerClient | None = None,
+    reemplazar: list[int] | None = None,
 ) -> list[Borrador]:
+    reemplazar = reemplazar or []
     filas = revisar(texto, dataengine_db, client)
     if any(f.errores for f in filas):
         raise LoteConErroresError(filas)
     borradores = [_guardar(db, fila, usuario) for fila in filas]
+    db.flush()
+    _quitar_reemplazados(db, set(reemplazar) - {b.id for b in borradores})
     db.commit()
     for borrador in borradores:
         db.refresh(borrador)
@@ -215,3 +228,65 @@ def historial(db: Session) -> list[Borrador]:
         .limit(LIMITE_HISTORIAL * 5)
         .all()
     )[:LIMITE_HISTORIAL]
+
+
+def _activos_del_lote(db: Session, ids: set[int] | list[int]) -> list[Borrador]:
+    if not ids:
+        return []
+    return _del_lote(
+        db.query(Borrador)
+        .filter(Borrador.id.in_(ids), Borrador.resource_type == 'sld', Borrador.estado.in_(ESTADOS_ACTIVOS))
+        .order_by(Borrador.id)
+        .all()
+    )
+
+
+def _quitar_reemplazados(db: Session, ids: set[int]) -> None:
+    for borrador in _activos_del_lote(db, ids):
+        db.delete(borrador)
+
+
+def _numero(valor: float | int) -> str:
+    numero = float(valor)
+    return str(int(numero)) if numero.is_integer() else str(valor)
+
+
+def _cortes_texto(cortes: list) -> str:
+    return '[' + ', '.join('null' if c is None else _numero(c) for c in cortes) + ']'
+
+
+def _fila_reconstruida(borrador: Borrador, workspaces: dict[str, str]) -> dict[str, str]:
+    data = borrador.data or {}
+    alias, _, estilo = borrador.resource_id.partition(':')
+    return {
+        'capa': data.get('style_title') or estilo,
+        'nombre_capa_geoserver': f"{workspaces.get(alias, alias)}:{data.get('layer_name', '')}",
+        'campo': data.get('attribute', ''),
+        'unidades': (data.get('style_abstract') or '').removeprefix('Unidades: '),
+        'paleta': '',
+        'orientacion_favorable': '',
+        'cortes_rangos': _cortes_texto(data.get('cortes') or []),
+        'nombre_estilo': estilo,
+        'colores': ' '.join(data.get('colors') or []),
+    }
+
+
+def _fila_para_editar(borrador: Borrador, workspaces: dict[str, str]) -> dict[str, str]:
+    tabla = (borrador.data or {}).get('tabla')
+    if not tabla:
+        return _fila_reconstruida(borrador, workspaces)
+    return {**tabla, 'nombre_estilo': tabla.get('nombre_estilo') or borrador.resource_id.partition(':')[2]}
+
+
+def tabla_de_borradores(ids: list[int], db: Session, dataengine_db: Session) -> str:
+    borradores = _activos_del_lote(db, ids)
+    if not borradores:
+        raise TablaInvalidaError('No hay borradores sin publicar para editar')
+    workspaces = {w.alias: w.geoserver_workspace for w in dataengine_db.query(Workspace).all()}
+    filas = [_fila_para_editar(b, workspaces) for b in borradores]
+    salida = io.StringIO()
+    escritor = csv.DictWriter(salida, fieldnames=COLUMNAS_TABLA, extrasaction='ignore', lineterminator='\n')
+    escritor.writeheader()
+    escritor.writerows(filas)
+    return salida.getvalue()
+

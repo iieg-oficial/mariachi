@@ -1,12 +1,14 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Button, Modal, Space, Typography } from 'antd';
-import { draftToRow } from '@features/mapalab-layers/utils/stylesBatchTable';
+import { clearPreviewCache } from '@features/sextante/hooks/useStylePreview';
+import { draftToRow } from '@features/sextante/utils/stylesBatchTable';
 import { Legend, MapImage } from './PreviewCard';
 
 const { Text } = Typography;
 
 export default function SldDraftReviewModal({ borrador, onClose, onAprobar, onRechazar, aprobando, width = 760 }) {
     const row = useMemo(() => draftToRow(borrador), [borrador]);
+    useEffect(() => clearPreviewCache, []);
     const footer = onAprobar
         ? (
             <Space>

@@ -83,6 +83,20 @@ class FilaLote:
             'null_style': dict(DEFAULT_NULL_STYLE),
             'default_style': self.predeterminado,
             'origen': 'lote',
+            'tabla': self.fila_tabla(),
+        }
+
+    def fila_tabla(self) -> dict[str, str]:
+        return {
+            'capa': self.nombre,
+            'nombre_capa_geoserver': f'{self.workspace}:{self.layer_name}',
+            'campo': self.attribute,
+            'unidades': self.unidades,
+            'paleta': self.paleta,
+            'orientacion_favorable': self.orientacion,
+            'cortes_rangos': self.cortes_texto,
+            'nombre_estilo': self.estilo,
+            'colores': self.colores_propios,
         }
 
     def to_dict(self) -> dict:

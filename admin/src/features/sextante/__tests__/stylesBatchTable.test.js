@@ -12,7 +12,7 @@ import {
     rowsToTable,
     severityOf,
     updateRow,
-} from '@features/mapalab-layers/utils/stylesBatchTable';
+} from '@features/sextante/utils/stylesBatchTable';
 
 const ROW = {
     fila: 2,

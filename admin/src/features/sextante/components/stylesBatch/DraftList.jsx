@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Empty, Popconfirm, Space, Spin, Typography } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
-import { batchErrorMessage } from '@features/mapalab-layers/services/stylesBatchService';
+import { batchErrorMessage } from '@features/sextante/api/stylesBatchService';
 import ColorRamp from './ColorRamp';
 import SldDraftReviewModal from './SldDraftReviewModal';
 
@@ -11,17 +12,20 @@ const ITEM_STYLE = { padding: '8px 12px', border: '1px solid var(--ant-color-bor
 
 const when = (date) => new Date(date).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 
-export default function DraftList({ load, actions, empty, header }) {
+export default function DraftList({ load, actions, empty, header, onEdit, onCount }) {
     const [items, setItems] = useState(null);
     const [viewing, setViewing] = useState(null);
     const [busy, setBusy] = useState(null);
 
     const reload = useCallback(() => load()
-        .then(setItems)
+        .then((list) => {
+            setItems(list);
+            onCount?.(list.length);
+        })
         .catch((err) => {
             setItems([]);
             message.error(batchErrorMessage(err, 'No se pudo cargar la lista'));
-        }), [load]);
+        }), [load, onCount]);
 
     useEffect(() => {
         reload();
@@ -38,6 +42,12 @@ export default function DraftList({ load, actions, empty, header }) {
         } finally {
             setBusy(null);
         }
+    };
+
+    const edit = async (item) => {
+        setBusy(`${item.id}-editar`);
+        await onEdit([item]);
+        setBusy(null);
     };
 
     if (items === null) return <Spin />;
@@ -57,6 +67,17 @@ export default function DraftList({ load, actions, empty, header }) {
                             </Space>
                             <Space wrap>
                                 <Button size="small" shape="round" onClick={() => setViewing(item)}>Ver</Button>
+                                {onEdit && (
+                                    <Button
+                                        size="small"
+                                        shape="round"
+                                        icon={<EditOutlined />}
+                                        loading={busy === `${item.id}-editar`}
+                                        onClick={() => edit(item)}
+                                    >
+                                        Editar
+                                    </Button>
+                                )}
                                 {actions.map((action) => (
                                     <Popconfirm key={action.label} title={action.confirm} onConfirm={() => run(item, action)}>
                                         <Button

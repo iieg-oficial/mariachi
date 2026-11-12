@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Progress, Space, Tag, Tooltip, Typography } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
-import { approveDraft, batchErrorMessage } from '@features/mapalab-layers/services/stylesBatchService';
+import { approveDraft, batchErrorMessage } from '@features/sextante/api/stylesBatchService';
 import ColorRamp from './ColorRamp';
 
 const { Text } = Typography;

@@ -6,12 +6,14 @@ const reviewTable = vi.fn();
 const createDrafts = vi.fn();
 const readTableFile = vi.fn();
 const fetchUnpublished = vi.fn();
+const editDrafts = vi.fn();
 
-vi.mock('@features/mapalab-layers/services/stylesBatchService', () => ({
+vi.mock('@features/sextante/api/stylesBatchService', () => ({
     reviewTable: (...args) => reviewTable(...args),
     createDrafts: (...args) => createDrafts(...args),
     readTableFile: (...args) => readTableFile(...args),
     fetchUnpublished: (...args) => fetchUnpublished(...args),
+    editDrafts: (...args) => editDrafts(...args),
     fetchHistory: vi.fn(() => Promise.resolve([])),
     discardDraft: vi.fn(),
     reapplyDraft: vi.fn(),
@@ -28,7 +30,7 @@ vi.mock('@shared/services/message', () => ({
     message: { error: vi.fn(), success: vi.fn() },
 }));
 
-import StylesBatchPage from '@features/mapalab-layers/pages/StylesBatchPage';
+import StylesBatchPage from '@features/sextante/pages/StylesBatchPage';
 
 const row = (overrides = {}) => ({
     fila: 2,
@@ -57,10 +59,19 @@ const pasteTable = (container) => {
     fireEvent.change(input, { target: { files: [new File(['x'], 'tabla.xlsx')] } });
 };
 
+const DRAFT = {
+    id: 4,
+    resource_id: 'seguridad:homicidio',
+    actualizado_en: '2026-11-11T10:00:00Z',
+    usuario: { name: 'Ana' },
+    data: { style_title: 'Homicidio doloso', colors: ['#111111'] },
+};
+
 describe('StylesBatchPage', () => {
     beforeEach(() => {
         reviewTable.mockReset();
         createDrafts.mockReset();
+        fetchUnpublished.mockResolvedValue([]);
         localStorage.clear();
     });
 
@@ -81,7 +92,8 @@ describe('StylesBatchPage', () => {
         const { container } = renderPage();
         pasteTable(container);
         fireEvent.click(await screen.findByRole('button', { name: /Ver cómo quedan/ }));
-        expect(await screen.findByRole('button', { name: /Comparar/ })).toBeTruthy();
+        expect(await screen.findByText('Hoy en el visor')).toBeTruthy();
+        expect(screen.getAllByText('Homicidio doloso (tasa)').length).toBeGreaterThan(1);
         fireEvent.click(screen.getByRole('button', { name: /Guardar 1 borradores/ }));
         await waitFor(() => expect(createDrafts).toHaveBeenCalledTimes(1));
         expect(createDrafts.mock.calls[0][0]).toContain('seguridad:homicidio');
@@ -103,17 +115,19 @@ describe('StylesBatchPage', () => {
         expect(reviewTable.mock.calls.at(-1)[0]).not.toContain('Robo');
     });
 
-    it('lists the unpublished drafts', async () => {
-        fetchUnpublished.mockResolvedValue([{
-            id: 4,
-            resource_id: 'seguridad:homicidio',
-            actualizado_en: '2026-11-11T10:00:00Z',
-            usuario: { name: 'Ana' },
-            data: { style_title: 'Homicidio doloso', colors: ['#111111'] },
-        }]);
+    it('lists the unpublished drafts and edits one in the batch', async () => {
+        fetchUnpublished.mockResolvedValue([DRAFT]);
+        editDrafts.mockResolvedValue([row()]);
+        createDrafts.mockResolvedValue([]);
         renderPage();
-        fireEvent.click(screen.getByRole('tab', { name: 'Sin publicar' }));
+        fireEvent.click(await screen.findByRole('button', { name: /Sin publicar/ }));
         expect(await screen.findByText('Homicidio doloso')).toBeTruthy();
         expect(screen.getByText(/Ana/)).toBeTruthy();
+        fireEvent.click(screen.getByRole('button', { name: /Editar$/ }));
+        await waitFor(() => expect(editDrafts).toHaveBeenCalledWith([4]));
+        fireEvent.click(await screen.findByRole('button', { name: /Ver cómo quedan/ }));
+        fireEvent.click(await screen.findByRole('button', { name: /Actualizar 1 borradores/ }));
+        await waitFor(() => expect(createDrafts).toHaveBeenCalledTimes(1));
+        expect(createDrafts.mock.calls[0][1]).toEqual([4]);
     });
 });

@@ -1,17 +1,16 @@
-import { useState } from 'react';
 import { Button, Card, Space, Spin, Tag, Typography } from 'antd';
-import useStylePreview from '@features/mapalab-layers/hooks/useStylePreview';
+import useStylePreview from '@features/sextante/hooks/useStylePreview';
 
 const { Text } = Typography;
 
 const NULL_SWATCH = 'repeating-linear-gradient(45deg, var(--ant-color-text-quaternary) 0 2px, transparent 2px 5px)';
 
 export function MapImage({ alias, layerName, row, caption }) {
-    const { ref, src, failed, retry } = useStylePreview(alias, layerName, row);
+    const { src, failed, retry } = useStylePreview(alias, layerName, row);
     return (
         <Space orientation="vertical" size={4} style={{ width: '100%' }}>
             {caption && <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase' }}>{caption}</Text>}
-            <div ref={ref} style={{ minHeight: 160, display: 'grid', placeItems: 'center' }}>
+            <div style={{ minHeight: 200, display: 'grid', placeItems: 'center' }}>
                 {failed && (
                     <Space orientation="vertical" align="center" size={4}>
                         <Text type="secondary">No se pudo pintar la capa</Text>
@@ -43,28 +42,22 @@ export function Legend({ row }) {
     );
 }
 
-export default function PreviewCard({ row }) {
-    const [comparing, setComparing] = useState(false);
-    const extra = row.reemplaza
-        ? (
-            <Button size="small" shape="round" aria-pressed={comparing} onClick={() => setComparing((v) => !v)}>
-                {comparing ? 'Ocultar el actual' : 'Reemplaza · Comparar'}
-            </Button>
-        )
-        : <Tag color="success">Nuevo</Tag>;
-
+export function PreviewPanel({ row }) {
     const body = (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'start' }}>
-            <MapImage alias={row.alias} layerName={row.layer_name} row={row} caption={comparing ? 'Nuevo' : null} />
+            <MapImage alias={row.alias} layerName={row.layer_name} row={row} caption={row.reemplaza ? 'Nuevo' : null} />
             <Legend row={row} />
         </div>
     );
-
     return (
-        <Card size="small" title={row.nombre} extra={extra} style={comparing ? { gridColumn: '1 / -1' } : undefined}>
-            {comparing
+        <Card
+            size="small"
+            title={row.nombre}
+            extra={row.reemplaza ? <Tag color="warning">Reemplaza</Tag> : <Tag color="success">Nuevo</Tag>}
+        >
+            {row.reemplaza
                 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                         <MapImage alias={row.alias} layerName={row.layer_name} row={null} caption="Hoy en el visor" />
                         {body}
                     </div>
