@@ -1,80 +1,103 @@
 import { useState } from 'react';
-import { Button, Space } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { CloudUploadOutlined, DeleteOutlined, EditOutlined, RollbackOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
-import {
-    approveDraft,
-    discardDraft,
-    fetchHistory,
-    fetchUnpublished,
-    reapplyDraft,
-} from '@features/sextante/api/stylesBatchService';
+import { approveDraft, discardDraft, fetchHistory, reapplyDraft } from '@features/sextante/api/stylesBatchService';
+import useDraftItems from '@features/sextante/hooks/useDraftItems';
 import DraftList from './DraftList';
+import IconAction from './IconAction';
 
-const PUBLISH = { label: 'Publicar', confirm: '¿Publicar este estilo en el visor?', done: 'Publicado', run: (d) => approveDraft(d.id) };
-const DISCARD = { label: 'Descartar', confirm: '¿Descartar este borrador?', done: 'Borrador descartado', danger: true, run: (d) => discardDraft(d.id) };
-const REAPPLY = { label: 'Volver a este', confirm: '¿Volver a publicar esta versión?', done: 'Versión publicada de nuevo', run: (d) => reapplyDraft(d.id) };
+const PUBLISH = {
+    key: 'publicar', label: 'Publicar', icon: <CloudUploadOutlined />,
+    confirm: '¿Publicar este estilo en el visor?', done: 'Publicado', run: (d) => approveDraft(d.id),
+};
+const DISCARD = {
+    key: 'descartar', label: 'Descartar', icon: <DeleteOutlined />, danger: true,
+    confirm: '¿Descartar este borrador?', done: 'Borrador descartado', run: (d) => discardDraft(d.id),
+};
+const REAPPLY = {
+    key: 'reaplicar', label: 'Volver a este', icon: <RollbackOutlined />,
+    confirm: '¿Volver a publicar esta versión?', done: 'Versión publicada de nuevo', run: (d) => reapplyDraft(d.id),
+};
 
-function PublishAll({ items, reload }) {
-    const [publishing, setPublishing] = useState(false);
-    const publishAll = async () => {
-        setPublishing(true);
-        let failed = 0;
-        for (const item of items) {
-            try {
-                await approveDraft(item.id);
-            } catch {
-                failed += 1;
-            }
+const runAll = async (items, task, done) => {
+    let failed = 0;
+    for (const item of items) {
+        try {
+            await task(item.id);
+        } catch {
+            failed += 1;
         }
-        setPublishing(false);
-        if (failed) message.error(`${failed} no se publicaron`);
-        else message.success('Todos publicados');
-        reload();
+    }
+    if (failed) message.error(`${failed} de ${items.length} no se pudieron`);
+    else message.success(done);
+};
+
+export function BulkActions({ items, reload, canPublish, onEditAll }) {
+    const [busy, setBusy] = useState(null);
+    const count = items?.length || 0;
+
+    const run = (key, task) => async () => {
+        setBusy(key);
+        try {
+            await task();
+        } finally {
+            setBusy(null);
+            reload();
+        }
     };
+
     return (
-        <Button type="primary" shape="round" loading={publishing} onClick={publishAll}>
-            Publicar {items.length}
-        </Button>
+        <>
+            <IconAction
+                title={`Editar los ${count} en la revisión`}
+                icon={<EditOutlined />}
+                disabled={!count}
+                loading={busy === 'editar'}
+                onClick={run('editar', () => onEditAll(items))}
+            />
+            {canPublish && (
+                <IconAction
+                    title={`Publicar los ${count}`}
+                    icon={<CloudUploadOutlined />}
+                    disabled={!count}
+                    confirm={`¿Publicar los ${count} en el visor?`}
+                    loading={busy === 'publicar'}
+                    onClick={run('publicar', () => runAll(items, approveDraft, 'Todos publicados'))}
+                />
+            )}
+            {canPublish && (
+                <IconAction
+                    title={`Descartar los ${count}`}
+                    icon={<DeleteOutlined />}
+                    danger
+                    disabled={!count}
+                    confirm={`¿Descartar los ${count} borradores?`}
+                    loading={busy === 'descartar'}
+                    onClick={run('descartar', () => runAll(items, discardDraft, 'Borradores descartados'))}
+                />
+            )}
+        </>
     );
 }
 
-function UnpublishedHeader({ items, reload, canPublish, onEdit }) {
-    const [opening, setOpening] = useState(false);
-    const editAll = async () => {
-        setOpening(true);
-        await onEdit(items);
-        setOpening(false);
-    };
-    return (
-        <Space wrap style={{ justifyContent: 'flex-end', width: '100%' }}>
-            <Button shape="round" icon={<EditOutlined />} loading={opening} onClick={editAll}>
-                Editar {items.length}
-            </Button>
-            {canPublish && <PublishAll items={items} reload={reload} />}
-        </Space>
-    );
-}
-
-export function UnpublishedTab({ canPublish, onEdit, onCount }) {
+export function UnpublishedTab({ items, reload, canPublish }) {
     return (
         <DraftList
-            load={fetchUnpublished}
+            items={items}
+            reload={reload}
             actions={canPublish ? [PUBLISH, DISCARD] : []}
             empty="No hay estilos sin publicar"
-            onEdit={onEdit}
-            onCount={onCount}
-            header={(items, reload) => (
-                <UnpublishedHeader items={items} reload={reload} canPublish={canPublish} onEdit={onEdit} />
-            )}
+            editable
         />
     );
 }
 
 export function HistoryTab({ canPublish }) {
+    const { items, reload } = useDraftItems(fetchHistory);
     return (
         <DraftList
-            load={fetchHistory}
+            items={items}
+            reload={reload}
             actions={canPublish ? [REAPPLY] : []}
             empty="Todavía no se publica ningún lote"
         />
