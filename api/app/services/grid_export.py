@@ -97,6 +97,24 @@ def fetch_history(
     return [dict(row) for row in result]
 
 
+def fetch_last_changes(conn: Connection, spec: GridSpec) -> list[dict]:
+    if not spec.history_table:
+        return []
+    if conn.execute(text('SELECT to_regclass(:table)'), {'table': spec.history_table}).scalar() is None:
+        return []
+    result = conn.execute(
+        text(
+            'SELECT DISTINCT ON (row_key, column_key) '
+            'row_key, column_key, from_value, to_value, changed_by, changed_at, source '
+            f'FROM {spec.history_table} '
+            'WHERE resource = :resource '
+            'ORDER BY row_key, column_key, changed_at DESC, id DESC'
+        ),
+        {'resource': spec.key},
+    ).mappings().all()
+    return [dict(row) for row in result]
+
+
 def build_history_sheet(spec: GridSpec, history: list[dict]) -> tuple[list[str], list[list]]:
     titles = {meta['key']: meta['title'] for meta in spec.columns_meta}
     body = [

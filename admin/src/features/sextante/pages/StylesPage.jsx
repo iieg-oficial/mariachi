@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Empty, Input, Layout, Select, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
-import { CloudUploadOutlined, SearchOutlined } from '@ant-design/icons';
+import { Button, Empty, Layout, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { CloudUploadOutlined } from '@ant-design/icons';
+import SearchWithFilters, { FilterField } from '@shared/components/SearchWithFilters';
 import { useAuth } from '@shared/contexts/useAuth';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import PageHeader from '@features/sextante/components/PageHeader';
@@ -68,39 +69,38 @@ export default function StylesPage() {
     };
 
     const filters = (
-        <Space size={8} onClick={(e) => e.stopPropagation()}>
-            <Select
-                size="small"
-                variant="borderless"
-                value={alias}
-                onChange={filterBy(setAlias)}
-                showSearch
-                optionFilterProp="label"
-                popupMatchSelectWidth={false}
-                aria-label="Workspace"
-                style={{ minWidth: 110 }}
-                options={[
-                    { value: ALL, label: 'Todos' },
-                    ...workspaces.map((w) => ({ value: w.alias, label: w.alias })),
-                ]}
-            />
-            <Tooltip title="Incluir los estilos globales">
+        <>
+            <FilterField label="Workspace">
+                <Select
+                    value={alias}
+                    onChange={filterBy(setAlias)}
+                    showSearch
+                    optionFilterProp="label"
+                    aria-label="Workspace"
+                    options={[
+                        { value: ALL, label: 'Todos' },
+                        ...workspaces.map((w) => ({ value: w.alias, label: w.alias })),
+                    ]}
+                />
+            </FilterField>
+            <Space size={8}>
                 <Switch size="small" checked={includeGlobal} onChange={filterBy(setIncludeGlobal)} aria-label="Incluir los estilos globales" />
-            </Tooltip>
-        </Space>
+                <Text>Incluir los globales</Text>
+            </Space>
+        </>
     );
 
     const actions = (
         <>
-            <Input
-                allowClear
-                prefix={<SearchOutlined />}
-                suffix={filters}
-                placeholder={`Buscar entre ${styles.length} estilos`}
+            <SearchWithFilters
                 value={search}
-                onChange={(e) => filterBy(setSearch)(e.target.value)}
-                aria-label="Buscar estilo"
-                style={{ borderRadius: 999, width: isMobile ? '100%' : 440 }}
+                onChange={filterBy(setSearch)}
+                placeholder={`Buscar entre ${styles.length} estilos`}
+                ariaLabel="Buscar estilo"
+                filters={filters}
+                activeFilters={(alias ? 1 : 0) + (includeGlobal ? 1 : 0)}
+                onClearFilters={() => { setAlias(ALL); setIncludeGlobal(false); setPage(1); }}
+                width={isMobile ? '100%' : 440}
             />
             {canBatch && (
                 <Button type="primary" shape="round" icon={<CloudUploadOutlined />} onClick={() => navigate('/sextante/estilos/lote')}>

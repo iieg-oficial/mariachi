@@ -21,6 +21,11 @@ export const fetchGridHistory = async (resource, { rowKey, desde, hasta, limit }
     return res.data;
 };
 
+export const fetchGridLastChanges = async (resource) => {
+    const res = await api.get(`${BASE}/${resource}/ultimos-cambios`);
+    return res.data;
+};
+
 export const exportGrid = async (resource, { formato = 'xlsx', hoja, workspace, search, desde, hasta } = {}) =>
     api.get(`${BASE}/${resource}/export`, {
         params: {

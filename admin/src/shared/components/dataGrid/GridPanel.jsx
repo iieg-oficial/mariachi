@@ -10,6 +10,7 @@ import GridStatusBar from '@shared/components/dataGrid/GridStatusBar';
 import GridToolbar, { ALL_FILTER_VALUES } from '@shared/components/dataGrid/GridToolbar';
 import useGridEditor from '@shared/components/dataGrid/useGridEditor';
 import useGridExport from '@shared/components/dataGrid/useGridExport';
+import useGridLastChanges from '@shared/components/dataGrid/useGridLastChanges';
 import useGridPresence from '@shared/components/dataGrid/useGridPresence';
 import useGridShortcuts from '@shared/components/dataGrid/useGridShortcuts';
 import useElementHeight from '@shared/hooks/useElementHeight';
@@ -68,6 +69,7 @@ export default function GridPanel({
         loading,
         saving,
         draft,
+        baseByKey,
         dirtyCount,
         conflicts,
         canUndo,
@@ -81,6 +83,7 @@ export default function GridPanel({
         restoreRecoveredDraft,
         dismissRecoveredDraft,
     } = useGridEditor({ resource, rowKeyField, filters: EMPTY_FILTERS });
+    const lastChanges = useGridLastChanges(resource, loading);
 
     const { presenceByRow } = useGridPresence({
         resource,
@@ -240,6 +243,8 @@ export default function GridPanel({
                         isCellDisabled={isCellDisabled}
                         columnContext={columnContext}
                         selection={selection}
+                        baseByKey={baseByKey}
+                        lastChanges={lastChanges}
                         height={gridHeight}
                     />
                 )}

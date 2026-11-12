@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { Avatar, Checkbox, Tooltip, Typography } from 'antd';
-import { DataSheetGrid } from 'react-datasheet-grid';
+import { DynamicDataSheetGrid } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
 import { buildGridColumns } from '@shared/components/dataGrid/cellTypes';
 
@@ -8,6 +8,10 @@ const { Text } = Typography;
 
 const GRID_STYLES = `
     .grid-cell-dirty { background-color: #fff7e6; }
+    .grid-cell-changed {
+        background-image: linear-gradient(225deg, #5C2472 0 5px, transparent 5px);
+        background-repeat: no-repeat;
+    }
     .grid-cell-conflict { background-color: #fff1f0; box-shadow: inset 0 0 0 1px #ff4d4f; }
     .grid-cell-locked {
         background-color: #f6f0fa;
@@ -85,6 +89,8 @@ export default function DataGrid({
     isCellDisabled,
     columnContext,
     selection,
+    baseByKey,
+    lastChanges,
     height = 560,
 }) {
     const conflictKeys = useMemo(
@@ -107,7 +113,12 @@ export default function DataGrid({
         conflictKeys,
         isCellDisabled,
         columnContext,
-    }), [columnsMeta, catalogs, draft, rowKeyField, conflictKeys, isCellDisabled, columnContext]);
+        baseByKey,
+        lastChanges,
+    }), [
+        columnsMeta, catalogs, draft, rowKeyField, conflictKeys, isCellDisabled, columnContext,
+        baseByKey, lastChanges,
+    ]);
 
     const gutterColumn = useMemo(() => ({
         component: RowGutter,
@@ -133,7 +144,7 @@ export default function DataGrid({
     return (
         <>
             <style>{GRID_STYLES}</style>
-            <DataSheetGrid
+            <DynamicDataSheetGrid
                 className="mariachi-grid"
                 value={rows}
                 columns={columns}

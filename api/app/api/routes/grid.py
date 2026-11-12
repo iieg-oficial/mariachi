@@ -147,6 +147,18 @@ async def list_history(
     return history
 
 
+@router.get('/{resource}/ultimos-cambios')
+async def list_last_changes(
+    resource: str,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    spec = _resolve_spec(resource)
+    await _authorize(spec, current_user, db)
+    with _session(spec) as session:
+        return grid_export.fetch_last_changes(session.connection(), spec)
+
+
 @router.get('/{resource}/export')
 async def export_grid(
     resource: str,

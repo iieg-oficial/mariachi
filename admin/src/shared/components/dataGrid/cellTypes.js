@@ -2,6 +2,7 @@ import { checkboxColumn, keyColumn, textColumn } from 'react-datasheet-grid';
 import ParentCell from '@shared/components/dataGrid/cells/ParentCell';
 import SelectCell from '@shared/components/dataGrid/cells/SelectCell';
 import TextAreaCell from '@shared/components/dataGrid/cells/TextAreaCell';
+import { describeCell, withCellInfo } from '@shared/components/dataGrid/cellInfo';
 
 const selectColumn = (options) => ({
     component: SelectCell,
@@ -55,27 +56,41 @@ export const buildGridColumns = ({
     conflictKeys,
     isCellDisabled,
     columnContext,
+    baseByKey,
+    lastChanges,
 }) => columnsMeta
     .filter((meta) => !meta.sticky)
-    .map((meta) => ({
-        ...keyColumn(meta.key, baseColumnFor(meta, catalogs, columnContext)),
-        title: meta.title,
-        minWidth: meta.width || 160,
-        basis: meta.width || 160,
-        grow: 0,
-        disabled: ({ rowData }) => {
-            if (meta.editable === false) return true;
-            return isCellDisabled ? isCellDisabled(rowData, meta) : false;
-        },
-        cellClassName: ({ rowData }) => {
+    .map((meta) => {
+        const isDirty = (rowKey) => Boolean(
+            draft?.[rowKey] && Object.prototype.hasOwnProperty.call(draft[rowKey], meta.key),
+        );
+        const infoOf = (rowData) => {
             const rowKey = rowData?.[rowKeyField];
-            const cellId = `${rowKey}::${meta.key}`;
-            if (conflictKeys?.has(cellId)) return 'grid-cell-conflict';
-            if (draft?.[rowKey] && Object.prototype.hasOwnProperty.call(draft[rowKey], meta.key)) {
-                return 'grid-cell-dirty';
-            }
-            if (isCellDisabled && isCellDisabled(rowData, meta)) return 'grid-cell-locked';
-            return undefined;
-        },
-    }));
+            return describeCell({
+                isDirty: isDirty(rowKey),
+                baseValue: baseByKey?.get(rowKey)?.[meta.key],
+                lastChange: lastChanges?.get(`${rowKey}::${meta.key}`),
+            });
+        };
+        return {
+            ...withCellInfo(keyColumn(meta.key, baseColumnFor(meta, catalogs, columnContext)), infoOf),
+            title: meta.title,
+            minWidth: meta.width || 160,
+            basis: meta.width || 160,
+            grow: 0,
+            disabled: ({ rowData }) => {
+                if (meta.editable === false) return true;
+                return isCellDisabled ? isCellDisabled(rowData, meta) : false;
+            },
+            cellClassName: ({ rowData }) => {
+                const rowKey = rowData?.[rowKeyField];
+                const cellId = `${rowKey}::${meta.key}`;
+                if (conflictKeys?.has(cellId)) return 'grid-cell-conflict';
+                if (isDirty(rowKey)) return 'grid-cell-dirty';
+                if (lastChanges?.has(cellId)) return 'grid-cell-changed';
+                if (isCellDisabled && isCellDisabled(rowData, meta)) return 'grid-cell-locked';
+                return undefined;
+            },
+        };
+    });
 

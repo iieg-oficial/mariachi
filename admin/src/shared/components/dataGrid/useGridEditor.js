@@ -277,6 +277,7 @@ export default function useGridEditor({ resource, rowKeyField = 'layer_key', fil
         loading,
         saving,
         draft,
+        baseByKey,
         dirtyCount,
         conflicts,
         canUndo: undoDepth > 0,

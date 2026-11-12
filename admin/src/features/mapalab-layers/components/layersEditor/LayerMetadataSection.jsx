@@ -9,6 +9,7 @@ import EditorSection from '@features/mapalab-layers/components/layersEditor/Edit
 import MetadataPreview from '@features/mapalab-layers/components/layersEditor/MetadataPreview';
 import FechaUltimaField from '@features/mapalab-layers/components/layersEditor/FechaUltimaField';
 import SugerenciaPeriodicidad from '@features/mapalab-layers/components/layersEditor/SugerenciaPeriodicidad';
+import { diffPayload } from '@features/mapalab-layers/utils/layerDiff';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -48,6 +49,8 @@ export default function LayerMetadataSection({
     const [seccionAbierta, setSeccionAbierta] = useState('general');
     const autosaveTimer = useRef(null);
     const asentadoRef = useRef(false);
+    const baselineRef = useRef(null);
+    const tocadosRef = useRef(new Set());
     const { getLayerMetadata, saveMetadataDraft } = useLayerTreeAdmin();
     const [form] = Form.useForm();
     const watchedFrecuencia = Form.useWatch('frecuencia', form);
@@ -117,10 +120,17 @@ export default function LayerMetadataSection({
         });
     }, [loading, metadata, form]);
 
-    const autoguardar = useCallback(async (valores) => {
+    const autoguardar = useCallback(async () => {
+        const base = baselineRef.current;
+        if (!base) return;
+        const valores = form.getFieldsValue();
+        const soloTocados = Object.fromEntries([...tocadosRef.current].map((k) => [k, valores[k]]));
+        const cambios = diffPayload(soloTocados, base);
+        const quitar = Object.keys(soloTocados).filter((k) => !(k in cambios));
+        if (Object.keys(cambios).length === 0 && quitar.length === 0) return;
         setSaving(true);
         try {
-            await saveMetadataDraft(layerKey, valores);
+            await saveMetadataDraft(layerKey, cambios, { quitar });
             setNotFound(false);
             onDraftSaved?.();
         } catch (err) {
@@ -128,17 +138,25 @@ export default function LayerMetadataSection({
         } finally {
             setSaving(false);
         }
-    }, [layerKey, saveMetadataDraft, onDraftSaved]);
+    }, [layerKey, form, saveMetadataDraft, onDraftSaved]);
 
-    const alCambiar = () => {
+    const alCambiar = (cambiados) => {
+        if (!asentadoRef.current) {
+            baselineRef.current = form.getFieldsValue();
+            onBaseline?.(layerKey, baselineRef.current);
+            return;
+        }
+        Object.keys(cambiados || {}).forEach((k) => tocadosRef.current.add(k));
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-        autosaveTimer.current = setTimeout(() => autoguardar(form.getFieldsValue()), 1500);
+        autosaveTimer.current = setTimeout(autoguardar, 1500);
     };
 
     useEffect(() => {
         if (loading) return undefined;
         asentadoRef.current = false;
-        onBaseline?.(layerKey, form.getFieldsValue());
+        tocadosRef.current = new Set();
+        baselineRef.current = form.getFieldsValue();
+        onBaseline?.(layerKey, baselineRef.current);
         const asentar = setTimeout(() => { asentadoRef.current = true; }, 1500);
         return () => clearTimeout(asentar);
     }, [loading, metadata, layerKey, form, onBaseline]);
@@ -157,6 +175,7 @@ export default function LayerMetadataSection({
         const next = [...current];
         next[pickerFieldIndex] = { nombre: file.nombre, enlace: file.enlace };
         form.setFieldsValue({ metadato: next });
+        alCambiar({ metadato: next });
     };
 
     const onFileUploaded = (file) => {
@@ -164,6 +183,7 @@ export default function LayerMetadataSection({
         form.setFieldsValue({
             metadato: [...current, { nombre: file.nombre, enlace: file.enlace }],
         });
+        alCambiar({ metadato: true });
         message.success(`"${file.nombre}" agregado a Archivos adjuntos`);
     };
 

@@ -9,6 +9,7 @@ vi.mock('@shared/services/gridService', () => ({
     fetchGridRows: (...args) => fetchGridRows(...args),
     patchGridCells: vi.fn(),
     fetchGridHistory: vi.fn(),
+    fetchGridLastChanges: vi.fn(() => Promise.resolve([])),
     exportGrid: vi.fn(),
     fetchGridPresence: vi.fn(() => Promise.resolve({})),
     registerGridPresence: vi.fn(),

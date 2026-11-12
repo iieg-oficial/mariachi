@@ -3,6 +3,7 @@ import { Button, Drawer, Empty, Segmented, Space, Spin, Table, Tag, Tooltip, Typ
 import { DownloadOutlined } from '@ant-design/icons';
 import { fetchGridHistory } from '@shared/services/gridService';
 import { downloadCsv } from '@shared/helpers/downloadFile';
+import useHistoryFilters from '@shared/components/dataGrid/useHistoryFilters';
 
 const { Text } = Typography;
 
@@ -12,6 +13,8 @@ const SOURCE_TAGS = {
     ingesta: { color: 'gold', label: 'Ingesta' },
     backfill: { color: 'default', label: 'Inicial' },
 };
+
+const sourceLabel = (value) => (SOURCE_TAGS[value] || {}).label || value;
 
 const formatDate = (value) => (value ? new Date(value).toLocaleString() : '—');
 
@@ -49,6 +52,8 @@ export default function GridHistoryDrawer({
         () => Object.fromEntries(metaActiva.map((meta) => [meta.key, meta.title])),
         [metaActiva],
     );
+
+    const { visibles, searchBar } = useHistoryFilters(entries, { titles, sourceLabel });
 
     const load = useCallback(async () => {
         if (!open) return;
@@ -150,7 +155,7 @@ export default function GridHistoryDrawer({
         if (effectiveScope === 'all') headers.push('Capa');
         headers.push('Campo', 'Valor anterior', 'Valor nuevo', 'Responsable', 'Fecha', 'Origen');
 
-        const body = entries.map((entry) => {
+        const body = visibles.map((entry) => {
             const fila = [];
             if (resources) fila.push(etiquetaDeFuente[entry._fuente] || entry._fuente);
             if (effectiveScope === 'all') fila.push(entry.row_key);
@@ -170,7 +175,7 @@ export default function GridHistoryDrawer({
             ? `-${rowKey.replace(/[^a-zA-Z0-9_]+/g, '-')}`
             : '';
         downloadCsv(headers, body, `historial${alcance}-${stamp}.csv`);
-    }, [entries, resources, effectiveScope, etiquetaDeFuente, titles, rowKey]);
+    }, [visibles, resources, effectiveScope, etiquetaDeFuente, titles, rowKey]);
 
     return (
         <Drawer
@@ -203,7 +208,7 @@ export default function GridHistoryDrawer({
                             size="small"
                             icon={<DownloadOutlined />}
                             onClick={handleDownload}
-                            disabled={loading || entries.length === 0}
+                            disabled={loading || visibles.length === 0}
                         >
                             Descargar
                         </Button>
@@ -223,14 +228,18 @@ export default function GridHistoryDrawer({
                     }
                 />
             ) : (
-                <Table
-                    size="small"
-                    rowKey={(record) => `${record.row_key}-${record.column_key}-${record.changed_at}`}
-                    columns={columns}
-                    dataSource={entries}
-                    pagination={{ pageSize: 25, size: 'small', showSizeChanger: false }}
-                    scroll={{ x: true }}
-                />
+                <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+                    {searchBar}
+                    <Table
+                        size="small"
+                        rowKey={(record) => `${record.row_key}-${record.column_key}-${record.changed_at}`}
+                        columns={columns}
+                        dataSource={visibles}
+                        pagination={{ pageSize: 25, size: 'small', showSizeChanger: false }}
+                        scroll={{ x: true }}
+                        locale={{ emptyText: 'Ningún cambio coincide con la búsqueda' }}
+                    />
+                </Space>
             )}
         </Drawer>
     );

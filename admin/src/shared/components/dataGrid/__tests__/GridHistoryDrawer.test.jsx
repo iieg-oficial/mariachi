@@ -96,3 +96,29 @@ describe('GridHistoryDrawer', () => {
         expect(downloadCsv).not.toHaveBeenCalled();
     });
 });
+
+describe('GridHistoryDrawer · búsqueda', () => {
+    beforeEach(() => {
+        fetchGridHistory.mockReset();
+        downloadCsv.mockReset();
+    });
+
+    it('filtra por texto y descarga solo lo que queda', async () => {
+        const otra = { ...ENTRY, row_key: 'educacion:escuelas', changed_by: 'ana@iieg.gob.mx', changed_at: '2026-09-02T10:00:00Z' };
+        fetchGridHistory.mockResolvedValue([ENTRY, otra]);
+        render(
+            <GridHistoryDrawer
+                open
+                onClose={() => {}}
+                resource="layer-metadata"
+                columnsMeta={[{ key: 'descripcion', title: 'Descripción' }]}
+            />,
+        );
+        await screen.findByText('salud:unidades_salud');
+        fireEvent.change(screen.getByLabelText('Buscar en el historial'), { target: { value: 'ana@' } });
+        await waitFor(() => expect(screen.queryByText('salud:unidades_salud')).toBeNull());
+        expect(screen.getByText('educacion:escuelas')).toBeTruthy();
+        fireEvent.click(screen.getByText('Descargar'));
+        expect(downloadCsv.mock.calls[0][1]).toHaveLength(1);
+    });
+});

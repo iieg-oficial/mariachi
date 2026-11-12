@@ -56,7 +56,7 @@ export const useLayerMetadataApi = () => {
         return res.data;
     }, []);
     const saveMetadataDraft = useCallback(
-        (layerKey, data) => guardarBorradorCompartido('layer_metadata', layerKey, data),
+        (layerKey, data, opciones) => guardarBorradorCompartido('layer_metadata', layerKey, data, opciones),
         [],
     );
 
