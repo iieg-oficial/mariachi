@@ -10,7 +10,7 @@ const { Title } = Typography;
 
 const BorradorCapaRevisionModal = lazy(() => import('@features/mapalab-layers')
     .then((m) => ({ default: m.BorradorCapaRevisionModal })));
-const SldDraftReviewModal = lazy(() => import('@features/mapalab-layers')
+const SldDraftReviewModal = lazy(() => import('@features/sextante')
     .then((m) => ({ default: m.SldDraftReviewModal })));
 
 const TIPOS_DE_CAPA = {

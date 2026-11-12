@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-    Alert,
     Button,
     Descriptions,
     Drawer,
@@ -63,10 +62,10 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
             styles={{ wrapper: { maxWidth: '100vw' } }}
         >
             {loading && <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>}
-            {error && <Alert type="error" showIcon title={error} />}
+            {error && <Text type="danger">{error}</Text>}
             {detail && (
                 <Space orientation="vertical" style={{ width: '100%' }} size="middle">
-                    <Descriptions column={1} size="small" bordered>
+                    <Descriptions column={1} size="small">
                         <Descriptions.Item label="Workspace">
                             <Text code>{detail.workspace}</Text>
                         </Descriptions.Item>
@@ -96,17 +95,9 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
                         </Descriptions.Item>
                     </Descriptions>
 
-                    {!detail.editable && detail.reason && (
-                        <Alert type="info" showIcon closable title={detail.reason} />
-                    )}
-
+                    {!detail.editable && detail.reason && <Text type="secondary">{detail.reason}</Text>}
                     {detail.sharedBy?.length > 1 && (
-                        <Alert
-                            type="warning"
-                            showIcon
-                            closable
-                            title={`Este estilo lo comparten ${detail.sharedBy.length} capas: editarlo las afecta a todas.`}
-                        />
+                        <Text type="warning">Lo comparten {detail.sharedBy.length} capas: editarlo las cambia a todas.</Text>
                     )}
 
                     <LegendPreview
@@ -118,7 +109,7 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                             <Text strong>SLD</Text>
-                            <Button size="small" icon={<CopyOutlined />} onClick={copyXml}>Copiar</Button>
+                            <Button size="small" shape="round" icon={<CopyOutlined />} onClick={copyXml}>Copiar</Button>
                         </div>
                         <Paragraph>
                             <pre
@@ -126,9 +117,8 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
                                     margin: 0,
                                     maxHeight: 320,
                                     overflow: 'auto',
-                                    background: '#fafafa',
-                                    border: '1px solid #f0f0f0',
-                                    borderRadius: 4,
+                                    background: 'var(--ant-color-fill-quaternary)',
+                                    borderRadius: 8,
                                     padding: 12,
                                     fontSize: 11,
                                 }}
@@ -136,9 +126,6 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
                                 {detail.rawXml}
                             </pre>
                         </Paragraph>
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            La edición visual del SLD vive en la pestaña Simbología de cada capa, con flujo de revisión.
-                        </Text>
                     </div>
                 </Space>
             )}

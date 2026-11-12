@@ -18,9 +18,14 @@ export const readTableFile = async (file) => {
     return res.data.texto;
 };
 
-export const createDrafts = async (text) => {
-    const res = await api.post(`${BASE}/borradores`, { texto: text }, { timeout: LONG_TIMEOUT });
+export const createDrafts = async (text, replacing = []) => {
+    const res = await api.post(`${BASE}/borradores`, { texto: text, reemplazar: replacing }, { timeout: LONG_TIMEOUT });
     return res.data;
+};
+
+export const editDrafts = async (ids) => {
+    const res = await api.post(`${BASE}/editar`, { ids }, { timeout: LONG_TIMEOUT });
+    return res.data.filas;
 };
 
 export const fetchPreview = async ({ alias, layerName, row, width = 360 }) => {

@@ -4,11 +4,12 @@ import {
     cutsForDisplay,
     cutsForEditing,
     hasZeroClass,
-} from '@features/mapalab-layers/utils/stylesBatchTable';
+} from '@features/sextante/utils/stylesBatchTable';
 
 const { Text } = Typography;
 
-const MONO = { fontSize: 12, fontFamily: 'monospace' };
+const MONO = { fontSize: 12, fontFamily: 'monospace', insetInlineStart: 0 };
+const EDITABLE = { insetInlineStart: 0 };
 
 export function CutsCell({ row, onChange }) {
     const [editing, setEditing] = useState(false);
@@ -51,7 +52,7 @@ export function LayerCell({ row, onChange }) {
     const layer = `${row.workspace}:${row.layer_name}`;
     return (
         <Space orientation="vertical" size={0}>
-            <Text editable={{ onChange: (nombre) => nombre !== row.nombre && onChange({ nombre }), tooltip: 'Editar nombre' }}>
+            <Text style={EDITABLE} editable={{ onChange: (nombre) => nombre !== row.nombre && onChange({ nombre }), tooltip: 'Editar nombre' }}>
                 {row.nombre || '—'}
             </Text>
             <Text

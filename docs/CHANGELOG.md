@@ -9,6 +9,38 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.157.0] - 2026-11-12
+
+### Agregado
+
+- **Editar borradores del lote.** «Sin publicar» trae «Editar» por estilo y «Editar N»: abren el lote en
+  la revisión y al guardar se reemplaza el borrador, aunque cambie el nombre o la capa. Ruta
+  `POST /geoserver/estilos-lote/editar`; cada borrador guarda su fila de la tabla (`data.tabla`), y los
+  anteriores a esta versión se rearman desde el SLD.
+- **Colores desde archivo.** El selector de colores carga las tablas de paletas del pipeline (CSV o
+  `.xlsx` con `palette_name`, `step` y `hex`) y repone los ceros que Excel se come (`6466` → `#006466`).
+- La rampa personalizada agrega y quita colores; avisa si no coinciden con las clases.
+
+### Cambiado
+
+- **Estilos en lote vive en Sextante → Estilos**, con el botón «Cargar en lote» (`/sextante/estilos/lote`).
+  La ruta vieja de MapaLab redirige y sale del menú. El código pasó de `features/mapalab-layers` a
+  `features/sextante`.
+- **Vista previa de uno en uno.** Lista de estilos a la izquierda y el mapa del elegido (hoy contra nuevo
+  si reemplaza); se pueden marcar varios. Lo ya pintado se guarda mientras se está en el paso.
+- «Nuevo lote», «Sin publicar» (con contador) e «Historial» son botones del encabezado.
+- El selector de colores abre en el catálogo, con «Crear personalizada» y «Cargar de archivo» abajo.
+- La tabla de revisión tiene scroll propio con encabezado fijo; el botón de quitar va en rojo.
+- Spinner sobre el recuadro mientras se lee el archivo.
+- La página de Estilos de Sextante sin avisos ni párrafos: explicación en un botón de información,
+  filtros en una línea, errores en texto.
+- Solo es predeterminado de la capa el estilo que se llama como ella; un `nombre_estilo` distinto ya no
+  le cambia el estilo por defecto.
+
+### Corregido
+
+- El campo al editar nombre o capa ya no se corta por la izquierda.
+
 ## [2.156.0] - 2026-11-11
 
 ### Agregado

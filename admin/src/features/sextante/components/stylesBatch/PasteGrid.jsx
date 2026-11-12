@@ -1,6 +1,6 @@
 import { DataSheetGrid, keyColumn, textColumn } from 'react-datasheet-grid';
 import 'react-datasheet-grid/dist/style.css';
-import { TABLE_COLUMNS } from '@features/mapalab-layers/utils/stylesBatchTable';
+import { TABLE_COLUMNS } from '@features/sextante/utils/stylesBatchTable';
 
 const TITLES = {
     capa: 'Nombre',
