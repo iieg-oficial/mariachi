@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Empty, Modal, Segmented, Space, Spin, Typography } from 'antd';
-import { ArrowLeftOutlined, BgColorsOutlined, UploadOutlined } from '@ant-design/icons';
+import { Button, Empty, Modal, Segmented, Space, Spin, Tooltip, Typography } from 'antd';
+import { ArrowLeftOutlined, BgColorsOutlined } from '@ant-design/icons';
+import { message } from '@shared/services/message';
 import { fetchPalettes } from '@features/mapalab-layers/hooks/useSldEditor';
 import { classCount, severityOf } from '@features/sextante/utils/stylesBatchTable';
 import ColorRamp from './ColorRamp';
 import CustomRamp from './CustomRamp';
-import PaletteFile from './PaletteFile';
+import PaletteFile, { PALETTE_FILE } from './PaletteFile';
 import { PaletteGrid, PaletteTile } from './PaletteTile';
 
 const { Text } = Typography;
@@ -32,6 +33,8 @@ export default function PaletteModal({ row, onPick, onClose }) {
     const [mode, setMode] = useState(row?.colores_propios ? 'propia' : 'catalogo');
     const [custom, setCustom] = useState(() => (row?.colores_propios ? row.colores : []));
     const [customKey, setCustomKey] = useState(0);
+    const [file, setFile] = useState(null);
+    const [dragging, setDragging] = useState(false);
 
     useEffect(() => {
         fetchPalettes().then(setPalettes).catch(() => setPalettes([]));
@@ -53,14 +56,45 @@ export default function PaletteModal({ row, onPick, onClose }) {
         setMode('propia');
     };
 
+    const drop = (event) => {
+        event.preventDefault();
+        setDragging(false);
+        const dropped = event.dataTransfer?.files?.[0];
+        if (!dropped) return;
+        if (!PALETTE_FILE.test(dropped.name)) {
+            message.error('Suelta un Excel (.xlsx) o un CSV');
+            return;
+        }
+        setFile(dropped);
+        setMode('archivo');
+    };
+
+    const dropZone = {
+        onDragOver: (event) => {
+            event.preventDefault();
+            setDragging(true);
+        },
+        onDragLeave: (event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false);
+        },
+        onDrop: drop,
+    };
+
     const catalog = (
         <>
-            <Space wrap>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 {diverging
                     ? <Text type="secondary">Dos lados</Text>
                     : <Segmented options={SEVERITIES} value={severity} onChange={setSeverity} />}
-                <Text type="secondary">{classes} colores</Text>
-            </Space>
+                <Tooltip title="Crear una paleta personalizada">
+                    <Button
+                        shape="circle"
+                        icon={<BgColorsOutlined />}
+                        aria-label="Crear una paleta personalizada"
+                        onClick={() => openCustom(row?.colores || [])}
+                    />
+                </Tooltip>
+            </div>
             {palettes === null && <Spin />}
             {palettes !== null && options.length === 0 && (
                 <Empty description={`No hay colores de ${classes} clases con esa severidad`} />
@@ -77,14 +111,7 @@ export default function PaletteModal({ row, onPick, onClose }) {
                     </PaletteTile>
                 ))}
             </PaletteGrid>
-            <Space wrap>
-                <Button shape="round" icon={<BgColorsOutlined />} onClick={() => openCustom(row?.colores || [])}>
-                    Crear personalizada
-                </Button>
-                <Button shape="round" icon={<UploadOutlined />} onClick={() => setMode('archivo')}>
-                    Cargar de archivo
-                </Button>
-            </Space>
+            <Text type="secondary">Para usar tus paletas, arrastra aquí su tabla (CSV o Excel).</Text>
         </>
     );
 
@@ -99,11 +126,21 @@ export default function PaletteModal({ row, onPick, onClose }) {
 
     return (
         <Modal open={Boolean(row)} title={title} footer={null} onCancel={onClose} width={720} destroyOnHidden>
-            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+            <div
+                {...dropZone}
+                data-testid="palette-drop"
+                style={{
+                    display: 'grid',
+                    gap: 16,
+                    borderRadius: 8,
+                    outline: dragging ? '2px dashed var(--ant-color-primary)' : 'none',
+                    outlineOffset: 6,
+                }}
+            >
                 {mode === 'catalogo' && catalog}
                 {mode === 'propia' && <CustomRamp key={customKey} initial={custom} classes={classes} onPick={onPick} />}
-                {mode === 'archivo' && <PaletteFile classes={classes} onChoose={openCustom} />}
-            </Space>
+                {mode === 'archivo' && file && <PaletteFile file={file} classes={classes} onChoose={openCustom} />}
+            </div>
         </Modal>
     );
 }

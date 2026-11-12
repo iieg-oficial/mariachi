@@ -9,6 +9,32 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.158.0] - 2026-11-12
+
+### Agregado
+
+- **Borradores sin publicar se ven y se editan en su fila.** 👁 despliega hoy contra borrador y ✎ la
+  fila de revisión con «Guardar», sin modal ni cambio de pantalla.
+- **Paletas propias arrastrando.** Se suelta el CSV o `.xlsx` de paletas sobre el selector de colores.
+- La columna «Mejor» muestra una rampa de ejemplo por orientación, y «Estado» explica Nuevo y Reemplaza.
+- **Estilos de Sextante de todos los workspaces a la vez**, con columna de workspace; el detalle (leyenda,
+  tipo, capas, SLD) se despliega en la fila.
+
+### Cambiado
+
+- Todos los botones del encabezado del lote son íconos con tooltip: nuevo lote, sin publicar (con
+  contador), historial y, en sin publicar, editar, publicar y descartar todos.
+- En «Revisar filas» los botones suben al encabezado de la tarjeta: ← atrás, «Quitar N con error» en
+  rojo, «Empezar otro» y «Ver cómo quedan». Los errores se cuentan con un badge `+N`.
+- En el selector de colores, «Crear personalizada» es un ícono junto a la severidad y sale la etiqueta
+  de número de colores.
+- En Estilos, el workspace y el switch de globales van dentro del buscador; cargar en lote y recargar,
+  como íconos del encabezado. Sin paginación.
+
+### Eliminado
+
+- El cajón lateral de detalle de estilo y el botón «Cargar de archivo» del selector de colores.
+
 ## [2.157.0] - 2026-11-12
 
 ### Agregado

@@ -80,7 +80,7 @@ describe('StylesBatchPage', () => {
         const { container } = renderPage();
         pasteTable(container);
         expect(await screen.findByText('La paleta «X» no existe')).toBeTruthy();
-        expect(screen.getByText('1 por corregir')).toBeTruthy();
+        expect(screen.getByTitle('+1')).toBeTruthy();
         expect(screen.getByRole('button', { name: /Ver cómo quedan/ }).disabled).toBe(true);
     });
 
@@ -110,21 +110,33 @@ describe('StylesBatchPage', () => {
         renderPage();
         expect(await screen.findByText('Robo')).toBeTruthy();
         reviewTable.mockResolvedValue([row()]);
-        fireEvent.click(screen.getByRole('button', { name: /Quitar las 1 con error/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Quitar 1 con error/ }));
         await waitFor(() => expect(screen.queryByText('Robo')).toBeNull());
         expect(reviewTable.mock.calls.at(-1)[0]).not.toContain('Robo');
     });
 
-    it('lists the unpublished drafts and edits one in the batch', async () => {
+    it('edits an unpublished draft in place', async () => {
         fetchUnpublished.mockResolvedValue([DRAFT]);
         editDrafts.mockResolvedValue([row()]);
         createDrafts.mockResolvedValue([]);
         renderPage();
-        fireEvent.click(await screen.findByRole('button', { name: /Sin publicar/ }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Sin publicar (1)' }));
         expect(await screen.findByText('Homicidio doloso')).toBeTruthy();
         expect(screen.getByText(/Ana/)).toBeTruthy();
-        fireEvent.click(screen.getByRole('button', { name: /Editar$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Editar aquí' }));
         await waitFor(() => expect(editDrafts).toHaveBeenCalledWith([4]));
+        fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }));
+        await waitFor(() => expect(createDrafts).toHaveBeenCalledTimes(1));
+        expect(createDrafts.mock.calls[0][1]).toEqual([4]);
+    });
+
+    it('opens every unpublished draft in the batch review', async () => {
+        fetchUnpublished.mockResolvedValue([DRAFT]);
+        editDrafts.mockResolvedValue([row()]);
+        createDrafts.mockResolvedValue([]);
+        renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'Sin publicar (1)' }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Editar los 1 en la revisión' }));
         fireEvent.click(await screen.findByRole('button', { name: /Ver cómo quedan/ }));
         fireEvent.click(await screen.findByRole('button', { name: /Actualizar 1 borradores/ }));
         await waitFor(() => expect(createDrafts).toHaveBeenCalledTimes(1));
