@@ -276,7 +276,12 @@ def _apply_sld(
 
     shape = data.get('shape', 'choropleth')
 
-    if shape == 'point':
+    if shape == 'xml':
+        if not data.get('xml'):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Falta xml en data")
+        xml = data['xml']
+
+    elif shape == 'point':
         if not data.get('layer_name'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

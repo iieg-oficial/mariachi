@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.159.0] - 2026-11-12
+
+### Agregado
+- Estilos de Sextante: editar un estilo coroplético publicado con la tabla del lote (colores, cortes, unidades) o su XML, desde la fila desplegada. Los dos guardan un borrador en «Sin publicar».
+- `POST /geoserver/estilos-lote/desde-estilo` (fila de lote a partir de un estilo publicado) y `POST /geoserver/estilos-lote/xml` (borrador `sld` con el XML tal cual; `_apply_sld` lo sube sin regenerar).
+- La vista previa del lote acepta un SLD en `sld`.
+- Estilos en lote: los pasos ya completados se abren con clic en su número.
+
+### Cambiado
+- Estilos en lote: la tabla sigue el orden de `estilos_coropleticos.csv` (capa, capa GeoServer, campo, unidades, paleta, tipo, clases, severidad, severidad 2, mejor, cortes). Tipo, clases y severidades salen de la paleta; campo y unidades se editan en la fila. La tabla para pegar de Excel trae las once columnas.
+- Estilos en lote: sin botón «Nuevo lote»; «Sin publicar» e «Historial» regresan a los pasos con ←. Las acciones para todos van agrupadas aparte. «Ver» pone los dos mapas y la leyenda en una fila en escritorio.
+- Estilos de Sextante: buscador redondeado junto a «Cargar en lote» (botón principal), con el workspace y los globales dentro; 20 por página con scroll propio.
+
+### Eliminado
+- Botón «Recargar» de Estilos.
+
 ## [2.158.0] - 2026-11-12
 
 ### Agregado

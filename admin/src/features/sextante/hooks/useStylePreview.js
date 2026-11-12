@@ -37,7 +37,7 @@ const enqueue = (task) => new Promise((resolve, reject) => {
 });
 
 export const previewKey = (alias, layerName, row) => JSON.stringify([
-    alias, layerName, row ? [row.attribute, row.cortes, row.colores] : null,
+    alias, layerName, row ? [row.attribute, row.cortes, row.colores, row.xml] : null,
 ]);
 
 export const clearPreviewCache = () => {

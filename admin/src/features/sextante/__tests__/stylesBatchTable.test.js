@@ -11,6 +11,7 @@ import {
     parseCuts,
     rowsToTable,
     severityOf,
+    TABLE_COLUMNS,
     updateRow,
 } from '@features/sextante/utils/stylesBatchTable';
 
@@ -22,6 +23,10 @@ const ROW = {
     attribute: 'tasa',
     unidades: 'carpetas por cada 100 mil, habitantes',
     paleta: 'S_FUCSIA_ROJO_7_CRITICA',
+    tipo: 'secuencial',
+    numero_clases: 4,
+    severidad: 'Crítico',
+    severidad_2: '',
     orientacion: 'Inferior',
     cortes_texto: '[0,0, 1, 3, null]',
 };
@@ -53,11 +58,12 @@ describe('stylesBatchTable', () => {
         const table = rowsToTable([ROW]);
         const [header, line] = table.split('\n');
         expect(header).toBe(
-            'capa,nombre_capa_geoserver,campo,unidades,paleta,orientacion_favorable,cortes_rangos,nombre_estilo,colores',
+            'capa,nombre_capa_geoserver,campo,unidades,paleta,tipo,numero_clases,severidad,severidad_2,'
+            + 'orientacion_favorable,cortes_rangos,nombre_estilo,colores',
         );
         expect(line).toBe(
             'Homicidio doloso (tasa),seguridad:homicidio,tasa,"carpetas por cada 100 mil, habitantes",'
-            + 'S_FUCSIA_ROJO_7_CRITICA,Inferior,"[0,0, 1, 3, null]",,',
+            + 'S_FUCSIA_ROJO_7_CRITICA,secuencial,4,Crítico,,Inferior,"[0,0, 1, 3, null]",,',
         );
     });
 
@@ -70,13 +76,12 @@ describe('stylesBatchTable', () => {
 
     it('turns the pasted grid into a table without headers or empty rows', () => {
         const header = Object.fromEntries(
-            ['capa', 'nombre_capa_geoserver', 'campo', 'unidades', 'paleta', 'orientacion_favorable', 'cortes_rangos']
-                .map((c) => [c, c]),
+            TABLE_COLUMNS.map((c) => [c, c]),
         );
         const table = gridToTable([header, { capa: 'Tasa', cortes_rangos: '0, 1, 2' }, {}]);
         expect(table.split('\n')).toEqual([
-            'capa,nombre_capa_geoserver,campo,unidades,paleta,orientacion_favorable,cortes_rangos',
-            'Tasa,,,,,,"0, 1, 2"',
+            TABLE_COLUMNS.join(','),
+            'Tasa,,,,,,,,,,"0, 1, 2"',
         ]);
         expect(gridToTable([{}, {}])).toBe('');
     });

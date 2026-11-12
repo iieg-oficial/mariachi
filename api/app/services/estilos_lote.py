@@ -29,8 +29,8 @@ from app.services.sld_generator import build_sld_xml
 
 TIPOS_NUMERICOS = {'integer', 'number'}
 COLUMNAS_TABLA = (
-    'capa', 'nombre_capa_geoserver', 'campo', 'unidades', 'paleta',
-    'orientacion_favorable', 'cortes_rangos', 'nombre_estilo', 'colores',
+    'capa', 'nombre_capa_geoserver', 'campo', 'unidades', 'paleta', 'tipo', 'numero_clases',
+    'severidad', 'severidad_2', 'orientacion_favorable', 'cortes_rangos', 'nombre_estilo', 'colores',
 )
 ESTADOS_ACTIVOS = ('en_progreso', 'pendiente_revision', 'rechazado')
 ESTADO_LOTE = 'pendiente_revision'
@@ -157,11 +157,15 @@ def crear_borradores(
 
 
 def _guardar(db: Session, fila: FilaLote, usuario: Usuario) -> Borrador:
+    return guardar_borrador(db, fila.resource_id, fila.borrador_data(), usuario)
+
+
+def guardar_borrador(db: Session, resource_id: str, data: dict, usuario: Usuario) -> Borrador:
     borrador = (
         db.query(Borrador)
         .filter(
             Borrador.resource_type == 'sld',
-            Borrador.resource_id == fila.resource_id,
+            Borrador.resource_id == resource_id,
             Borrador.usuario_id == usuario.id,
             Borrador.estado.in_(ESTADOS_ACTIVOS),
         )
@@ -169,15 +173,11 @@ def _guardar(db: Session, fila: FilaLote, usuario: Usuario) -> Borrador:
     )
     if borrador is None:
         borrador = Borrador(
-            resource_type='sld',
-            resource_id=fila.resource_id,
-            usuario_id=usuario.id,
-            data=fila.borrador_data(),
-            estado=ESTADO_LOTE,
+            resource_type='sld', resource_id=resource_id, usuario_id=usuario.id, data=data, estado=ESTADO_LOTE,
         )
         db.add(borrador)
         return borrador
-    borrador.data = fila.borrador_data()
+    borrador.data = data
     borrador.estado = ESTADO_LOTE
     borrador.comentario_rechazo = None
     borrador.actualizado_en = utcnow()
@@ -199,10 +199,10 @@ def sld_de_fila(fila: dict) -> str:
 
 
 def vista_previa(
-    workspace: str, layer: str, fila: dict | None, width: int, client: GeoServerClient | None = None,
+    workspace: str, layer: str, fila: dict | None, width: int, client: GeoServerClient | None = None, sld: str | None = None,
 ) -> bytes:
     cliente = client or GeoServerClient()
-    return cliente.render_map(workspace, layer, sld_de_fila(fila) if fila else None, width)
+    return cliente.render_map(workspace, layer, sld or (sld_de_fila(fila) if fila else None), width)
 
 
 def _del_lote(borradores: list[Borrador]) -> list[Borrador]:
@@ -279,11 +279,14 @@ def _fila_para_editar(borrador: Borrador, workspaces: dict[str, str]) -> dict[st
 
 
 def tabla_de_borradores(ids: list[int], db: Session, dataengine_db: Session) -> str:
-    borradores = _activos_del_lote(db, ids)
+    borradores = [b for b in _activos_del_lote(db, ids) if (b.data or {}).get('shape') != 'xml']
     if not borradores:
         raise TablaInvalidaError('No hay borradores sin publicar para editar')
     workspaces = {w.alias: w.geoserver_workspace for w in dataengine_db.query(Workspace).all()}
-    filas = [_fila_para_editar(b, workspaces) for b in borradores]
+    return tabla_de_filas([_fila_para_editar(b, workspaces) for b in borradores])
+
+
+def tabla_de_filas(filas: list[dict[str, str]]) -> str:
     salida = io.StringIO()
     escritor = csv.DictWriter(salida, fieldnames=COLUMNAS_TABLA, extrasaction='ignore', lineterminator='\n')
     escritor.writeheader()
