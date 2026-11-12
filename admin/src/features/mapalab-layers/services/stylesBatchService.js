@@ -8,6 +8,16 @@ export const reviewTable = async (text) => {
     return res.data.filas;
 };
 
+export const readTableFile = async (file) => {
+    const form = new FormData();
+    form.append('archivo', file);
+    const res = await api.post(`${BASE}/leer-archivo`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: LONG_TIMEOUT,
+    });
+    return res.data.texto;
+};
+
 export const createDrafts = async (text) => {
     const res = await api.post(`${BASE}/borradores`, { texto: text }, { timeout: LONG_TIMEOUT });
     return res.data;
@@ -22,10 +32,15 @@ export const fetchPreview = async ({ alias, layerName, row, width = 360 }) => {
     return URL.createObjectURL(res.data);
 };
 
-export const approveDraft = async (id) => {
-    const res = await api.post(`/borradores/por-id/${id}/aprobar`);
-    return res.data;
-};
+export const fetchUnpublished = async () => (await api.get(`${BASE}/sin-publicar`)).data;
+
+export const fetchHistory = async () => (await api.get(`${BASE}/historial`)).data;
+
+export const approveDraft = async (id) => (await api.post(`/borradores/por-id/${id}/aprobar`)).data;
+
+export const discardDraft = async (id) => (await api.delete(`/borradores/por-id/${id}`)).data;
+
+export const reapplyDraft = async (id) => (await api.post(`/borradores/por-id/${id}/re-aplicar`)).data;
 
 export const batchErrorMessage = (err, fallback) => {
     const detail = err?.response?.data?.detail;

@@ -131,7 +131,7 @@ def test_paleta_mas_larga_se_recorta_como_el_pipeline():
     ({'cortes_rangos': '[0, 1, 2, 3, 4, 5, 6]'}, 'La paleta tiene 5 colores y hay 6 clases'),
     ({'nombre_capa_geoserver': 'sin_workspace'}, 'workspace:capa'),
     ({'campo': ''}, 'Falta el campo'),
-    ({'cortes_rangos': '0, a, 2'}, 'no es número'),
+    ({'cortes_rangos': '0, a, 2'}, 'No entiendo el corte «a»'),
 ])
 def test_interpretar_fila_con_errores(cambios, error):
     fila = interpretar_fila(2, _fila(**cambios), PALETAS)

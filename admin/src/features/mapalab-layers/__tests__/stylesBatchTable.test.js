@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
     classCount,
     cutsForDisplay,
+    cutsForEditing,
+    draftToRow,
     formatCuts,
+    gridToTable,
     hasZeroClass,
+    removeRows,
     parseCuts,
     rowsToTable,
     severityOf,
@@ -31,6 +35,13 @@ describe('stylesBatchTable', () => {
         expect(cutsForDisplay('[null, -30, 30, null]')).toEqual(['y menos', -30, 30, 'y más']);
     });
 
+    it('accepts words and ignores symbols in cuts', () => {
+        expect(parseCuts('menos de, 10 %, $20, más de')).toEqual([null, 10, 20, null]);
+        expect(parseCuts('−5, 1 000')).toEqual([-5, 1000]);
+        expect(cutsForDisplay('0, diez')).toEqual([0, '?']);
+        expect(cutsForEditing('[null, 0, 5, null]')).toBe('y menos, 0, 5, y más');
+    });
+
     it('counts classes and detects the zero class', () => {
         expect(classCount('[0,0, 1, 3, null]')).toBe(4);
         expect(classCount('')).toBe(0);
@@ -41,10 +52,12 @@ describe('stylesBatchTable', () => {
     it('rebuilds the table quoting cells with commas', () => {
         const table = rowsToTable([ROW]);
         const [header, line] = table.split('\n');
-        expect(header).toBe('capa,nombre_capa_geoserver,campo,unidades,paleta,orientacion_favorable,cortes_rangos');
+        expect(header).toBe(
+            'capa,nombre_capa_geoserver,campo,unidades,paleta,orientacion_favorable,cortes_rangos,nombre_estilo,colores',
+        );
         expect(line).toBe(
             'Homicidio doloso (tasa),seguridad:homicidio,tasa,"carpetas por cada 100 mil, habitantes",'
-            + 'S_FUCSIA_ROJO_7_CRITICA,Inferior,"[0,0, 1, 3, null]"',
+            + 'S_FUCSIA_ROJO_7_CRITICA,Inferior,"[0,0, 1, 3, null]",,',
         );
     });
 
@@ -53,6 +66,29 @@ describe('stylesBatchTable', () => {
         const next = updateRow(rows, 3, { paleta: 'OTRA' });
         expect(next[0].paleta).toBe('S_FUCSIA_ROJO_7_CRITICA');
         expect(next[1].paleta).toBe('OTRA');
+    });
+
+    it('turns the pasted grid into a table without headers or empty rows', () => {
+        const header = Object.fromEntries(
+            ['capa', 'nombre_capa_geoserver', 'campo', 'unidades', 'paleta', 'orientacion_favorable', 'cortes_rangos']
+                .map((c) => [c, c]),
+        );
+        const table = gridToTable([header, { capa: 'Tasa', cortes_rangos: '0, 1, 2' }, {}]);
+        expect(table.split('\n')).toEqual([
+            'capa,nombre_capa_geoserver,campo,unidades,paleta,orientacion_favorable,cortes_rangos',
+            'Tasa,,,,,,"0, 1, 2"',
+        ]);
+        expect(gridToTable([{}, {}])).toBe('');
+    });
+
+    it('removes rows and reads drafts back as rows', () => {
+        expect(removeRows([ROW, { ...ROW, fila: 3 }], [2]).map((r) => r.fila)).toEqual([3]);
+        const row = draftToRow({
+            id: 7,
+            resource_id: 'seguridad:homicidio_tasa',
+            data: { style_title: 'H', layer_name: 'homicidio', colors: ['#1'], style_abstract: 'Unidades: tasa' },
+        });
+        expect(row).toMatchObject({ fila: 7, alias: 'seguridad', layer_name: 'homicidio', unidades: 'tasa', colores: ['#1'] });
     });
 
     it('reads the severity from the palette name', () => {
