@@ -21,18 +21,10 @@
       <sld:Title>0</sld:Title>
       <ogc:Filter>
 
-        <ogc:And>
-
-          <ogc:PropertyIsGreaterThanOrEqualTo>
+          <ogc:PropertyIsEqualTo>
             <ogc:PropertyName>tasa_total</ogc:PropertyName>
             <ogc:Literal>0</ogc:Literal>
-          </ogc:PropertyIsGreaterThanOrEqualTo>
-
-          <ogc:PropertyIsLessThan>
-            <ogc:PropertyName>tasa_total</ogc:PropertyName>
-            <ogc:Literal>0</ogc:Literal>
-          </ogc:PropertyIsLessThan>
-        </ogc:And>
+          </ogc:PropertyIsEqualTo>
       </ogc:Filter>
 
       <sld:PolygonSymbolizer>
@@ -65,10 +57,10 @@
 
         <ogc:And>
 
-          <ogc:PropertyIsGreaterThanOrEqualTo>
+          <ogc:PropertyIsGreaterThan>
             <ogc:PropertyName>tasa_total</ogc:PropertyName>
             <ogc:Literal>0</ogc:Literal>
-          </ogc:PropertyIsGreaterThanOrEqualTo>
+          </ogc:PropertyIsGreaterThan>
 
           <ogc:PropertyIsLessThan>
             <ogc:PropertyName>tasa_total</ogc:PropertyName>

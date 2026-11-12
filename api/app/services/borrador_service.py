@@ -246,6 +246,7 @@ def _apply_layer_stats(
                 dataengine_db.connection(),
                 bind_layer_fields(row.stats_config, binding),
                 schemas=schemas_permitidos(dataengine_db.connection()),
+                binding=binding,
             )
             if valores:
                 row.values = valores
@@ -275,7 +276,12 @@ def _apply_sld(
 
     shape = data.get('shape', 'choropleth')
 
-    if shape == 'point':
+    if shape == 'xml':
+        if not data.get('xml'):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Falta xml en data")
+        xml = data['xml']
+
+    elif shape == 'point':
         if not data.get('layer_name'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -413,6 +419,8 @@ def _apply_sld(
     client = GeoServerClient()
     try:
         sha = client.put_sld(workspace, style_name, xml)
+        if data.get('default_style') and data.get('layer_name'):
+            client.set_layer_default_style(workspace, data['layer_name'], style_name)
     except GeoServerError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

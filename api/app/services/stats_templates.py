@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 import re
+from calendar import monthrange
 from typing import Any
 
 from sqlalchemy import text
@@ -15,6 +17,9 @@ SCHEMAS_EXCLUIDOS = frozenset({'mapalab'})
 FILTER_OPS = {'eq', 'in', 'gte', 'lte', 'between', 'is_not_null'}
 CONTEXT_KEYS = {'municipio', 'municipio.claves', 'municipio.nombres', 'fecha.inicio', 'fecha.fin'}
 MUNICIPIO_FIELD_TOKEN = '@municipio'
+FECHA_FIELD_TOKEN = '@fecha'
+DEFAULT_DATE_COLUMN = 'fecha'
+CAMPOS_DE_CAPA = {MUNICIPIO_FIELD_TOKEN, FECHA_FIELD_TOKEN}
 MUNICIPIO_CONTEXT_BY_TYPE = {'clave': '{{municipio.claves}}', 'nombre': '{{municipio.nombres}}'}
 MAX_FILTERS = 6
 SQL_COMPARATORS = {'eq': '=', 'gte': '>=', 'lte': '<='}
@@ -74,8 +79,8 @@ def _validate_filter(raw: Any, label: str) -> dict:
         raise StatsTemplateError(f'{label} debe ser objeto')
     raw_field = raw.get('field', '')
     field = (
-        MUNICIPIO_FIELD_TOKEN
-        if raw_field == MUNICIPIO_FIELD_TOKEN
+        raw_field
+        if raw_field in CAMPOS_DE_CAPA
         else _validate_identifier(raw_field, f'{label}.field')
     )
     op = raw.get('op')
@@ -330,9 +335,86 @@ def load_layer_binding(conn: Connection, layer_key: str) -> dict | None:
         LIMIT 1
     """
     row = conn.execute(text(sql), {'layer_key': layer_key}).first()
-    if not row:
+    fecha = _fecha_de_capa(conn, layer_key)
+    if not row and not fecha:
         return None
-    return {'municipio_field': row[0], 'municipio_field_type': row[1]}
+    return {
+        'municipio_field': row[0] if row else None,
+        'municipio_field_type': row[1] if row else None,
+        'date_column': (fecha[0] if fecha else None) or DEFAULT_DATE_COLUMN,
+        'default_date': fecha[1] if fecha else None,
+    }
+
+
+_CAPA_FECHA_SQL = """
+    SELECT nullif(btrim(l.date_column), ''), l.default_date
+    FROM mapalab.layers l
+    JOIN mapalab.workspaces w ON w.alias = l.workspace_alias
+    WHERE w.geoserver_workspace || ':' || l.geoserver_layer = :layer_key
+      AND l.deleted_at IS NULL
+    ORDER BY l.default_date IS NULL, l.id
+    LIMIT 1
+"""
+
+_PERIODICIDAD_SQL = "SELECT date_column FROM public.layer_periodicity WHERE layer_key = :layer_key"
+
+
+def _columna_de_periodicidad(conn: Connection, layer_key: str) -> str | None:
+    savepoint = conn.begin_nested()
+    try:
+        columna = conn.execute(text(_PERIODICIDAD_SQL), {'layer_key': layer_key}).scalar()
+        savepoint.commit()
+        return columna
+    except Exception:
+        savepoint.rollback()
+        logger.warning('stats: sin acceso a layer_periodicity; la fecha cae a layers.date_column o fecha')
+        return None
+
+
+def _fecha_de_capa(conn: Connection, layer_key: str) -> tuple[str | None, Any] | None:
+    capa = conn.execute(text(_CAPA_FECHA_SQL), {'layer_key': layer_key}).first()
+    if not capa:
+        return None
+    columna = capa[0] or _columna_de_periodicidad(conn, layer_key)
+    return columna, capa[1]
+
+
+def usa_fecha(stats_config: list | None) -> bool:
+    texto = json.dumps(stats_config or [], default=str)
+    return f'"{FECHA_FIELD_TOKEN}"' in texto or '{{fecha.' in texto
+
+
+def _mayor(valor: Any) -> int | None:
+    valores = valor if isinstance(valor, list) else [valor]
+    numeros = [int(v) for v in valores if str(v).isdigit()]
+    return max(numeros) if numeros else None
+
+
+def rango_de_fecha_defecto(default_date: Any) -> tuple[str, str] | None:
+    if not isinstance(default_date, dict):
+        return None
+    anio = _mayor(default_date.get('year'))
+    if anio is None:
+        return None
+    mes = _mayor(default_date.get('month'))
+    if mes is None or not 1 <= mes <= 12:
+        return f'{anio}-01-01', f'{anio}-12-31'
+    ultimo = monthrange(anio, mes)[1]
+    dia = _mayor(default_date.get('day'))
+    if dia is None or not 1 <= dia <= ultimo:
+        return f'{anio}-{mes:02d}-01', f'{anio}-{mes:02d}-{ultimo:02d}'
+    return f'{anio}-{mes:02d}-{dia:02d}', f'{anio}-{mes:02d}-{dia:02d}'
+
+
+def contexto_con_fecha(binding: dict | None, stats_config: list | None, context: dict | None) -> dict | None:
+    if not usa_fecha(stats_config):
+        return context
+    if context and (context.get('fecha.inicio') or context.get('fecha.fin')):
+        return context
+    rango = rango_de_fecha_defecto((binding or {}).get('default_date'))
+    if rango is None:
+        return context
+    return {**(context or {}), 'fecha.inicio': rango[0], 'fecha.fin': rango[1]}
 
 
 def _bind_filter(item: dict, binding: dict | None) -> dict | None:
@@ -342,6 +424,8 @@ def _bind_filter(item: dict, binding: dict | None) -> dict | None:
         if not field:
             return None
         bound['field'] = field
+    if bound['field'] == FECHA_FIELD_TOKEN:
+        bound['field'] = (binding or {}).get('date_column') or DEFAULT_DATE_COLUMN
     if _placeholder_key(bound.get('value')) == 'municipio':
         tipo = (binding or {}).get('municipio_field_type')
         replacement = MUNICIPIO_CONTEXT_BY_TYPE.get(tipo)
@@ -556,6 +640,7 @@ def execute_stats_batch(
     stats_config: list | None,
     context: dict | None = None,
     schemas: frozenset[str] | None = None,
+    binding: dict | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Ejecuta cada stat aislada en un SAVEPOINT.
 
@@ -564,6 +649,7 @@ def execute_stats_batch(
     """
     values: list[dict] = []
     errors: list[dict] = []
+    context = contexto_con_fecha(binding, stats_config, context)
 
     for raw_cfg in stats_config or []:
         if not isinstance(raw_cfg, dict):

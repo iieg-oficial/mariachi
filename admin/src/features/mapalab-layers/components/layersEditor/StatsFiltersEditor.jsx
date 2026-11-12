@@ -22,6 +22,7 @@ const CONTEXT_VALUES = [
 ];
 
 const MUNICIPIO_TOKEN = '@municipio';
+const FECHA_TOKEN = '@fecha';
 
 const isContextValue = (value) => typeof value === 'string' && /^\{\{[a-z_.]+\}\}$/.test(value.trim());
 
@@ -31,6 +32,9 @@ const fieldOptions = (availableFields, current) => {
         return { value: nombre, label: nombre };
     });
     if (current && !opts.some((o) => o.value === current)) opts.unshift({ value: current, label: current });
+    if (!opts.some((o) => o.value === FECHA_TOKEN)) {
+        opts.unshift({ value: FECHA_TOKEN, label: '@fecha — la columna de fecha de la capa' });
+    }
     if (!opts.some((o) => o.value === MUNICIPIO_TOKEN)) {
         opts.unshift({ value: MUNICIPIO_TOKEN, label: '@municipio — la columna que declare la capa' });
     }

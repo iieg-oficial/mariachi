@@ -129,3 +129,35 @@ def test_parse_unrecognized_shape():
 </sld:StyledLayerDescriptor>"""
     result = parse_sld(minimal_sld)
     assert not result.editable
+
+
+LEGACY_FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "slds_legacy"
+
+
+def test_legacy_zero_class_parses_like_fixed():
+    legacy = parse_sld(_read(LEGACY_FIXTURES_DIR / "homicidio_doloso_tasa.sld"))
+    fixed = parse_sld(_read(FIXTURES_DIR / "homicidio_doloso_tasa.sld"))
+    assert legacy.editable and fixed.editable
+    assert legacy.model.model_dump() == fixed.model.model_dump()
+    assert legacy.model.cortes[:2] == [0, 0]
+
+
+def test_zero_class_matches_only_zero():
+    xml = build_sld_xml(
+        layer_name="capa",
+        style_title="Tasa",
+        style_abstract="",
+        attribute="tasa",
+        cortes=[0, 0, 1, 5, None],
+        labels=["0", "0 a 1", "1 a 5", "Más de 5"],
+        colors=["#eeeeee", "#cccccc", "#999999", "#333333"],
+        stroke={"color": "#FFFFFF", "width": 0.35, "opacity": 1.0, "linejoin": "bevel"},
+        null_style={},
+    )
+    rules = xml.split("<sld:Rule>")[1:]
+    assert "PropertyIsEqualTo" in rules[0]
+    assert "PropertyIsLessThan" not in rules[0]
+    assert "PropertyIsGreaterThan>" in rules[1]
+    assert "PropertyIsGreaterThanOrEqualTo" not in rules[1]
+    assert "PropertyIsGreaterThanOrEqualTo" in rules[2]
+    assert parse_sld(xml).model.cortes == [0, 0, 1, 5, None]

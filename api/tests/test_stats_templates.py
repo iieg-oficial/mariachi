@@ -463,3 +463,47 @@ class TestBindLayerFields:
             cfg, {'municipio_field': 'clave_municipio', 'municipio_field_type': 'clave'}
         )
         assert bound[0]['expression']['left']['filters'][0]['field'] == 'clave_municipio'
+
+
+class TestFechaDeLaCapa:
+    CONFIG = [{
+        'position': 1, 'operation': 'sum', 'schema': 'demografia', 'table': 'poblacion', 'field': 'poblacion_total',
+        'filters': [{'field': '@fecha', 'op': 'between', 'value': ['{{fecha.inicio}}', '{{fecha.fin}}']}],
+    }]
+    BINDING = {'municipio_field': 'nombre', 'municipio_field_type': 'nombre', 'date_column': 'periodo', 'default_date': {'year': 2026}}
+
+    def test_acepta_el_token_de_fecha(self):
+        from app.services.stats_templates import validate_stats_config
+        assert validate_stats_config(self.CONFIG)[0]['filters'][0]['field'] == '@fecha'
+
+    def test_liga_a_la_columna_de_la_capa(self):
+        from app.services.stats_templates import bind_layer_fields, build_query
+        ligado = bind_layer_fields(self.CONFIG, self.BINDING)[0]
+        sql, params = build_query(ligado, {'fecha.inicio': '2020-01-01', 'fecha.fin': '2020-12-31'})
+        assert '"periodo" BETWEEN' in sql
+        assert params['f0_lo'] == '2020-01-01'
+
+    def test_sin_fecha_usa_la_por_defecto(self):
+        from app.services.stats_templates import contexto_con_fecha
+        assert contexto_con_fecha(self.BINDING, self.CONFIG, None) == {'fecha.inicio': '2026-01-01', 'fecha.fin': '2026-12-31'}
+        pedido = {'fecha.inicio': '2020-01-01', 'fecha.fin': '2020-12-31'}
+        assert contexto_con_fecha(self.BINDING, self.CONFIG, pedido) is pedido
+
+    def test_config_sin_fecha_no_cambia(self):
+        from app.services.stats_templates import contexto_con_fecha, rango_de_fecha_defecto
+        assert contexto_con_fecha(self.BINDING, [{'operation': 'count'}], None) is None
+        assert rango_de_fecha_defecto({'year': 2024, 'month': 2}) == ('2024-02-01', '2024-02-29')
+
+
+class TestFechaSinPermiso:
+    def test_sin_acceso_a_periodicidad_cae_a_fecha(self):
+        from unittest.mock import MagicMock
+
+        from app.services import stats_templates as st
+
+        conn = MagicMock()
+        capa = MagicMock()
+        capa.first.return_value = (None, {'year': 2026})
+        conn.execute.side_effect = [capa, Exception('permission denied for table layer_periodicity')]
+        assert st._fecha_de_capa(conn, 'demografia:poblacion') == (None, {'year': 2026})
+        conn.begin_nested.return_value.rollback.assert_called_once()

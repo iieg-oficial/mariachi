@@ -21,6 +21,7 @@ from app.api.routes import (
     colibri_source_apps,
     colibri_stats,
     colibri_tipos,
+    estilos_lote,
     eventos,
     formularios,
     frames,
@@ -145,6 +146,11 @@ def create_app() -> FastAPI:
     app.include_router(mel.router_compat, prefix=settings.admin_prefix, dependencies=mel_view)
     app.include_router(roadmap.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(
+        estilos_lote.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
+    )
     app.include_router(
         geoserver.router,
         prefix=settings.admin_prefix,

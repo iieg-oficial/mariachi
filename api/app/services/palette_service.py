@@ -26,8 +26,8 @@ def load_palettes() -> list[dict]:
                 step = int(row.get("step") or 0)
             except (TypeError, ValueError):
                 step = 0
-            hex_color = (row.get("hex") or "").strip()
-            color = f"#{hex_color}" if hex_color and not hex_color.startswith("#") else hex_color
+            hex_color = (row.get("hex") or "").strip().lstrip("#")
+            color = f"#{hex_color.zfill(6).upper()}" if hex_color else ""
 
             entry = grouped.setdefault(
                 name,

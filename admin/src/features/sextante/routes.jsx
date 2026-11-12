@@ -10,6 +10,7 @@ export const buildSextanteRoutes = (withSuspense) => {
     const GeoserverFilesPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.GeoserverFilesPage })));
     const WorkspacesPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.WorkspacesPage })));
     const StylesPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.StylesPage })));
+    const StylesBatchPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.StylesBatchPage })));
     const LayerExplorerPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.LayerExplorerPage })));
     const FontsPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.FontsPage })));
     const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
@@ -25,10 +26,12 @@ export const buildSextanteRoutes = (withSuspense) => {
         route('sextante/workspaces', WorkspacesPage, GEOSERVER_MANAGE),
         route('sextante/capas', LayerExplorerPage),
         route('sextante/estilos', StylesPage),
+        route('sextante/estilos/lote', StylesBatchPage, GEOSERVER_MANAGE),
         route('sextante/recursos', GeoserverFilesPage),
         route('sextante/tipografias', FontsPage),
         route('sextante/simbolos', SymbolsPage, MAPALAB_MANAGE),
         { path: 'mapalab/recursos-geoserver', element: <Navigate to="/sextante/recursos" replace /> },
+        { path: 'mapalab/layers/estilos-en-lote', element: <Navigate to="/sextante/estilos/lote" replace /> },
         { path: 'mapalab/simbolos', element: <Navigate to="/sextante/simbolos" replace /> },
     ];
 };

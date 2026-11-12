@@ -127,6 +127,15 @@ def _null_rule(attribute: str, null_style: dict[str, Any]) -> str:
     """.rstrip()
 
 
+def _comparison(tag: str, attribute: str, value: Number) -> str:
+    return f"""
+          <ogc:{tag}>
+            <ogc:PropertyName>{_escape_text(attribute)}</ogc:PropertyName>
+            <ogc:Literal>{_num_to_literal(value)}</ogc:Literal>
+          </ogc:{tag}>
+        """.rstrip()
+
+
 def _range_rule(
     *,
     attribute: str,
@@ -137,25 +146,19 @@ def _range_rule(
     stroke: dict[str, Any],
     idx: int,
     upper_inclusive: bool = False,
+    lower_exclusive: bool = False,
 ) -> str:
     parts = []
 
-    if lower is not None:
-        parts.append(f"""
-          <ogc:PropertyIsGreaterThanOrEqualTo>
-            <ogc:PropertyName>{_escape_text(attribute)}</ogc:PropertyName>
-            <ogc:Literal>{_num_to_literal(lower)}</ogc:Literal>
-          </ogc:PropertyIsGreaterThanOrEqualTo>
-        """.rstrip())
-
-    if upper is not None:
-        upper_tag = "PropertyIsLessThanOrEqualTo" if upper_inclusive else "PropertyIsLessThan"
-        parts.append(f"""
-          <ogc:{upper_tag}>
-            <ogc:PropertyName>{_escape_text(attribute)}</ogc:PropertyName>
-            <ogc:Literal>{_num_to_literal(upper)}</ogc:Literal>
-          </ogc:{upper_tag}>
-        """.rstrip())
+    if lower is not None and lower == upper:
+        parts.append(_comparison("PropertyIsEqualTo", attribute, lower))
+    else:
+        if lower is not None:
+            lower_tag = "PropertyIsGreaterThan" if lower_exclusive else "PropertyIsGreaterThanOrEqualTo"
+            parts.append(_comparison(lower_tag, attribute, lower))
+        if upper is not None:
+            upper_tag = "PropertyIsLessThanOrEqualTo" if upper_inclusive else "PropertyIsLessThan"
+            parts.append(_comparison(upper_tag, attribute, upper))
 
     if len(parts) == 1:
         filter_block = parts[0]
@@ -200,6 +203,7 @@ def build_sld_xml(
 
     rules: list[str] = []
     n_rules = len(labels)
+    zero_class = n_rules > 1 and cortes[0] is not None and cortes[0] == cortes[1]
 
     for idx, (label, color) in enumerate(zip(labels, colors)):
         lower = cortes[idx]
@@ -216,6 +220,7 @@ def build_sld_xml(
                 stroke=stroke,
                 idx=idx,
                 upper_inclusive=(is_last and upper is not None),
+                lower_exclusive=(zero_class and idx == 1),
             )
         )
 

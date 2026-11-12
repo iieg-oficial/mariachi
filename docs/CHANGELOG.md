@@ -22,6 +22,164 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 - **La búsqueda y el filtro de workspace se conservan al cambiar entre Metadatos y Configuración.**
 - **Una celda rechazada al guardar dice por qué**, no solo cuántas fallaron.
 
+## [2.159.0] - 2026-11-12
+
+### Agregado
+- Estilos de Sextante: editar un estilo coroplético publicado con la tabla del lote (colores, cortes, unidades) o su XML, desde la fila desplegada. Los dos guardan un borrador en «Sin publicar».
+- `POST /geoserver/estilos-lote/desde-estilo` (fila de lote a partir de un estilo publicado) y `POST /geoserver/estilos-lote/xml` (borrador `sld` con el XML tal cual; `_apply_sld` lo sube sin regenerar).
+- La vista previa del lote acepta un SLD en `sld`.
+- Estilos en lote: los pasos ya completados se abren con clic en su número.
+
+### Cambiado
+- Estilos en lote: la tabla sigue el orden de `estilos_coropleticos.csv` (capa, capa GeoServer, campo, unidades, paleta, tipo, clases, severidad, severidad 2, mejor, cortes). Tipo, clases y severidades salen de la paleta; campo y unidades se editan en la fila. La tabla para pegar de Excel trae las once columnas.
+- Estilos en lote: sin botón «Nuevo lote»; «Sin publicar» e «Historial» regresan a los pasos con ←. Las acciones para todos van agrupadas aparte. «Ver» pone los dos mapas y la leyenda en una fila en escritorio.
+- Estilos de Sextante: buscador redondeado junto a «Cargar en lote» (botón principal), con el workspace y los globales dentro; 20 por página con scroll propio.
+
+### Eliminado
+- Botón «Recargar» de Estilos.
+
+## [2.158.0] - 2026-11-12
+
+### Agregado
+
+- **Borradores sin publicar se ven y se editan en su fila.** 👁 despliega hoy contra borrador y ✎ la
+  fila de revisión con «Guardar», sin modal ni cambio de pantalla.
+- **Paletas propias arrastrando.** Se suelta el CSV o `.xlsx` de paletas sobre el selector de colores.
+- La columna «Mejor» muestra una rampa de ejemplo por orientación, y «Estado» explica Nuevo y Reemplaza.
+- **Estilos de Sextante de todos los workspaces a la vez**, con columna de workspace; el detalle (leyenda,
+  tipo, capas, SLD) se despliega en la fila.
+
+### Cambiado
+
+- Todos los botones del encabezado del lote son íconos con tooltip: nuevo lote, sin publicar (con
+  contador), historial y, en sin publicar, editar, publicar y descartar todos.
+- En «Revisar filas» los botones suben al encabezado de la tarjeta: ← atrás, «Quitar N con error» en
+  rojo, «Empezar otro» y «Ver cómo quedan». Los errores se cuentan con un badge `+N`.
+- En el selector de colores, «Crear personalizada» es un ícono junto a la severidad y sale la etiqueta
+  de número de colores.
+- En Estilos, el workspace y el switch de globales van dentro del buscador; cargar en lote y recargar,
+  como íconos del encabezado. Sin paginación.
+
+### Eliminado
+
+- El cajón lateral de detalle de estilo y el botón «Cargar de archivo» del selector de colores.
+
+## [2.157.0] - 2026-11-12
+
+### Agregado
+
+- **Editar borradores del lote.** «Sin publicar» trae «Editar» por estilo y «Editar N»: abren el lote en
+  la revisión y al guardar se reemplaza el borrador, aunque cambie el nombre o la capa. Ruta
+  `POST /geoserver/estilos-lote/editar`; cada borrador guarda su fila de la tabla (`data.tabla`), y los
+  anteriores a esta versión se rearman desde el SLD.
+- **Colores desde archivo.** El selector de colores carga las tablas de paletas del pipeline (CSV o
+  `.xlsx` con `palette_name`, `step` y `hex`) y repone los ceros que Excel se come (`6466` → `#006466`).
+- La rampa personalizada agrega y quita colores; avisa si no coinciden con las clases.
+
+### Cambiado
+
+- **Estilos en lote vive en Sextante → Estilos**, con el botón «Cargar en lote» (`/sextante/estilos/lote`).
+  La ruta vieja de MapaLab redirige y sale del menú. El código pasó de `features/mapalab-layers` a
+  `features/sextante`.
+- **Vista previa de uno en uno.** Lista de estilos a la izquierda y el mapa del elegido (hoy contra nuevo
+  si reemplaza); se pueden marcar varios. Lo ya pintado se guarda mientras se está en el paso.
+- «Nuevo lote», «Sin publicar» (con contador) e «Historial» son botones del encabezado.
+- El selector de colores abre en el catálogo, con «Crear personalizada» y «Cargar de archivo» abajo.
+- La tabla de revisión tiene scroll propio con encabezado fijo; el botón de quitar va en rojo.
+- Spinner sobre el recuadro mientras se lee el archivo.
+- La página de Estilos de Sextante sin avisos ni párrafos: explicación en un botón de información,
+  filtros en una línea, errores en texto.
+- Solo es predeterminado de la capa el estilo que se llama como ella; un `nombre_estilo` distinto ya no
+  le cambia el estilo por defecto.
+
+### Corregido
+
+- El campo al editar nombre o capa ya no se corta por la izquierda.
+
+## [2.156.0] - 2026-11-11
+
+### Agregado
+
+- **Estilos en lote: pestañas «Sin publicar» e «Historial».** Lista los borradores del lote con autor y
+  fecha, para verlos, publicarlos (uno o todos) o descartarlos, y lo ya publicado, con «Volver a este».
+  Rutas `GET /geoserver/estilos-lote/{sin-publicar,historial}`.
+- **Excel directo.** Se arrastra el `.xlsx` (o el CSV, también en Latin-1) y lo lee
+  `POST /geoserver/estilos-lote/leer-archivo`; un archivo de otro tipo avisa en vez de ignorarse.
+- **Pegar como tabla.** El cuadro de texto se cambió por una tabla tipo Excel.
+- **Rampa propia.** El selector de colores tiene «Catálogo» y «Propia», un color por clase; viaja en la
+  columna opcional `colores` y no se invierte.
+- En la revisión se editan el nombre y la capa, se quita una fila o todas las que tienen error.
+- **Revisión de borradores del lote.** En la Cola de revisión, «Revisar» abre hoy contra borrador con la
+  leyenda y los botones de aprobar y rechazar; antes mandaba al árbol de capas y no abría nada.
+
+### Cambiado
+
+- **Una capa en varias filas** (personas desaparecidas: total, mujeres, hombres). La primera conserva el
+  nombre de la capa y queda como predeterminada; las demás se llaman `capa_campo`. La columna opcional
+  `nombre_estilo` lo fija a mano. Antes se marcaba error.
+- **Cortes con palabras.** «y menos», «menos de», «y más», «más de», «sin límite» abren la clase;
+  `%`, `$`, comillas y espacios de miles se ignoran.
+- Editar una fila solo pone a revisar esa fila, y la revisión reutiliza por dos minutos lo que ya
+  preguntó a GeoServer.
+- El lote en curso se guarda en el navegador: salir de la sección ya no lo pierde.
+
+### Corregido
+
+- **La vista previa no cargaba con lotes grandes.** Pedía los 65 mapas a la vez y GeoServer no alcanzaba;
+  ahora pinta solo lo visible, tres a la vez, con «Reintentar». Un timeout de GeoServer responde 504 en vez
+  de 500, y el render espera hasta 45 s.
+
+## [2.155.0] - 2026-11-11
+
+### Agregado
+
+- **Estilos en lote** (MapaLab → Estilos en lote, con `mariachi.geoserver.manage`). Se sube o se pega de
+  Excel la misma tabla del pipeline `estilos-coropleticos-mapalab` y se revisa fila por fila: colores
+  por familia y severidad, cortes, qué es mejor (↓ ↑ ◎ –) y los errores en una frase, corregibles en la
+  misma pantalla. La vista previa pinta la capa real en GeoServer con el SLD nuevo y, si ya tenía
+  estilo, lo compara contra el de hoy. Cada fila queda como borrador `sld` pendiente de aprobación y se
+  publica desde Revisión o, con `mariachi.mapalab.manage`, todas de golpe. Al publicarse, el estilo
+  queda como predeterminado de la capa.
+- Rutas `POST /geoserver/estilos-lote/{revisar,borradores,vista-previa}`. La vista previa usa el
+  reflector WMS de GeoServer con `SLD_BODY` por POST.
+- Cortes con la primera clase abierta (`[null, -30, …]`) y etiquetas `< x`, `> x` y `0` como en el
+  pipeline.
+
+### Cambiado
+
+- **Seis paletas nuevas** del equipo de Estadística en `paletas_simbologia.csv` (`S_VERDE_LIMA_5_CRITICA`,
+  `S_TURQUESA_AZUL_5_SENSIBLE` y cuatro de siete pasos). Las que ya existían no se tocan: en la copia
+  del equipo nueve tienen colores dañados por Excel (`2E+017`, `650000000`).
+- `palette_service` rellena con ceros los colores que perdieron los iniciales (`6466` → `#006466`).
+
+## [2.154.2] - 2026-11-11
+
+### Corregido
+
+- **La clase del cero de los coropléticos no pintaba nada.** Con el primer corte repetido (`0, 0, …`) la regla
+  salía como `>= 0 y < 0`, que nunca se cumple, y los ceros caían en la clase siguiente. Ahora es `= 0` y la
+  siguiente empieza en `> 0`. El parser lee los dos formatos, así que los 24 estilos publicados con el viejo se
+  corrigen al volver a publicarlos desde el editor.
+
+## [2.154.1] - 2026-11-09
+
+### Corregido
+
+- **Las estadísticas de capa volvían a fallar en 2.154.0** si el rol de dataengine no podía leer
+  `public.layer_periodicity`: la vista previa, «Recalcular» y la aprobación de borradores daban error en cualquier capa.
+  La lectura va ahora en un savepoint y, sin permiso, la columna de fecha cae a `layers.date_column` o `fecha`. El
+  permiso lo da la migración `0060` de dataengine.
+
+## [2.154.0] - 2026-11-09
+
+### Agregado
+
+- **`@fecha` en las estadísticas de capa**, igual que mapalab 2.10.0 y el cron de dataengine. El editor lo ofrece junto a
+  `@municipio` como «la columna de fecha de la capa»; se liga a `layers.date_column` o, si no lo declara, a la columna
+  que resolvió la periodicidad (`layer_periodicity.date_column`). Sin fecha en la petición, la vista previa,
+  «Recalcular» y la aprobación de borradores usan el `default_date` de la capa. Antes `_validate_filter` lo
+  rechazaba y una `stats_config` con `@fecha` no se podía guardar.
+
 ## [2.153.0] - 2026-10-30
 
 ### Agregado
