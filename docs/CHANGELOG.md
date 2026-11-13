@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.163.1] - 2026-11-13
+
+### Corregido
+
+- **Los íconos de tema se suben a su carpeta.** El selector abría en la raíz del bucket y ahí caían; ahora abre y sube en `mapalab/svg/temas/` (o `iieg/iconos/`). El ícono de avisos abre en `iieg/iconos/` y los archivos de metadatos en `mapalab/metadata/`. `BucketFilePicker` acepta `startPaths` por bucket.
+- **Copiar y pegar filas en la captura masiva.** Las celdas de ubicación y de catálogo pintaban su selector todo el tiempo y un clic las ponía en edición, así que `Ctrl+V` caía en el buscador del selector y no en la fila. Ahora se muestran como texto y el selector se abre con Enter o doble clic. Copiar una fila lleva la ubicación como ID del padre; pegada sobre la misma capa en otro entorno conserva tema y ubicación si ese padre existe.
+
 ## [2.163.0] - 2026-11-13
 
 ### Agregado

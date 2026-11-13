@@ -10,6 +10,7 @@ const PICKER_BUCKETS = ['mapalab', 'iieg'];
 const UPLOAD_BUCKETS = ['mapalab'];
 const PREFIXES = ['metadata/txt/', 'metadata/xlsx/'];
 const ACCEPT = '.txt,.xlsx,.pdf,.csv';
+const METADATA_START = { mapalab: 'metadata/' };
 
 export default function ArchivosModal({ open, archivos, onCancel, onApply }) {
     const [lista, setLista] = useState([]);
@@ -78,6 +79,7 @@ export default function ArchivosModal({ open, archivos, onCancel, onApply }) {
                 title="Elegir archivo"
                 uploadAccept={ACCEPT}
                 uploadFolderFor={carpetaPorExtension}
+                startPaths={METADATA_START}
             />
             <BucketFileUploader
                 open={uploaderOpen}

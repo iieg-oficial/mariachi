@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { TreeSelect } from 'antd';
+import CellText from '@shared/components/dataGrid/cells/CellText';
 
 export default function ParentCell({ rowData, setRowData, focus, stopEditing, columnData }) {
     const ref = useRef(null);
@@ -11,6 +12,8 @@ export default function ParentCell({ rowData, setRowData, focus, stopEditing, co
             ref.current?.blur();
         }
     }, [focus]);
+
+    if (!focus) return <CellText>{rowData ? columnData.pathOf(rowData) : null}</CellText>;
 
     return (
         <TreeSelect

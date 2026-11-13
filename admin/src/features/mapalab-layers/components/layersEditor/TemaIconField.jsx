@@ -7,6 +7,7 @@ import { message } from '@shared/services/message';
 const { Text } = Typography;
 
 const BUCKET_SLUGS = ['mapalab', 'iieg'];
+const START_PATHS = { mapalab: 'svg/temas/', iieg: 'iconos/' };
 
 const ICON_STATES = [
     { value: 'normal', label: 'Normal' },
@@ -90,6 +91,7 @@ export default function TemaIconField({ value, onChange, disabled }) {
                 bucketSlugs={BUCKET_SLUGS}
                 title="Elegir icono del tema"
                 uploadAccept="image/*"
+                startPaths={START_PATHS}
             />
         </Space>
     );

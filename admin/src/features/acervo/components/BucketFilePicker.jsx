@@ -28,6 +28,7 @@ export default function BucketFilePicker({
     allowUpload = true,
     uploadAccept,
     uploadFolderFor,
+    startPaths,
 }) {
     const { buckets: accessibleBuckets, loading: bucketsLoading } = useAccessibleBuckets(bucketSlugs);
 
@@ -58,10 +59,14 @@ export default function BucketFilePicker({
         }
     }, [bucketId, accessibleBuckets]);
 
+    const startPath = useMemo(() => {
+        const bucket = accessibleBuckets.find((b) => b.id === activeBucketId);
+        return (bucket && startPaths?.[bucket.acervo_bucket]) || '';
+    }, [accessibleBuckets, activeBucketId, startPaths]);
+
     useEffect(() => {
-        if (currentPath !== '') setCurrentPath('');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeBucketId]);
+        if (open) setCurrentPath(startPath);
+    }, [open, startPath]);
 
     const handleFilesError = useCallback(
         () => message.error('No se pudieron listar los archivos del bucket'),

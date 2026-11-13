@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Select } from 'antd';
+import CellText from '@shared/components/dataGrid/cells/CellText';
 
 export default function SelectCell({ rowData, setRowData, focus, stopEditing, columnData }) {
     const ref = useRef(null);
@@ -11,6 +12,11 @@ export default function SelectCell({ rowData, setRowData, focus, stopEditing, co
             ref.current?.blur();
         }
     }, [focus]);
+
+    if (!focus) {
+        const option = columnData.options?.find((item) => item.value === rowData);
+        return <CellText>{option ? option.label : rowData}</CellText>;
+    }
 
     return (
         <Select

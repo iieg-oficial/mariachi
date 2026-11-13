@@ -19,6 +19,7 @@ const { Text } = Typography;
 const PICKER_BUCKET_SLUGS = ['mapalab', 'iieg'];
 const UPLOAD_BUCKET_SLUGS = ['mapalab'];
 const MAPALAB_PREFIXES = ['metadata/txt/', 'metadata/xlsx/'];
+const METADATA_START = { mapalab: 'metadata/' };
 
 const buildFrecuenciaOptions = (currentValue) => {
     const opts = [...FRECUENCIA_OPTIONS];
@@ -538,6 +539,7 @@ export default function LayerMetadataSection({
                 title="Elegir archivo"
                 uploadAccept=".txt,.xlsx,.pdf,.csv"
                 uploadFolderFor={carpetaPorExtension}
+                startPaths={METADATA_START}
             />
 
             <BucketFileUploader

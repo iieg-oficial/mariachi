@@ -7,6 +7,7 @@ import { message } from '@shared/services/message';
 const { Text } = Typography;
 const BUCKET_SLUGS = ['iieg'];
 const RECOMMENDED_PREFIX = 'iconos/';
+const START_PATHS = { iieg: RECOMMENDED_PREFIX };
 
 export default function NoticeIconField({ value, onChange, disabled }) {
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -65,6 +66,7 @@ export default function NoticeIconField({ value, onChange, disabled }) {
                 bucketSlugs={BUCKET_SLUGS}
                 title="Elegir icono del aviso"
                 uploadAccept="image/svg+xml,image/png,image/webp"
+                startPaths={START_PATHS}
             />
         </Space>
     );
