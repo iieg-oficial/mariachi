@@ -483,6 +483,7 @@ SPEC = GridSpec(
     fetch_rows=fetch_rows,
     presence_scope='grid-layer-config',
     permission='mariachi.mapalab.update',
+    write_permission='mariachi.mapalab.manage',
     columns_meta=COLUMNS_META,
     guard=_guard,
     history_table=HISTORY_TABLE,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isEditableText } from '@features/sextante/utils/geoserverFiles';
+import { RASTER_SCOPE, isEditableText, scopeFolderPath } from '@features/sextante/utils/geoserverFiles';
 
 describe('isEditableText', () => {
     it('los properties de un mosaico se editan como texto', () => {
@@ -21,5 +21,19 @@ describe('isEditableText', () => {
 
     it('tolera un recurso vacio', () => {
         expect(isEditableText(null)).toBe(false);
+    });
+});
+
+describe('scopeFolderPath', () => {
+    it('los rasters viven en geoserver-raster', () => {
+        expect(scopeFolderPath(RASTER_SCOPE, 'lluvia/mensual')).toBe('geoserver-raster/lluvia/mensual');
+    });
+
+    it('un workspace vive bajo workspaces', () => {
+        expect(scopeFolderPath('raster', '/indices/nddi/')).toBe('workspaces/raster/indices/nddi');
+    });
+
+    it('sin ambito no hay carpeta', () => {
+        expect(scopeFolderPath(null, 'x')).toBe('');
     });
 });

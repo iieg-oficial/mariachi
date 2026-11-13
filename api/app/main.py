@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import metrics as metrics_module
+from app.api.cambios_middleware import CambiosMiddleware
 from app.api.colibri_cors import ColibriPublicCORSMiddleware
 from app.api.deps import require_any_permission, require_panel_access, require_permission
 from app.api.routes import (
@@ -15,6 +16,7 @@ from app.api.routes import (
     auth,
     borradores,
     bulk_ingest,
+    cambios,
     capas_catalogo,
     colibri_direcciones,
     colibri_routes,
@@ -28,6 +30,7 @@ from app.api.routes import (
     geoserver,
     grid,
     home,
+    incidentes,
     instituto_espacios,
     intranet,
     intranet_directorio_lectura,
@@ -66,6 +69,7 @@ from app.api.routes import (
     usuarios_acceso,
     vine,
 )
+from app.core.bucket_policies import PERMISOS_DE_LECTURA_POR_MODULO
 from app.core.settings import get_settings
 
 settings = get_settings()
@@ -97,6 +101,7 @@ def create_app() -> FastAPI:
     # Se agrega despues del CORS global para quedar como middleware mas externo:
     # intercepta el preflight de los huespedes embebibles (dominios_permitidos)
     # antes de que el CORS global lo rechace por no estar en la lista fija.
+    app.add_middleware(CambiosMiddleware)
     app.add_middleware(ColibriPublicCORSMiddleware)
 
     app.include_router(auth.router, prefix=settings.admin_prefix)
@@ -105,7 +110,9 @@ def create_app() -> FastAPI:
     panel = [Depends(require_panel_access())]
     mapalab_view = [Depends(require_permission("mariachi.mapalab.view"))]
     portal_view = [Depends(require_permission("mariachi.portal.view"))]
-    acervo_view = [Depends(require_permission("mariachi.acervo.view"))]
+    acervo_view = [
+        Depends(require_any_permission("mariachi.acervo.view", *PERMISOS_DE_LECTURA_POR_MODULO))
+    ]
     sistema_manage = [Depends(require_permission("mariachi.sistema.manage"))]
     mel_view = [
         Depends(require_any_permission("mariachi.mel.view", "mariachi.identidad.view"))
@@ -129,12 +136,18 @@ def create_app() -> FastAPI:
         prefix=settings.admin_prefix,
         dependencies=[Depends(require_permission("mariachi.actividad.view"))],
     )
+    app.include_router(
+        incidentes.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.incidentes.view"))],
+    )
     app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=sistema_manage)
     app.include_router(acervo_buckets.router, prefix=settings.admin_prefix, dependencies=acervo_view)
     app.include_router(pages.router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(acervo.router, prefix=settings.admin_prefix, dependencies=acervo_view)
-    app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=panel)
+    app.include_router(cambios.router, prefix=settings.admin_prefix)
     app.include_router(publicaciones_capas.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(sistema.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
@@ -154,7 +167,9 @@ def create_app() -> FastAPI:
     app.include_router(
         geoserver.router,
         prefix=settings.admin_prefix,
-        dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
+        dependencies=[
+            Depends(require_any_permission("mariachi.geoserver.view", "mariachi.mapalab.view"))
+        ],
     )
     app.include_router(
         mosaics.router,

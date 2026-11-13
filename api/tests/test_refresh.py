@@ -187,3 +187,34 @@ def test_logout_revoca_refresh(client, admin_user, fake_refresh_redis):
     client.cookies.set("refresh_token", refresh)
     response = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert response.status_code == 401
+
+
+def test_el_reuso_deja_incidente_de_sesion_con_usuario(client, admin_user, fake_refresh_redis, monkeypatch):
+    from app.services import incidentes
+
+    registrados = []
+    monkeypatch.setattr(incidentes, "registrar_incidente", lambda **kw: registrados.append(kw))
+
+    establecer_cookies_de_sesion(client, admin_user)
+    old_refresh = client.cookies.get("refresh_token")
+    assert client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar").status_code == 200
+    client.cookies.clear()
+    client.cookies.set("refresh_token", old_refresh)
+    assert client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar").status_code == 401
+
+    assert registrados[-1]["tipo"] == "sesion"
+    assert registrados[-1]["scope"] == "reutilizado"
+    assert registrados[-1]["actor"] == admin_user.username
+
+
+def test_refrescar_sin_cookie_deja_incidente(client, fake_refresh_redis, monkeypatch):
+    from app.services import incidentes
+
+    registrados = []
+    monkeypatch.setattr(incidentes, "registrar_incidente", lambda **kw: registrados.append(kw))
+
+    assert client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar").status_code == 401
+    assert registrados == [{
+        "tipo": "sesion", "scope": "sin_cookie", "actor": "desconocido", "metodo": "POST",
+        "ruta": "/autenticacion/refrescar", "golpes": 1, "limite": 0, "ventana_s": 0,
+    }]

@@ -14,6 +14,7 @@ import json
 import time
 
 from app.core.cache import get_cache, redis_client, set_cache
+from app.core.cambios import publicar
 
 PRESENCE_TTL_SECONDS = 30
 
@@ -29,18 +30,24 @@ def register(
     name: str,
     **extra: object,
 ) -> None:
-    set_cache(
-        _key(scope, resource_id, username),
-        {"username": username, "name": name, **extra},
-        expire=PRESENCE_TTL_SECONDS,
-    )
+    entrada = {"username": username, "name": name, **extra}
+    previa = get_cache(_key(scope, resource_id, username))
+    set_cache(_key(scope, resource_id, username), entrada, expire=PRESENCE_TTL_SECONDS)
+    if previa != entrada:
+        _avisar(scope, resource_id)
 
 
 def unregister(scope: str, resource_id: str | int, username: str) -> None:
     try:
-        redis_client.delete(_key(scope, resource_id, username))
+        borradas = redis_client.delete(_key(scope, resource_id, username))
     except Exception:
-        pass
+        return
+    if borradas:
+        _avisar(scope, resource_id)
+
+
+def _avisar(scope: str, resource_id: str | int) -> None:
+    publicar({"tipo": "presencia", "scope": scope, "id": str(resource_id)})
 
 
 def list_others(scope: str, resource_id: str | int, current_username: str) -> list[dict]:

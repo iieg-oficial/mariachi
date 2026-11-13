@@ -29,7 +29,9 @@ permissions:
   - key: mariachi.portal.view
     name: Ver paginas, menu e inicio del portal
   - key: mariachi.portal.update
-    name: Editar paginas, menu e inicio del portal
+    name: Editar paginas y menu del portal como borrador para revision
+  - key: mariachi.portal.publish
+    name: Publicar paginas y menu del portal y aprobar sus borradores
 
   - key: mariachi.sieej_admin.view
     name: Entrar al panel de administracion de SIEEJ
@@ -106,6 +108,8 @@ permissions:
 
   - key: mariachi.actividad.view
     name: Ver la bitacora de actividad
+  - key: mariachi.incidentes.view
+    name: Ver incidentes de rate limit con usuario, scope y ruta
 
   - key: mariachi.usuarios.view
     name: Ver usuarios
@@ -155,10 +159,16 @@ roles:
     permissions:
       - mariachi.portal.view
   - name: Portal - edicion
-    description: Atomico. Editar paginas, menu e inicio
+    description: Atomico. Editar paginas y menu; los cambios van a revision
     permissions:
       - mariachi.portal.view
       - mariachi.portal.update
+  - name: Portal - publicacion
+    description: Atomico. Publicar paginas y menu y aprobar los borradores de otras personas
+    permissions:
+      - mariachi.portal.view
+      - mariachi.portal.update
+      - mariachi.portal.publish
 
   - name: SIEEJ - consulta
     description: Atomico. Ver formularios y envios desde el panel
@@ -281,6 +291,11 @@ roles:
     permissions:
       - mariachi.actividad.view
 
+  - name: Incidentes - consulta
+    description: Atomico. Ver quien golpea el rate limit, en que scope y ruta
+    permissions:
+      - mariachi.incidentes.view
+
   - name: Usuarios - administracion
     description: Atomico. Alta, baja y asignacion de accesos
     permissions:
@@ -313,6 +328,7 @@ roles:
       - mariachi.mapalab_propuestas.approve
       - mariachi.portal.view
       - mariachi.portal.update
+      - mariachi.portal.publish
       - mariachi.sieej_admin.view
       - mariachi.sieej_formularios.view
       - mariachi.sieej_formularios.create
@@ -336,6 +352,7 @@ roles:
       - mariachi.geoserver.view
       - mariachi.geoserver.manage
       - mariachi.actividad.view
+      - mariachi.incidentes.view
       - mariachi.usuarios.view
       - mariachi.usuarios.create
       - mariachi.usuarios.update

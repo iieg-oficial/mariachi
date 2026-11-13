@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, get_db, require_permission, verify_csrf
@@ -16,11 +16,25 @@ from app.services.borradores_compartidos import (
     es_compartido,
     quitar_campos,
 )
+from app.services.borradores_permisos import exigir_aprobacion, exigir_edicion, tipos_aprobables
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 
 router = APIRouter(prefix="/borradores", tags=["borradores"])
 
-_require_admin = require_permission('mariachi.mapalab.manage')
+_require_mapalab_view = require_permission('mariachi.mapalab.view')
+
+
+def _borrador_aprobable(db: Session, borrador_id: int, current_user: Usuario) -> Borrador:
+    borrador = (
+        db.query(Borrador)
+        .options(joinedload(Borrador.usuario))
+        .filter(Borrador.id == borrador_id)
+        .first()
+    )
+    if not borrador:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    exigir_aprobacion(current_user, borrador.resource_type)
+    return borrador
 
 
 def _resolve_sld_layer_id(
@@ -85,12 +99,15 @@ def _serialize_borrador(borrador: Borrador, dataengine_db: Session | None) -> di
 async def obtener_pendientes(
     db: Session = Depends(get_db),
     dataengine_db: Session = Depends(get_dataengine_db),
-    _admin: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(get_current_user),
 ):
+    tipos = tipos_aprobables(current_user)
+    if not tipos:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin borradores que revisar")
     items = (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
-        .filter(Borrador.estado == 'pendiente_revision')
+        .filter(Borrador.estado == 'pendiente_revision', Borrador.resource_type.in_(tipos))
         .order_by(Borrador.actualizado_en.desc())
         .all()
     )
@@ -114,7 +131,7 @@ async def obtener_mis_borradores(
 @router.get("/capas", response_model=list[BorradorResponse])
 async def obtener_borradores_de_capas(
     db: Session = Depends(get_db),
-    _user: Usuario = Depends(get_current_user),
+    _user: Usuario = Depends(_require_mapalab_view),
 ):
     return (
         db.query(Borrador)
@@ -130,11 +147,9 @@ async def quitar_campos_de_borrador(
     borrador_id: int,
     body: QuitarCamposIn,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
 ):
-    borrador = db.query(Borrador).filter(Borrador.id == borrador_id).first()
-    if not borrador:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    borrador = _borrador_aprobable(db, borrador_id, current_user)
     data, autores = quitar_campos(borrador.data, borrador.autores, body.campos)
     if not data:
         db.delete(borrador)
@@ -152,16 +167,27 @@ async def quitar_campos_de_borrador(
 @router.put("/layer/{layer_id}/presencia")
 async def registrar_presencia_capa(
     layer_id: str,
+    campo: str | None = Query(default=None, max_length=64, pattern=r"^[A-Za-z0-9_-]+$"),
     current_user: Usuario = Depends(verify_csrf),
+    _view: Usuario = Depends(_require_mapalab_view),
 ):
-    presence.register("capa", layer_id, current_user.username, current_user.name)
+    presence.register("capa", layer_id, current_user.username, current_user.name, campo=campo)
     return {"ok": True}
+
+
+@router.delete("/layer/{layer_id}/presencia", status_code=status.HTTP_204_NO_CONTENT)
+async def salir_de_capa(
+    layer_id: str,
+    current_user: Usuario = Depends(verify_csrf),
+    _view: Usuario = Depends(_require_mapalab_view),
+) -> None:
+    presence.unregister("capa", layer_id, current_user.username)
 
 
 @router.get("/layer/{layer_id}/presencia")
 async def obtener_presencia_capa(
     layer_id: str,
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(_require_mapalab_view),
 ):
     return presence.list_others("capa", layer_id, current_user.username)
 
@@ -170,17 +196,9 @@ async def obtener_presencia_capa(
 async def obtener_borrador_por_id(
     borrador_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(get_current_user),
 ):
-    borrador = (
-        db.query(Borrador)
-        .options(joinedload(Borrador.usuario))
-        .filter(Borrador.id == borrador_id)
-        .first()
-    )
-    if not borrador:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
-    return borrador
+    return _borrador_aprobable(db, borrador_id, current_user)
 
 
 @router.post("/por-id/{borrador_id}/aprobar")
@@ -188,12 +206,9 @@ async def aprobar_borrador(
     borrador_id: int,
     db: Session = Depends(get_db),
     dataengine_db: Session = Depends(get_dataengine_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(verify_csrf),
 ):
-    borrador = db.query(Borrador).filter(Borrador.id == borrador_id).first()
-    if not borrador:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    borrador = _borrador_aprobable(db, borrador_id, current_user)
     if borrador.estado != 'pendiente_revision':
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -231,12 +246,9 @@ async def rechazar_borrador(
     borrador_id: int,
     body: RechazarIn,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(verify_csrf),
 ):
-    borrador = db.query(Borrador).filter(Borrador.id == borrador_id).first()
-    if not borrador:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    borrador = _borrador_aprobable(db, borrador_id, current_user)
 
     borrador.estado = 'rechazado'
     borrador.comentario_rechazo = body.comentario
@@ -249,12 +261,9 @@ async def rechazar_borrador(
 async def eliminar_borrador_por_id(
     borrador_id: int,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(verify_csrf),
 ):
-    borrador = db.query(Borrador).filter(Borrador.id == borrador_id).first()
-    if not borrador:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    borrador = _borrador_aprobable(db, borrador_id, current_user)
 
     db.delete(borrador)
     db.commit()
@@ -282,6 +291,7 @@ async def obtener_borrador(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    exigir_edicion(current_user, resource_type)
     return (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
@@ -298,6 +308,7 @@ async def guardar_borrador(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
+    exigir_edicion(current_user, resource_type)
     borrador = (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
@@ -392,6 +403,7 @@ async def solicitar_eliminacion_capa(
     """Crea/actualiza un borrador con action='delete' y lo deja en
     pendiente_revision. Es el flujo que usan los editores no-admin para pedir
     que un admin apruebe el archivado de una capa."""
+    exigir_edicion(current_user, 'layer')
     layer = dataengine_db.query(Layer).filter(Layer.id == layer_id).first()
     if not layer:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Capa '{layer_id}' no encontrada")
@@ -434,6 +446,7 @@ async def solicitar_revision(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
+    exigir_edicion(current_user, resource_type)
     borrador = db.query(Borrador).filter(*_del_recurso(resource_type, resource_id, current_user)).first()
 
     if not borrador:
@@ -453,6 +466,7 @@ async def eliminar_borrador(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
+    exigir_edicion(current_user, resource_type)
     borrador = db.query(Borrador).filter(*_del_recurso(resource_type, resource_id, current_user)).first()
 
     if not borrador:
@@ -467,8 +481,9 @@ async def eliminar_borrador(
 async def obtener_historial_sld(
     resource_id: str,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(get_current_user),
 ):
+    exigir_aprobacion(current_user, 'sld')
     items = (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
@@ -503,11 +518,8 @@ async def re_aplicar_borrador(
     db: Session = Depends(get_db),
     dataengine_db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
 ):
-    borrador = db.query(Borrador).filter(Borrador.id == borrador_id).first()
-    if not borrador:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    borrador = _borrador_aprobable(db, borrador_id, current_user)
     if borrador.estado != 'aprobado':
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

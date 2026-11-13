@@ -16,7 +16,7 @@ router = APIRouter(
     tags=["páginas"],
 )
 
-_require_editor = require_permission("mariachi.portal.update")
+_require_publicacion = require_permission("mariachi.portal.publish")
 
 
 def _slug_from_menu_item(page_id: str, db: Session) -> tuple[str, str]:
@@ -81,7 +81,7 @@ async def actualizar_o_crear_pagina(
     page_in: PageUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _editor: Usuario = Depends(_require_publicacion),
 ):
     pagina = db.query(Page).filter(Page.menu_item_id == page_id).first()
 
@@ -125,7 +125,7 @@ async def eliminar_pagina(
     page_id: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _editor: Usuario = Depends(_require_publicacion),
 ):
     pagina = db.query(Page).filter(Page.menu_item_id == page_id).first()
     if not pagina:

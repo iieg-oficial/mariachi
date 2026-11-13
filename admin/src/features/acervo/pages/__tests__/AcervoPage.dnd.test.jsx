@@ -43,7 +43,7 @@ vi.mock('@features/acervo/api/acervoService', () => ({
 
 import acervoService from '@features/acervo/api/acervoService';
 
-const BUCKET = { id: 6, acervo_bucket: 'iieg', display_name: 'IIEG', is_public: true };
+const BUCKET = { id: 6, acervo_bucket: 'iieg', display_name: 'IIEG', is_public: true, acciones: ['create', 'update', 'delete'] };
 
 const mkFile = (name) => new File(['contenido'], name, { type: 'image/svg+xml' });
 

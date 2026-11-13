@@ -13,6 +13,7 @@ from app.schemas._camel import CamelCaseInput
 from app.schemas.mapalab_infobox import InfoboxPropuestaConfig
 from app.services import mapalab_infobox_service as service
 from app.services.discord_notifier import notify_infobox_propuesta
+from app.services.incidentes import huella_ip
 from app.services.mapalab_telemetry import hash_ip
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ async def crear_propuesta(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.errors())
 
     if payload.website:
-        logger.info("infobox.propuesta.honeypot ip=%s", _client_ip(request))
+        logger.info("infobox.propuesta.honeypot ip=%s", huella_ip(_client_ip(request)))
         return PropuestaOut(ok=True)
 
     try:

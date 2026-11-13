@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    capaDelGrupo, hermanosDe, nodoPorId, ordenConNuevo, POSICION_FINAL, POSICION_INICIO,
+    aplicarCambios, capaDelGrupo, erroresDeFilas, filaNueva, filasConCapas, hermanosDe, nodoPorId, ordenConNuevos, POSICION_FINAL, POSICION_INICIO,
 } from '@features/mapalab-layers/utils/nodoNuevo';
 
 const ARBOL = [
@@ -56,28 +56,67 @@ describe('hermanosDe', () => {
     });
 });
 
-describe('ordenConNuevo', () => {
+describe('ordenConNuevos', () => {
     const ids = ['a', 'b', 'c'];
 
     it('por defecto va al final', () => {
-        expect(ordenConNuevo(ids, 'n')).toEqual(['a', 'b', 'c', 'n']);
-        expect(ordenConNuevo(ids, 'n', POSICION_FINAL)).toEqual(['a', 'b', 'c', 'n']);
+        expect(ordenConNuevos(ids, ['n'])).toEqual(['a', 'b', 'c', 'n']);
+        expect(ordenConNuevos(ids, ['n'], POSICION_FINAL)).toEqual(['a', 'b', 'c', 'n']);
     });
 
     it('al inicio', () => {
-        expect(ordenConNuevo(ids, 'n', POSICION_INICIO)).toEqual(['n', 'a', 'b', 'c']);
+        expect(ordenConNuevos(ids, ['n'], POSICION_INICIO)).toEqual(['n', 'a', 'b', 'c']);
     });
 
     it('despues de un hermano', () => {
-        expect(ordenConNuevo(ids, 'n', 'a')).toEqual(['a', 'n', 'b', 'c']);
-        expect(ordenConNuevo(ids, 'n', 'c')).toEqual(['a', 'b', 'c', 'n']);
+        expect(ordenConNuevos(ids, ['n'], 'a')).toEqual(['a', 'n', 'b', 'c']);
+        expect(ordenConNuevos(ids, ['n'], 'c')).toEqual(['a', 'b', 'c', 'n']);
     });
 
     it('si el nuevo ya viene en la lista no se duplica', () => {
-        expect(ordenConNuevo(['a', 'n', 'b'], 'n', 'b')).toEqual(['a', 'b', 'n']);
+        expect(ordenConNuevos(['a', ['n'], 'b'], 'n', 'b')).toEqual(['a', 'b', 'n']);
     });
 
     it('un hermano que ya no existe manda al final', () => {
-        expect(ordenConNuevo(ids, 'n', 'zzz')).toEqual(['a', 'b', 'c', 'n']);
+        expect(ordenConNuevos(ids, ['n'], 'zzz')).toEqual(['a', 'b', 'c', 'n']);
+    });
+});
+
+describe('ordenConNuevos en lote', () => {
+    it('inserta el bloque en orden', () => {
+        expect(ordenConNuevos(['a', 'b'], ['x', 'y'], 'a')).toEqual(['a', 'x', 'y', 'b']);
+        expect(ordenConNuevos(['a', 'b'], ['x', 'y'], POSICION_INICIO)).toEqual(['x', 'y', 'a', 'b']);
+    });
+});
+
+describe('filas del lote', () => {
+    it('propone nombre e ID desde la capa', () => {
+        const fila = filaNueva('ws::cuerpos_de_agua');
+        expect(fila.label).toBe('Cuerpos de agua');
+        expect(fila.id).toBe('cuerpos-de-agua');
+    });
+
+    it('el ID sigue al nombre hasta que se edita', () => {
+        const fila = aplicarCambios(filaNueva(), { label: 'Ríos' });
+        expect(fila.id).toBe('rios');
+        const manual = aplicarCambios(aplicarCambios(fila, { id: 'mio' }), { label: 'Presas' });
+        expect(manual.id).toBe('mio');
+        expect(manual.slug).toBe('presas');
+    });
+
+    it('sincroniza filas con las capas elegidas y reemplaza la vacía', () => {
+        const filas = filasConCapas([filaNueva()], ['ws::a', 'ws::b']);
+        expect(filas.map((f) => f.gsRef)).toEqual(['ws::a', 'ws::b']);
+        expect(filasConCapas(filas, ['ws::b']).map((f) => f.gsRef)).toEqual(['ws::b']);
+        expect(filasConCapas(filas, [])).toHaveLength(1);
+    });
+
+    it('marca nombres vacíos e IDs repetidos', () => {
+        const a = aplicarCambios(filaNueva(), { label: 'Ríos' });
+        const b = aplicarCambios(filaNueva(), { label: 'Rios' });
+        const c = filaNueva();
+        const errores = erroresDeFilas([a, b, c], true);
+        expect(errores[b.uid]).toMatch(/repite/);
+        expect(errores[c.uid]).toMatch(/nombre/);
     });
 });

@@ -41,7 +41,7 @@ router = APIRouter(
 
 _require_project_editor = require_permission("mariachi.mapalab.update")
 _require_manage = require_permission("mariachi.mapalab.manage")
-_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='layer_metadata_write')
 
 
 @router.get('', response_model=list[LayerMetadataResponse])

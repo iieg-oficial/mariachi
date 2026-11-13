@@ -118,7 +118,8 @@ SPEC = GridSpec(
     fields=FIELDS,
     fetch_rows=fetch_rows,
     presence_scope='grid-frames-camaras',
-    permission='mariachi.sistema.manage',
+    permission='mariachi.frames.view',
+    write_permission='mariachi.frames.manage',
     columns_meta=COLUMNS_META,
     guard=_guard,
 )

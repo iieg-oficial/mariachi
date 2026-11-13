@@ -28,8 +28,8 @@ export default function PageEditor() {
     const [rechazarModalVisible, setRechazarModalVisible] = useState(false);
     const [rechazarComentario, setRechazarComentario] = useState('');
 
-    const { user } = useAuth();
-    const isAdmin = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const isAdmin = can('mariachi.portal.publish');
 
     const reviewMode = isAdmin && searchParams.get('review') === 'true';
     const borradorId = searchParams.get('borrador');

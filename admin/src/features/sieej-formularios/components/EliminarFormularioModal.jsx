@@ -8,10 +8,8 @@ import { formulariosApi } from '../services/formulariosAdminApi';
 
 const { Paragraph, Text } = Typography;
 
-const ADMIN_GLOBAL = 'tetlamamakani';
-
 export default function EliminarFormularioModal({ formulario, open, onClose, onDone }) {
-    const { user } = useAuth();
+    const { can } = useAuth();
     const [total, setTotal] = useState(null);
     const [cargando, setCargando] = useState(false);
     const [descargado, setDescargado] = useState(false);
@@ -36,7 +34,7 @@ export default function EliminarFormularioModal({ formulario, open, onClose, onD
     if (!formulario) return null;
 
     const conRespuestas = (total ?? 0) > 0;
-    const esAdminGlobal = user?.role === ADMIN_GLOBAL;
+    const esAdminGlobal = can('mariachi.sieej_formularios.delete');
     const nombreCoincide = texto.trim() === (formulario.nombre || '').trim();
     const listoParaBorrar = !conRespuestas || (esAdminGlobal && descargado && nombreCoincide);
 

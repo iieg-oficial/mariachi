@@ -84,6 +84,7 @@ class Settings(BaseSettings):
     geoserver_auth_mode: Literal["basic", "minerva"] = "basic"
     geoserver_minerva_audience: str = "sextante"
     geoserver_upload_staging_dir: str = "/var/tmp/geoserver-uploads"
+    geoserver_data_dir: str = "/opt/geoserver/data_dir"
     geoserver_upload_max_bytes: int = 0
     geoserver_installed_font_families: str = "Garet"
 

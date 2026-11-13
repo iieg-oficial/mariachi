@@ -426,8 +426,8 @@ export default function LayerStatsSection({
     const [ttlAbierto, setTtlAbierto] = useState(false);
     const [editandoPie, setEditandoPie] = useState(false);
 
-    const { user } = useAuth();
-    const isAdmin = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const isAdmin = can('mariachi.mapalab.manage');
 
     const schema = workspace || '';
     const table = geoserverLayer || '';

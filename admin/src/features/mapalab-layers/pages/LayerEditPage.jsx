@@ -48,6 +48,7 @@ import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb
 import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput';
 import PublishReviewModal from '@features/mapalab-layers/components/PublishReviewModal';
 import EditandoAhora from '@features/mapalab-layers/components/layersEditor/EditandoAhora';
+import useCambiosDeCapa from '@features/mapalab-layers/hooks/useCambiosDeCapa';
 import UltimaPublicacion from '@features/mapalab-layers/components/layersEditor/UltimaPublicacion';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
 import { useLayerDrafts } from '@features/mapalab-layers/hooks/useLayerDrafts';
@@ -72,8 +73,9 @@ export default function LayerEditPage() {
     const requestedAdvanced = ADVANCED_TABS.includes(requestedTab);
     const initialTab = PRIMARY_TABS.includes(requestedTab) ? requestedTab : 'identidad';
     const { isMobile } = useIsMobile();
-    const { user } = useAuth();
-    const isAdmin = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const isAdmin = can('mariachi.mapalab.manage');
+    const puedeEditar = can('mariachi.mapalab.update');
 
     const {
         treeData,
@@ -146,6 +148,9 @@ export default function LayerEditPage() {
     const publicadoRef = useRef(null);
     const camposDelBorradorRef = useRef(new Set());
     const [shellHeight, setShellHeight] = useState(null);
+    const recargarCapa = useCallback(() => setReloadKey((k) => k + 1), []);
+    const hayCambiosPropios = useCallback(() => tocadosRef.current.size > 0, []);
+    useCambiosDeCapa({ layerId, recargarArbol: reload, recargarCapa, recargarBorradores: reloadDrafts, hayCambiosPropios });
     const [eventoLayerId, setEventoLayerId] = useState(null);
 
     const [moveOpen, setMoveOpen] = useState(false);
@@ -341,7 +346,7 @@ export default function LayerEditPage() {
                 const fresh = await getLayer(layerId);
                 if (cancelled) return;
                 publicadoRef.current = fresh;
-                if (!isAdmin) {
+                if (!isAdmin && puedeEditar) {
                     const draft = await getLayerDraft(layerId);
                     if (draft?.data) {
                         camposDelBorradorRef.current = new Set(Object.keys(draft.data));
@@ -360,7 +365,7 @@ export default function LayerEditPage() {
             }
         })();
         return () => { cancelled = true; };
-    }, [layerId, isAdmin, getLayer, getLayerDraft, reloadKey]);
+    }, [layerId, isAdmin, puedeEditar, getLayer, getLayerDraft, reloadKey]);
 
     useEffect(() => {
         if (loading || !layer) return;
@@ -1247,7 +1252,7 @@ export default function LayerEditPage() {
                     <Button
                         danger
                         icon={<DeleteOutlined />}
-                        disabled={deleteDisabled}
+                        disabled={deleteDisabled || !puedeEditar}
                         onClick={openDeleteModal}
                         block
                     >
@@ -1288,6 +1293,23 @@ export default function LayerEditPage() {
         </div>
     );
 
+    const descripcionPagina = showEditor
+        ? 'Se guarda solo; publica desde el contador de arriba.'
+        : 'Catálogo de capas del visor. Da click en una para editarla.';
+
+    const botonNuevoNodo = isAdmin && (
+        <Tooltip title="Nuevo nodo en la raíz">
+            <Button
+                type="primary"
+                shape="circle"
+                size={isMobile ? 'middle' : 'small'}
+                icon={<PlusOutlined />}
+                onClick={() => { setCreateParentId(null); setCreateOpen(true); }}
+                aria-label="Nuevo nodo en la raíz"
+            />
+        </Tooltip>
+    );
+
     return (
         <div
             ref={shellRef}
@@ -1307,6 +1329,7 @@ export default function LayerEditPage() {
                 >
                     <Space align="center" size={10}>
                         <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Capas MapaLab</Title>
+                        {isMobile && <InfoIcon title={descripcionPagina} />}
                         {pendingCount > 0 && (
                             <Tooltip title="Ver y publicar los cambios que llevas sin publicar">
                                 <Button size="small" type="primary" onClick={() => setReviewOpen(true)}>
@@ -1333,8 +1356,8 @@ export default function LayerEditPage() {
                         )}
                     </Space>
                     <Space align="center" size={8}>
+                        {isMobile && !showEditor && botonNuevoNodo}
                         <Segmented
-                            size={isMobile ? 'small' : 'middle'}
                             value="arbol"
                             onChange={(value) => {
                                 if (value === 'tabla') navigate('/mapalab/layers/tabla');
@@ -1365,16 +1388,17 @@ export default function LayerEditPage() {
                         </Tooltip>
                     </Space>
                 </Space>
-                <Text type="secondary" style={{ fontSize: 12, display: 'block', maxWidth: '70ch' }}>
-                    {showEditor
-                        ? 'Se guarda solo; publica desde el contador de arriba.'
-                        : 'Catálogo de capas del visor. Da click en una para editarla.'}
-                </Text>
+                {!isMobile && (
+                    <Text type="secondary" style={{ fontSize: 12, display: 'block', maxWidth: '70ch' }}>
+                        {descripcionPagina}
+                    </Text>
+                )}
             </div>
             <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '6px 4px 4px' : '10px 8px 8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     <style>{`
                         .layers-tree-tabs { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+                        .layers-tree-tabs > .ant-tabs-nav::before { border-bottom: none; }
                         .layers-tree-tabs > .ant-tabs-content-holder { flex: 1; min-height: 0; overflow: hidden; }
                         .layers-tree-tabs > .ant-tabs-content-holder > .ant-tabs-content { height: 100%; }
                         .layers-tree-tabs .ant-tabs-tabpane { height: 100%; overflow: hidden; }
@@ -1408,27 +1432,21 @@ export default function LayerEditPage() {
                             onChange={onTreeTabChange}
                             size="small"
                             tabBarStyle={{ padding: '0 12px', marginBottom: 0, flexShrink: 0 }}
-                            tabBarExtraContent={{
+                            renderTabBar={(props, DefaultTabBar) => (
+                                <div style={{ flexShrink: 0 }}>
+                                    <DefaultTabBar {...props} />
+                                    {isMobile && (
+                                        <div style={{ padding: '8px 8px 0' }}>
+                                            <TreeSearchInput block value={treeQuery} onChange={setTreeQuery} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            tabBarExtraContent={isMobile ? null : {
                                 right: (
-                                    <Space size={4} style={{ paddingInlineEnd: 4 }}>
-                                        {isAdmin && (
-                                            <Tooltip title="Nuevo nodo en la raíz">
-                                                <Button
-                                                    size="small"
-                                                    type="text"
-                                                    icon={<PlusOutlined />}
-                                                    onClick={() => { setCreateParentId(null); setCreateOpen(true); }}
-                                                    aria-label="Nuevo nodo en la raíz"
-                                                />
-                                            </Tooltip>
-                                        )}
-                                        <TreeSearchInput
-                                            value={treeQuery}
-                                            onChange={(v) => {
-                                                setTreeQuery(v);
-                                                if (v && showEditor) navigate('/mapalab/layers');
-                                            }}
-                                        />
+                                    <Space size={8} style={{ paddingInlineEnd: 4 }}>
+                                        <TreeSearchInput value={treeQuery} onChange={setTreeQuery} />
+                                        {botonNuevoNodo}
                                     </Space>
                                 ),
                             }}

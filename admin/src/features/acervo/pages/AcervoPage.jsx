@@ -12,6 +12,7 @@ import FilePreviewModal from '@features/acervo/components/FilePreviewModal';
 import FileSnippetsModal from '@features/acervo/components/FileSnippetsModal';
 import FileSnippets from '@features/acervo/components/FileSnippets';
 import useAcervoFiles from '@features/acervo/hooks/useAcervoFiles';
+import { puedeEn } from '@features/acervo/utils/escritura';
 import AcervoHelpModal from '@features/documentacion/components/AcervoHelpModal';
 import InfiniteScrollSentinel from '@shared/components/InfiniteScrollSentinel';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -81,6 +82,9 @@ const Acervo = () => {
 
     const currentBucket = buckets.find((b) => b.id === selectedBucketId);
     const bucketProtegido = !!currentBucket?.protegido;
+    const puedeCrear = puedeEn(currentBucket, 'create');
+    const puedeEditar = puedeEn(currentBucket, 'update');
+    const puedeBorrar = puedeEn(currentBucket, 'delete');
 
     useEffect(() => {
         const preventDefaults = (e) => { e.preventDefault(); };
@@ -471,8 +475,10 @@ const Acervo = () => {
         e.preventDefault();
         dragCounter.current = 0;
         setDragActive(false);
-        if (bucketProtegido) {
-            message.warning('Este bucket está protegido: su contenido lo gestiona la aplicación que lo usa.');
+        if (!puedeCrear) {
+            message.warning(bucketProtegido
+                ? 'Este bucket está protegido: su contenido lo gestiona la aplicación que lo usa.'
+                : 'No tienes permiso para subir archivos a este bucket.');
             return;
         }
         const dt = e.dataTransfer;
@@ -859,7 +865,7 @@ const Acervo = () => {
                                     download
                                 />
                             </Tooltip>
-                            {!bucketProtegido && (
+                            {puedeEditar && (
                                 <Tooltip title="Editar texto alternativo, descripción y carpeta">
                                     <Button
                                         type="text"
@@ -870,7 +876,7 @@ const Acervo = () => {
                             )}
                         </>
                     )}
-                    {!bucketProtegido && (
+                    {puedeBorrar && (
                         <Popconfirm
                             title={record.isDir ? '¿Eliminar carpeta y todo su contenido?' : '¿Eliminar este archivo?'}
                             onConfirm={() => handleDelete(record.id)}
@@ -969,7 +975,7 @@ const Acervo = () => {
                                 <Tooltip key="download" title="Descargar la carpeta completa como ZIP">
                                     <DownloadOutlined onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />
                                 </Tooltip>,
-                                <Popconfirm
+                                puedeBorrar && <Popconfirm
                                     key="delete"
                                     title="¿Eliminar carpeta y todo su contenido?"
                                     onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
@@ -981,8 +987,8 @@ const Acervo = () => {
                                         <DeleteOutlined onClick={(e) => e.stopPropagation()} />
                                     </Tooltip>
                                 </Popconfirm>,
-                            ] : [
-                                <Tooltip key="move" title="Mover a otra carpeta">
+                            ].filter(Boolean) : [
+                                puedeEditar && <Tooltip key="move" title="Mover a otra carpeta">
                                     <DragOutlined onClick={(e) => { e.stopPropagation(); handleOpenMove(file); }} />
                                 </Tooltip>,
                                 <Tooltip key="copy" title={tooltipCopiar(file)}>
@@ -998,10 +1004,10 @@ const Acervo = () => {
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                 </Tooltip>,
-                                <Tooltip key="edit" title="Editar texto alternativo, descripción y carpeta">
+                                puedeEditar && <Tooltip key="edit" title="Editar texto alternativo, descripción y carpeta">
                                     <EditOutlined onClick={(e) => { e.stopPropagation(); handleEdit(file); }} />
                                 </Tooltip>,
-                                <Popconfirm
+                                puedeBorrar && <Popconfirm
                                     key="delete"
                                     title="¿Eliminar?"
                                     onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
@@ -1012,8 +1018,8 @@ const Acervo = () => {
                                     <Tooltip title="Eliminar el archivo">
                                         <DeleteOutlined onClick={(e) => e.stopPropagation()} />
                                     </Tooltip>
-                                </Popconfirm>
-                            ]}
+                                </Popconfirm>,
+                            ].filter(Boolean)}
                         >
                             <Card.Meta
                                 title={
@@ -1037,7 +1043,7 @@ const Acervo = () => {
         </Row>
     );
 
-    const crearActions = bucketProtegido ? null : (
+    const crearActions = !puedeCrear ? null : (
         <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
             <Button
                 icon={<FolderAddOutlined />}
@@ -1067,9 +1073,9 @@ const Acervo = () => {
 
     const mediaActions = (
         <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
-            {!bucketProtegido && selectedFiles.length > 0 && (
+            {selectedFiles.length > 0 && (
                 <>
-                    <Button
+                    {puedeEditar && <Button
                         icon={<DragOutlined />}
                         onClick={() => {
                             setBulkMoveTargetFolder('/');
@@ -1078,8 +1084,8 @@ const Acervo = () => {
                         block={isMobile}
                     >
                         Mover ({selectedFiles.length})
-                    </Button>
-                    <Popconfirm
+                    </Button>}
+                    {puedeBorrar && <Popconfirm
                         title={`¿Eliminar ${selectedFiles.length} archivos?`}
                         onConfirm={handleDeleteMultiple}
                         okText="Sí"
@@ -1088,7 +1094,7 @@ const Acervo = () => {
                         <Button danger icon={<DeleteOutlined />} block={isMobile}>
                             Eliminar ({selectedFiles.length})
                         </Button>
-                    </Popconfirm>
+                    </Popconfirm>}
                 </>
             )}
         </Space>

@@ -4,6 +4,7 @@ import { FileImageOutlined } from '@ant-design/icons';
 import { BucketFilePicker } from '@features/acervo';
 
 const BUCKET_SLUGS = ['mapalab', 'iieg'];
+const START_PATHS = { mapalab: 'home/' };
 
 
 export default function ImageUrlField({ value, onChange, disabled, placeholder = 'URL de imagen' }) {
@@ -44,6 +45,7 @@ export default function ImageUrlField({ value, onChange, disabled, placeholder =
                 onClose={() => setOpen(false)}
                 onSelect={onSelect}
                 bucketSlugs={BUCKET_SLUGS}
+                startPaths={START_PATHS}
                 title="Elegir imagen"
                 uploadAccept="image/*"
             />

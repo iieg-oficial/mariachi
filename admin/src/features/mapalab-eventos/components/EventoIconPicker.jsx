@@ -7,6 +7,7 @@ import { message } from '@shared/services/message';
 const { Text } = Typography;
 const BUCKET_SLUGS = ['mapalab', 'iieg'];
 const RECOMMENDED_PREFIX = 'eventos/';
+const START_PATHS = { mapalab: RECOMMENDED_PREFIX };
 const ALLOWED_PREFIXES = ['http://', 'https://', '/acervo/', '/', 'data:image/'];
 
 const isValidImageUrl = (v) => {
@@ -77,6 +78,7 @@ export default function EventoIconPicker({ value, onChange, disabled }) {
                 onClose={() => setPickerOpen(false)}
                 onSelect={onSelect}
                 bucketSlugs={BUCKET_SLUGS}
+                startPaths={START_PATHS}
                 title="Elegir imagen del evento"
                 uploadAccept="image/*"
             />

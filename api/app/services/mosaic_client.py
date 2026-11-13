@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from urllib.parse import quote
 
 import httpx
@@ -147,3 +148,90 @@ class MosaicClient(GeoServerClient):
             r = c.get(self._ows_url(f"{workspace}/wms"), params=params)
             r.raise_for_status()
             return len(r.content), r.headers.get("Content-Type", "")
+
+    def coveragestore_exists(self, workspace: str, store: str) -> bool:
+        url = self._rest_url(f"workspaces/{workspace}/coveragestores/{store}.json")
+        with self._client() as c:
+            return c.get(url).status_code == 200
+
+    def create_external_mosaic(self, workspace: str, store: str, absolute_path: str) -> None:
+        url = self._rest_url(
+            f"workspaces/{workspace}/coveragestores/{store}/external.imagemosaic"
+        )
+        with httpx.Client(auth=self._auth, timeout=PUBLISH_TIMEOUT) as c:
+            r = c.put(url, content=absolute_path.encode("utf-8"), headers={"Content-Type": "text/plain"})
+        if r.status_code not in (200, 201):
+            raise GeoServerError(_mosaic_failure(r))
+
+    def harvest_granule(self, workspace: str, store: str, absolute_path: str) -> None:
+        url = self._rest_url(
+            f"workspaces/{workspace}/coveragestores/{store}/external.imagemosaic"
+        )
+        with httpx.Client(auth=self._auth, timeout=PUBLISH_TIMEOUT) as c:
+            r = c.post(url, content=absolute_path.encode("utf-8"), headers={"Content-Type": "text/plain"})
+        if r.status_code not in (200, 201, 202):
+            raise GeoServerError(_mosaic_failure(r))
+
+    def set_coveragestore_url(self, workspace: str, store: str, store_url: str) -> None:
+        url = self._rest_url(f"workspaces/{workspace}/coveragestores/{store}")
+        with self._client() as c:
+            r = c.put(url, json={"coverageStore": {"url": store_url}})
+        if r.status_code != 200:
+            raise GeoServerError(f"no se pudo fijar la ruta del store (HTTP {r.status_code})")
+
+    def delete_coveragestore(self, workspace: str, store: str) -> None:
+        url = self._rest_url(f"workspaces/{workspace}/coveragestores/{store}")
+        with self._client() as c:
+            r = c.delete(url, params={"recurse": "true"})
+        if r.status_code not in (200, 404):
+            raise GeoServerError(f"no se pudo borrar el store (HTTP {r.status_code})")
+
+    def get_coverage_xml(self, workspace: str, store: str, coverage: str) -> str:
+        url = self._rest_url(
+            f"workspaces/{workspace}/coveragestores/{store}/coverages/{coverage}.xml"
+        )
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.get(url)
+        if r.status_code != 200:
+            raise GeoServerError(f"coverage {workspace}:{coverage} no existe")
+        return r.text
+
+    def put_coverage_xml(self, workspace: str, store: str, coverage: str, xml: str) -> None:
+        url = self._rest_url(
+            f"workspaces/{workspace}/coveragestores/{store}/coverages/{coverage}"
+        )
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.put(url, content=xml.encode("utf-8"), headers={"Content-Type": "text/xml"})
+        if r.status_code != 200:
+            raise GeoServerError(
+                f"no se pudo actualizar el coverage (HTTP {r.status_code}): {r.text[:200]}"
+            )
+
+    def list_granules(self, workspace: str, store: str, coverage: str) -> list[dict]:
+        url = self._rest_url(
+            f"workspaces/{workspace}/coveragestores/{store}/coverages/{coverage}/index/granules.json"
+        )
+        with httpx.Client(auth=self._auth, timeout=PUBLISH_TIMEOUT) as c:
+            r = c.get(url)
+        if r.status_code == 404:
+            return []
+        r.raise_for_status()
+        return [f.get("properties") or {} for f in r.json().get("features") or []]
+
+    def advertises_time(self, workspace: str, layer: str) -> bool:
+        params = {"service": "WMS", "version": "1.3.0", "request": "GetCapabilities"}
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.get(self._ows_url(f"{workspace}/{layer}/wms"), params=params)
+        if r.status_code != 200:
+            return False
+        return re.search(r'<Dimension[^>]*name="time"', r.text) is not None
+
+
+PUBLISH_TIMEOUT = 300.0
+
+
+def _mosaic_failure(response: httpx.Response) -> str:
+    body = re.sub(r"(?is)<(style|title)[^>]*>.*?</\1>", " ", response.text or "")
+    body = re.sub(r"<[^>]+>", " ", body)
+    body = " ".join(body.split())[:200]
+    return f"GeoServer rechazo el mosaico (HTTP {response.status_code}) {body}".strip()

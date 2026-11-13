@@ -306,7 +306,9 @@ async def subir_archivo(
     current_user: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
 ):
-    bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db, "create")
+    bucket = acervo_file_service.resolve_bucket_escribible(
+        bucket_id, current_user, db, "create", carpeta=folder
+    )
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = file.filename.split(".")[-1] if "." in file.filename else ""
@@ -400,7 +402,9 @@ async def chunked_upload_init(
 ):
     from app.services.acervo_chunked import CHUNK_SIZE, create_session
 
-    bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db, "create")
+    bucket = acervo_file_service.resolve_bucket_escribible(
+        bucket_id, current_user, db, "create", carpeta=folder
+    )
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = original_name.split(".")[-1] if "." in original_name else ""
@@ -506,7 +510,9 @@ async def chunked_upload_complete(
         raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
 
     bucket_id = session['bucket_id']
-    bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db, "create")
+    bucket = acervo_file_service.resolve_bucket_escribible(
+        bucket_id, current_user, db, "create", carpeta=session.get('folder')
+    )
     client = AcervoClient._cache.get(f"{session['bucket_name']}:{session['access_key_ref']}")
     if not client:
         client = AcervoClient.for_bucket(bucket)

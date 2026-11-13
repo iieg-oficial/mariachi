@@ -25,3 +25,11 @@ export const workspaceLabel = (ws) => {
     if (ws === RASTER_SCOPE) return `${RASTER_ROOT}/`;
     return ws ? `workspaces/${ws}/` : 'styles/';
 };
+export const scopeFolderPath = (ws, currentPath) => {
+    if (ws === null || ws === undefined) return '';
+    const clean = (currentPath || '').replace(/^\/+|\/+$/g, '');
+    let root = 'styles';
+    if (ws === RASTER_SCOPE) root = RASTER_ROOT;
+    else if (ws) root = `workspaces/${ws}`;
+    return clean ? `${root}/${clean}` : root;
+};

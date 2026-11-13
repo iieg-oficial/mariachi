@@ -7,6 +7,7 @@ import { message } from '@shared/services/message';
 const { Text } = Typography;
 
 const BUCKET_SLUGS = ['mapalab', 'iieg'];
+const START_PATHS = { mapalab: 'instituciones/' };
 
 const InstitucionLogoCell = ({ institucion, onSave }) => {
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -85,6 +86,7 @@ const InstitucionLogoCell = ({ institucion, onSave }) => {
                 onClose={() => setPickerOpen(false)}
                 onSelect={handleSelect}
                 bucketSlugs={BUCKET_SLUGS}
+                startPaths={START_PATHS}
                 title={`Logo de ${institucion.nombre}`}
                 uploadAccept="image/*"
             />

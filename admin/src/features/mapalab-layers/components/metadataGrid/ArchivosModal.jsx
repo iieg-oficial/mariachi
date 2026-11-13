@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Empty, Input, Modal, Space, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
-import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/acervo';
+import { BucketFilePicker, BucketFileUploader, puedeSubirEn, useAccessibleBuckets } from '@features/acervo';
 import { carpetaPorExtension, nombreLegible } from '@features/mapalab-layers/utils/archivosDeMetadato';
 
 const { Text } = Typography;
@@ -63,7 +63,7 @@ export default function ArchivosModal({ open, archivos, onCancel, onApply }) {
                         type="dashed"
                         icon={<UploadOutlined />}
                         onClick={() => setUploaderOpen(true)}
-                        disabled={!buckets[0]?.id}
+                        disabled={!puedeSubirEn(buckets[0], 'metadata/')}
                         style={{ flex: 1 }}
                     >
                         Subir archivo nuevo

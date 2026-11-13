@@ -47,6 +47,7 @@ from app.schemas.user import (
 from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.actividad_service import registrar_actividad
+from app.services.incidentes import registrar_sesion_cerrada
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/autenticacion", tags=["autenticación"])
@@ -546,24 +547,28 @@ async def refrescar_csrf(current_user: Usuario = Depends(get_current_user)):
     dependencies=[Depends(rate_limit_ip(max_requests=30, window_seconds=60, scope='refresh'))],
 )
 async def refrescar_sesion(
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
     refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
 ):
     if not refresh_cookie:
         _clear_session_cookies(response)
+        registrar_sesion_cerrada(motivo="sin_cookie", usuario=None, request=request)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sesión expirada")
 
     try:
         new_raw, username, sid = refresh_token.rotate(refresh_cookie)
     except refresh_token.RefreshError as exc:
         _clear_session_cookies(response)
+        registrar_sesion_cerrada(motivo=exc.motivo, usuario=exc.usuario, request=request)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
     usuario = db.query(Usuario).filter(Usuario.username == username).first()
     if usuario is None:
         refresh_token.revoke(new_raw)
         _clear_session_cookies(response)
+        registrar_sesion_cerrada(motivo="sin_usuario", usuario=username, request=request)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No se pudo validar las credenciales",

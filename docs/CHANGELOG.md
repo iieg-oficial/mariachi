@@ -9,6 +9,85 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.168.0] - 2026-11-13
+
+### Agregado
+
+- **Cambios en vivo.** `GET /cambios/stream` (SSE) avisa de cada escritura exitosa del panel (`recurso`, `ruta`, `autor`) sin datos; cada pantalla vuelve a pedir lo suyo por el GET de siempre. Viaja por Redis pub/sub (`mariachi:cambios`), así que llega a todos los workers. Cada evento lleva los permisos que exigió la petición y solo se entrega a quien los tiene.
+- **Capas MapaLab al día sin recargar.** El árbol se refresca cuando otra persona crea, mueve o guarda; la capa abierta se recarga sola si no la has tocado, y si la estás editando aparece «Fulano guardó cambios · Recargar».
+- **Quién escribe en qué campo.** En el editor de capas, los avatares de quien está en la capa y un anillo de su color con «Nombre escribiendo» sobre el campo que tiene enfocado. Salir de la capa o cerrar la pestaña lo quita al instante (`DELETE /borradores/layer/{id}/presencia`).
+
+### Cambiado
+
+- `usePresencia` se actualiza por el stream en cuanto alguien entra o sale; el sondeo cada 20 s queda solo como respaldo. Aplica a capas, eventos, home y pipelines.
+
+## [2.167.0] - 2026-11-13
+
+### Agregado
+
+- **Alta de varios nodos a la vez en «Nuevo nodo».** Capas y grupos eligen varias capas de GeoServer y se crea un nodo por capa, con nombre y geometría propuestos; temas, categorías y etiquetas suman filas con «Agregar otro». Va por `/layers/lote`: todos o ninguno, con el error en su fila. Las propiedades de un grupo siguen de una en una.
+- «Cambiar ubicación» abre un árbol colapsable con buscador, debajo de las cards de tipo.
+
+### Cambiado
+
+- El buscador del árbol de capas es un input fijo a la izquierda del **+**, que pasa a círculo relleno; sin línea bajo las pestañas.
+- Móvil: el **+** sube junto a historial y configuración, el buscador ocupa su propia fila, la descripción pasa a tooltip junto al título y el segmentado mide lo mismo que los botones.
+- Móvil: el modal «Nuevo nodo» ocupa la pantalla completa y los switches van en una columna.
+
+## [2.166.0] - 2026-11-13
+
+### Agregado
+
+- **Carpetas de módulo en el Acervo.** Quien edita MapaLab (`mariachi.mapalab.update`) sube a `mapalab/metadata/`, `svg/temas/`, `eventos/`, `instituciones/` y `home/` sin pertenecer al proyecto ni tener permisos del Acervo; con `mariachi.mapalab.view` lee los buckets `mapalab` e `iieg` desde los selectores. Solo alta: mover, renombrar y borrar siguen pidiendo los permisos del Acervo y rol editor. La lista vive en `CARPETAS_DE_MODULO` (`core/bucket_policies.py`).
+- `GET /acervo-buckets` devuelve `acciones` y `carpetas_escribibles` por bucket; el explorador y el selector solo muestran subir, mover, editar y borrar donde se puede.
+- Permiso `mariachi.portal.publish` y rol atómico «Portal - publicacion»: publicar páginas y menú y revisar sus borradores. «Portal - edicion» queda en borradores.
+
+### Cambiado
+
+- **El panel decide por permisos, no por el rol `tetlamamakani`.** Crear, reordenar y archivar nodos, publicar sin revisión, estadísticas y propagación en capas piden `mariachi.mapalab.manage`; SLD, `mapalab.manage` o `geoserver.manage`; registrar workspaces, `geoserver.manage`; portal, `portal.publish`; borrar envíos y formularios con respuestas de SIEEJ, `sieej_formularios.delete`. Los usuarios que entran por minerva nacen `externo`, así que ningún permiso desbloqueaba esos botones.
+- Las lecturas de GeoServer que usa el editor de capas (workspaces, campos, conteo, geometría, muestras, estilos, paletas, leyendas) aceptan `mariachi.geoserver.view` o `mariachi.mapalab.view`; Recursos y Tipografías se leen con `geoserver.view`. Antes todo pedía `geoserver.manage`.
+- Los borradores piden el permiso de su tipo: guardar, `mapalab.update` o `portal.update`; aprobar, rechazar y descartar, `mapalab.manage` (capas), `portal.publish` (páginas y menú) o `mapalab.update` (eventos e inicio). Antes todo el router pedía `mapalab.view` y la revisión `mapalab.manage`, también para el portal. `/borradores/pendientes` solo trae lo que cada quien puede aprobar.
+- Escribir páginas y menú del portal pide `mariachi.portal.publish`.
+- El grid de configuración de capas escribe con `mariachi.mapalab.manage`, como `PUT /layers/{id}`; con `update` se ve de solo lectura. El de cámaras lee con `frames.view` y escribe con `frames.manage` en vez de `sistema.manage`.
+- Estilos en lote publica con `mapalab.manage` o `geoserver.manage`.
+
+## [2.165.0] - 2026-11-13
+
+### Agregado
+
+- **Huachicol › Incidentes.** Cada 429 queda en el stream `mariachi:incidentes` de Redis (tope 5 000) con usuario o huella de IP, scope, método y plantilla de ruta; la pantalla los agrupa por ventana (15 min a 24 h) con su serie por minuto y el conteo contra el umbral del check `abuso`. Sin query strings, cuerpos ni IP en claro: la huella es HMAC con `SECRET_KEY`.
+- Cada grupo se despliega con su serie por minuto, tope, contador máximo, rechazos por minuto, lapso y qué suele ser según el método; abajo, la tabla de todos los topes configurados. Con eso se distingue una lectura (120/min) de una escritura (60/min) sin ir a los logs del nginx.
+- **Sesiones cerradas en Incidentes.** Cuando `/autenticacion/refrescar` responde 401 (lo que saca al usuario al login) queda un incidente `sesion` con el usuario y el motivo: `reutilizado` (refresh token ya rotado, se revoca la familia), `expirado`, `sin_cookie`, `sin_usuario` o `error`; también en el log como `action=sesion.cerrada`. Antes solo se veía un 401 sin dueño en el nginx.
+- Permiso `mariachi.incidentes.view` y rol atómico «Incidentes - consulta»; el endpoint `GET /incidentes` responde `no-store`, tiene rate limit propio y deja `action=incidentes.view` en el log.
+
+### Cambiado
+
+- Los limitadores sin scope (`grid`, `symbols`, `layer_metadata`, `layers`, `eventos`, `bulk_ingest`) tienen bucket propio: compartían uno con topes distintos y el de 20 se comía con escrituras de los de 60 y 120.
+- El log del 429 dice scope, método y ruta, y la IP sale como huella HMAC, igual que en los honeypots de reportes e infobox.
+- Las subidas a Recursos GeoServer (`POST /files` y la apertura y cierre de las subidas por partes) tienen su propio tope, `geoserver_upload`, de 240 por minuto; renombrar, mover y borrar siguen en `geoserver_write` a 60.
+
+### Corregido
+
+- Una petición rechazada ya no cuenta en la ventana: un cliente que reintentaba se quedaba bloqueado mientras siguiera reintentando.
+- Subir muchos archivos chicos a Recursos GeoServer ya no tira el resto de la cola: `POST /geoserver/files` espera `Retry-After` ante un 429 igual que los chunks. Antes, pasados 60 por minuto, cada archivo restante fallaba al instante y alimentaba el bloqueo.
+
+## [2.164.0] - 2026-11-13
+
+### Agregado
+
+- **Publicar mosaicos temporales desde Recursos GeoServer.** En una carpeta con `.tif` y sin store aparece «Publicar como mosaico»: se elige workspace y patrón de fecha (`yyyy-MM-dd`, `yyyyMMdd`, `yyyy-MM`, `yyyy_MM`, `yyyyMM`, `yyyy`), se ve la fecha leída de cada archivo y mariachi escribe `indexer.properties` y `timeregex.properties`, crea el ImageMosaic, activa `TIME` (LIST, ISO8601, MAXIMUM) y verifica granulos y GetCapabilities. Si GeoServer falla, borra el store y el índice a medias. Ya no hace falta `curl` desde la VM de sextante.
+- **Estado del mosaico** en la carpeta: TIME activo o no, periodos, rango de fechas, archivos sin cosechar, granulos sin archivo y si la GetCapabilities anuncia la dimensión.
+- **Cosechar nuevos**: agrega al índice solo los `.tif` que faltan, sin reconstruirlo. **Activar TIME** para los mosaicos publicados sin dimensión.
+- `GEOSERVER_DATA_DIR` (opcional, `/opt/geoserver/data_dir` por defecto): GeoServer solo acepta rutas absolutas al crear o cosechar un mosaico; el store se deja con la ruta relativa para que siga siendo administrable.
+
+### Corregido
+
+- **«Reindexar mosaico» no aparecía en la pestaña Rásters**: la ruta se armaba como `workspaces/__rasters__/…` en vez de `geoserver-raster/…`.
+
+### Cambiado
+
+- Documentación → mapalab → «Rásters con TIME» describe el flujo desde la UI. El formato de fecha va en `timeregex.properties` (`regex=…,format=…`); el `TimeFormat` de `indexer.properties` no lo lee el extractor.
+
 ## [2.163.1] - 2026-11-13
 
 ### Corregido

@@ -22,7 +22,7 @@ from app.services.grids import get_spec
 
 router = APIRouter(prefix='/grid', tags=['grid'])
 
-_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='grid_write')
 
 _SESSION_FACTORIES = {
     'mariachi': contextmanager(get_db),
@@ -43,6 +43,14 @@ async def _authorize(spec: GridSpec, current_user: Usuario, db: Session) -> None
     if not has_permission(current_user, spec.permission):
         raise HTTPException(
             status_code=403, detail=f"Requiere permiso: {spec.permission}"
+        )
+
+
+async def _authorize_write(spec: GridSpec, current_user: Usuario, db: Session) -> None:
+    await _authorize(spec, current_user, db)
+    if spec.write_permission and not has_permission(current_user, spec.write_permission):
+        raise HTTPException(
+            status_code=403, detail=f"Requiere permiso: {spec.write_permission}"
         )
 
 
@@ -71,10 +79,14 @@ async def list_rows(
     with _session(spec) as session:
         rows = spec.fetch_rows(session.connection(), workspace=workspace, search=search)
 
+    columnas = spec.columns_meta
+    if spec.write_permission and not has_permission(current_user, spec.write_permission):
+        columnas = [{**c, 'editable': False} for c in columnas]
+
     return {
         'resource': spec.key,
         'row_key_field': spec.row_key_field,
-        'columns': spec.columns_meta,
+        'columns': columnas,
         'rows': rows,
     }
 
@@ -88,7 +100,7 @@ async def patch_cells(
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     spec = _resolve_spec(resource)
-    await _authorize(spec, current_user, db)
+    await _authorize_write(spec, current_user, db)
 
     if not payload.changes:
         return {'applied': 0, 'rows_touched': 0, 'conflicts': [], 'rejected': []}

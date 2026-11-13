@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import has_permission
-from app.core.bucket_policies import get_hidden_prefixes
+from app.core.bucket_policies import CARPETAS_DE_MODULO, get_hidden_prefixes
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
@@ -210,7 +210,10 @@ def _membership(bucket: AcervoBucket, current_user: Usuario, db: Session) -> Use
     )
 
 
-def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) -> AcervoBucket:
+ACCIONES_ACERVO: tuple[AccionAcervo, ...] = ("create", "update", "delete")
+
+
+def _bucket_activo(bucket_id: int, db: Session) -> AcervoBucket:
     bucket = (
         db.query(AcervoBucket)
         .filter(AcervoBucket.id == bucket_id, AcervoBucket.is_active.is_(True))
@@ -218,17 +221,67 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     )
     if bucket is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bucket no encontrado")
+    return bucket
+
+
+def lectura_por_modulo(bucket: AcervoBucket, current_user: Usuario) -> bool:
+    return any(
+        c.acervo_bucket == bucket.acervo_bucket and has_permission(current_user, c.lectura)
+        for c in CARPETAS_DE_MODULO
+    )
+
+
+def carpetas_escribibles(bucket: AcervoBucket, current_user: Usuario) -> list[str]:
+    if bucket.protegido:
+        return []
+    return sorted({
+        prefijo
+        for c in CARPETAS_DE_MODULO
+        if c.acervo_bucket == bucket.acervo_bucket
+        and c.escritura
+        and has_permission(current_user, c.escritura)
+        for prefijo in c.prefijos
+    })
+
+
+def dentro_de_carpetas(carpeta: str, prefijos: list[str]) -> bool:
+    segmentos = [s for s in (carpeta or "").strip().split("/") if s]
+    if not segmentos or any(s in (".", "..") for s in segmentos):
+        return False
+    ruta = "/".join(segmentos) + "/"
+    return any(ruta.startswith(p) for p in prefijos)
+
+
+def acciones_en_bucket(bucket: AcervoBucket, current_user: Usuario, db: Session) -> list[str]:
+    if bucket.protegido:
+        return []
+    if has_permission(current_user, "mariachi.acervo.manage"):
+        return list(ACCIONES_ACERVO)
+    membership = _membership(bucket, current_user, db)
+    if membership is None or membership.project_role != "editor":
+        return []
+    return [a for a in ACCIONES_ACERVO if has_permission(current_user, f"mariachi.acervo.{a}")]
+
+
+def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) -> AcervoBucket:
+    bucket = _bucket_activo(bucket_id, db)
 
     if has_permission(current_user, "mariachi.acervo.manage"):
         return bucket
 
-    if _membership(bucket, current_user, db) is None:
+    if _membership(bucket, current_user, db) is None and not lectura_por_modulo(
+        bucket, current_user
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin acceso a este bucket")
     return bucket
 
 
 def resolve_bucket_escribible(
-    bucket_id: int, current_user: Usuario, db: Session, accion: AccionAcervo
+    bucket_id: int,
+    current_user: Usuario,
+    db: Session,
+    accion: AccionAcervo,
+    carpeta: str | None = None,
 ) -> AcervoBucket:
     """Como `resolve_bucket_or_403`, pero exige el permiso de la accion, rol editor
     y rechaza los buckets protegidos.
@@ -238,6 +291,10 @@ def resolve_bucket_escribible(
     `envio_archivo` y en `envio.datos`), asi que borrarlo o renombrarlo desde
     el explorador deja registros apuntando a objetos inexistentes.
     """
+    if accion == "create" and carpeta is not None:
+        bucket = _bucket_activo(bucket_id, db)
+        if dentro_de_carpetas(carpeta, carpetas_escribibles(bucket, current_user)):
+            return bucket
     permiso = f"mariachi.acervo.{accion}"
     es_admin = has_permission(current_user, "mariachi.acervo.manage")
     if not es_admin and not has_permission(current_user, permiso):
@@ -274,11 +331,16 @@ def buckets_accesibles(
     if not (include_inactive and is_admin):
         query = query.filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))
     if not is_admin:
-        query = query.join(
-            UserProject,
-            (UserProject.project_id == Project.id)
-            & (UserProject.user_id == current_user.id),
+        proyectos = db.query(UserProject.project_id).filter(
+            UserProject.user_id == current_user.id
         )
+        condiciones = [Project.id.in_(proyectos)]
+        por_modulo = sorted({
+            c.acervo_bucket for c in CARPETAS_DE_MODULO if has_permission(current_user, c.lectura)
+        })
+        if por_modulo:
+            condiciones.append(AcervoBucket.acervo_bucket.in_(por_modulo))
+        query = query.filter(or_(*condiciones))
     return query.order_by(AcervoBucket.acervo_bucket).all()
 
 

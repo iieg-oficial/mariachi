@@ -17,20 +17,26 @@ const COLIBRI_WIDGET_URL = '/colibri/widget/colibri-widget.v1.js';
 
 const { Content } = Layout;
 const { Text } = Typography;
+const REVISORES = [
+    'mariachi.mapalab.manage',
+    'mariachi.mapalab.update',
+    'mariachi.portal.publish',
+    'mariachi.geoserver.manage',
+];
 
 export default function InicioPage() {
-    const { user } = useAuth();
+    const { user, can } = useAuth();
     const [misBorradores, setMisBorradores] = useState([]);
     const [pendientes, setPendientes] = useState([]);
     const [plataformas, setPlataformas] = useState([]);
     const [colibriConfig, setColibriConfig] = useState(null);
     const [loadingPlataformas, setLoadingPlataformas] = useState(true);
-    const isAdmin = user?.role === 'tetlamamakani';
+    const puedeRevisar = REVISORES.some(can);
 
     useEffect(() => {
         let cancelled = false;
         const tasks = [getMisBorradores()];
-        if (isAdmin) tasks.push(getBorradoresPendientes());
+        if (puedeRevisar) tasks.push(getBorradoresPendientes());
 
         Promise.all(tasks)
             .then(([mios, pend]) => {
@@ -41,7 +47,7 @@ export default function InicioPage() {
             .catch(() => {});
 
         return () => { cancelled = true; };
-    }, [isAdmin]);
+    }, [puedeRevisar]);
 
     useEffect(() => {
         let cancelled = false;
@@ -104,7 +110,7 @@ export default function InicioPage() {
                     />
                 )}
 
-                {isAdmin && pendientes.length > 0 && (
+                {puedeRevisar && pendientes.length > 0 && (
                     <Card size="small">
                         <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
                             <Space>

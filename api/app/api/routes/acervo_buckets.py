@@ -26,7 +26,13 @@ async def list_accessible_buckets(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return acervo_file_service.buckets_accesibles(db, current_user, include_inactive)
+    buckets = acervo_file_service.buckets_accesibles(db, current_user, include_inactive)
+    for bucket in buckets:
+        bucket.acciones = acervo_file_service.acciones_en_bucket(bucket, current_user, db)
+        bucket.carpetas_escribibles = acervo_file_service.carpetas_escribibles(
+            bucket, current_user
+        )
+    return buckets
 
 
 @router.post("", response_model=AcervoBucketResponse, status_code=status.HTTP_201_CREATED)
