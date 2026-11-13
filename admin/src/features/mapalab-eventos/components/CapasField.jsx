@@ -57,8 +57,8 @@ const TABLE_COMPONENTS = { body: { row: CapasSortableRow } };
 
 export default function CapasField({ value = [], onChange, disabled }) {
     const { rawTree, loading } = useLayerTreeAdmin();
-    const { user } = useAuth();
-    const isAdmin = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const isAdmin = can('mariachi.geoserver.manage');
     const [modalOpen, setModalOpen] = useState(false);
     const [addingToCategoria, setAddingToCategoria] = useState(null);
     const [editingLayerId, setEditingLayerId] = useState(null);

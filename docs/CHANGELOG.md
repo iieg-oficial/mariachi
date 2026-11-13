@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.166.0] - 2026-11-13
+
+### Agregado
+
+- **Carpetas de módulo en el Acervo.** Quien edita MapaLab (`mariachi.mapalab.update`) sube a `mapalab/metadata/`, `svg/temas/`, `eventos/`, `instituciones/` y `home/` sin pertenecer al proyecto ni tener permisos del Acervo; con `mariachi.mapalab.view` lee los buckets `mapalab` e `iieg` desde los selectores. Solo alta: mover, renombrar y borrar siguen pidiendo los permisos del Acervo y rol editor. La lista vive en `CARPETAS_DE_MODULO` (`core/bucket_policies.py`).
+- `GET /acervo-buckets` devuelve `acciones` y `carpetas_escribibles` por bucket; el explorador y el selector solo muestran subir, mover, editar y borrar donde se puede.
+- Permiso `mariachi.portal.publish` y rol atómico «Portal - publicacion»: publicar páginas y menú y revisar sus borradores. «Portal - edicion» queda en borradores.
+
+### Cambiado
+
+- **El panel decide por permisos, no por el rol `tetlamamakani`.** Crear, reordenar y archivar nodos, publicar sin revisión, estadísticas y propagación en capas piden `mariachi.mapalab.manage`; SLD, `mapalab.manage` o `geoserver.manage`; registrar workspaces, `geoserver.manage`; portal, `portal.publish`; borrar envíos y formularios con respuestas de SIEEJ, `sieej_formularios.delete`. Los usuarios que entran por minerva nacen `externo`, así que ningún permiso desbloqueaba esos botones.
+- Las lecturas de GeoServer que usa el editor de capas (workspaces, campos, conteo, geometría, muestras, estilos, paletas, leyendas) aceptan `mariachi.geoserver.view` o `mariachi.mapalab.view`; Recursos y Tipografías se leen con `geoserver.view`. Antes todo pedía `geoserver.manage`.
+- Los borradores piden el permiso de su tipo: guardar, `mapalab.update` o `portal.update`; aprobar, rechazar y descartar, `mapalab.manage` (capas), `portal.publish` (páginas y menú) o `mapalab.update` (eventos e inicio). Antes todo el router pedía `mapalab.view` y la revisión `mapalab.manage`, también para el portal. `/borradores/pendientes` solo trae lo que cada quien puede aprobar.
+- Escribir páginas y menú del portal pide `mariachi.portal.publish`.
+- El grid de configuración de capas escribe con `mariachi.mapalab.manage`, como `PUT /layers/{id}`; con `update` se ve de solo lectura. El de cámaras lee con `frames.view` y escribe con `frames.manage` en vez de `sistema.manage`.
+- Estilos en lote publica con `mapalab.manage` o `geoserver.manage`.
+
 ## [2.165.0] - 2026-11-13
 
 ### Agregado

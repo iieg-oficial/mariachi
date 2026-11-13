@@ -61,23 +61,25 @@ export default function GeoserverFileCard({
                     gap: 4,
                 }}
             >
-                <Checkbox
-                    checked={selected}
-                    aria-label={`Seleccionar ${basename(file.name)}`}
-                    onChange={() => onToggleSelect?.({ ...file, isDir: false })}
-                    style={{
-                        position: 'absolute',
-                        top: 4,
-                        left: 4,
-                        zIndex: 2,
-                        opacity: showCheckbox ? 1 : 0,
-                        pointerEvents: showCheckbox ? 'auto' : 'none',
-                        transition: 'opacity 0.15s',
-                    }}
-                />
+                {onToggleSelect && (
+                    <Checkbox
+                        checked={selected}
+                        aria-label={`Seleccionar ${basename(file.name)}`}
+                        onChange={() => onToggleSelect?.({ ...file, isDir: false })}
+                        style={{
+                            position: 'absolute',
+                            top: 4,
+                            left: 4,
+                            zIndex: 2,
+                            opacity: showCheckbox ? 1 : 0,
+                            pointerEvents: showCheckbox ? 'auto' : 'none',
+                            transition: 'opacity 0.15s',
+                        }}
+                    />
+                )}
                 <CardCornerAction
                     corner="topRight"
-                    visible={showActions}
+                    visible={showActions && Boolean(onDelete)}
                     title="Eliminar archivo"
                     icon={<DeleteOutlined />}
                     danger
@@ -91,7 +93,7 @@ export default function GeoserverFileCard({
                 {!fromSearch && (
                     <CardCornerAction
                         corner="bottomLeft"
-                        visible={showActions}
+                        visible={showActions && Boolean(onRename)}
                         title={isEditableText(file) ? 'Editar archivo' : 'Renombrar archivo'}
                         icon={<EditOutlined />}
                         onClick={() => onRename?.({ ...file, isDir: false })}

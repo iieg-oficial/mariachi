@@ -8,6 +8,7 @@ import {
     listGeoserverWorkspaces,
 } from '@features/sextante/api/geoserverFilesService';
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
+import { useAuth } from '@shared/contexts/useAuth';
 import GeoserverFilesContent from '@features/sextante/components/GeoserverFilesContent';
 import GeoserverFilesModals from '@features/sextante/components/GeoserverFilesModals';
 import GeoserverPathBreadcrumb from '@features/sextante/components/GeoserverPathBreadcrumb';
@@ -55,6 +56,8 @@ export default function GeoserverFilesPage() {
     const [data, setData] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const { can } = useAuth();
+    const puedeGestionar = can('mariachi.geoserver.manage');
     const [uploadOpen, setUploadOpen] = useState(false);
     const [deletingName, setDeletingName] = useState(null);
     const { isMobile } = useIsMobile();
@@ -202,14 +205,16 @@ export default function GeoserverFilesPage() {
                         search={search.search}
                         onSearchChange={search.setSearch}
                     />
-                    <GeoserverFilesToolbar
-                        uploadDisabled={workspace === null || isSearchMode}
-                        onUpload={() => setUploadOpen(true)}
-                        selectedCount={selection.count}
-                        onBulkMove={actions.startMove}
-                        onBulkDelete={actions.bulkDelete}
-                        extraActions={<MosaicActions folder={folder} workspaces={workspaces} onDone={reload} />}
-                    />
+                    {puedeGestionar && (
+                        <GeoserverFilesToolbar
+                            uploadDisabled={workspace === null || isSearchMode}
+                            onUpload={() => setUploadOpen(true)}
+                            selectedCount={selection.count}
+                            onBulkMove={actions.startMove}
+                            onBulkDelete={actions.bulkDelete}
+                            extraActions={<MosaicActions folder={folder} workspaces={workspaces} onDone={reload} />}
+                        />
+                    )}
                 </div>
 
                 {currentScope && !isSearchMode && (
@@ -245,13 +250,13 @@ export default function GeoserverFilesPage() {
                         deletingName={deletingName}
                         onOpenFolder={openFolder}
                         onDownloadZip={downloadZip}
-                        onDelete={handleDelete}
+                        onDelete={puedeGestionar ? handleDelete : undefined}
                         onDownloadFile={downloadFile}
                         anySelected={selection.count > 0}
                         isSelected={selection.isSelected}
-                        onToggleSelect={selection.toggle}
-                        onRename={actions.startRename}
-                        onDeleteFolder={actions.startDeleteFolder}
+                        onToggleSelect={puedeGestionar ? selection.toggle : undefined}
+                        onRename={puedeGestionar ? actions.startRename : undefined}
+                        onDeleteFolder={puedeGestionar ? actions.startDeleteFolder : undefined}
                     />
 
                     {!isSearchMode && !loading && (

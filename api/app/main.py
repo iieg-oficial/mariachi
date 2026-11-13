@@ -67,6 +67,7 @@ from app.api.routes import (
     usuarios_acceso,
     vine,
 )
+from app.core.bucket_policies import PERMISOS_DE_LECTURA_POR_MODULO
 from app.core.settings import get_settings
 
 settings = get_settings()
@@ -106,7 +107,9 @@ def create_app() -> FastAPI:
     panel = [Depends(require_panel_access())]
     mapalab_view = [Depends(require_permission("mariachi.mapalab.view"))]
     portal_view = [Depends(require_permission("mariachi.portal.view"))]
-    acervo_view = [Depends(require_permission("mariachi.acervo.view"))]
+    acervo_view = [
+        Depends(require_any_permission("mariachi.acervo.view", *PERMISOS_DE_LECTURA_POR_MODULO))
+    ]
     sistema_manage = [Depends(require_permission("mariachi.sistema.manage"))]
     mel_view = [
         Depends(require_any_permission("mariachi.mel.view", "mariachi.identidad.view"))
@@ -140,7 +143,7 @@ def create_app() -> FastAPI:
     app.include_router(pages.router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(acervo.router, prefix=settings.admin_prefix, dependencies=acervo_view)
-    app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(publicaciones_capas.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(sistema.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
@@ -160,7 +163,9 @@ def create_app() -> FastAPI:
     app.include_router(
         geoserver.router,
         prefix=settings.admin_prefix,
-        dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
+        dependencies=[
+            Depends(require_any_permission("mariachi.geoserver.view", "mariachi.mapalab.view"))
+        ],
     )
     app.include_router(
         mosaics.router,

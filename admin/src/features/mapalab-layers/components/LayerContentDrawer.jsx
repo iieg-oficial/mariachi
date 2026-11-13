@@ -11,8 +11,8 @@ import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAd
 const { Text } = Typography;
 
 export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) {
-    const { user } = useAuth();
-    const puedePublicar = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const puedePublicar = can('mariachi.mapalab.manage');
     const { getLayer, listGeoserverFields } = useLayerTreeAdmin();
     const [layer, setLayer] = useState(null);
     const [availableFields, setAvailableFields] = useState([]);

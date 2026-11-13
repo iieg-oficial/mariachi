@@ -12,7 +12,7 @@ router = APIRouter(
     tags=["menú"],
 )
 
-_require_editor = require_permission("mariachi.portal.update")
+_require_publicacion = require_permission("mariachi.portal.publish")
 
 
 @router.get("", response_model=list[MenuItemResponse])
@@ -42,7 +42,7 @@ async def crear_menu_item(
     item_in: MenuItemCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _editor: Usuario = Depends(_require_publicacion),
 ):
     nuevo_item = MenuItem(**item_in.model_dump())
     db.add(nuevo_item)
@@ -57,7 +57,7 @@ async def actualizar_menu_item(
     item_in: MenuItemUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _editor: Usuario = Depends(_require_publicacion),
 ):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
@@ -79,7 +79,7 @@ async def eliminar_menu_item(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _editor: Usuario = Depends(_require_publicacion),
 ):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:

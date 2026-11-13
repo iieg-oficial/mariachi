@@ -54,7 +54,7 @@ function EnvioRespuestasExpandida({ estado, record }) {
 }
 
 export default function EnviosTable({ formulario }) {
-    const { user } = useAuth();
+    const { can } = useAuth();
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -214,7 +214,7 @@ export default function EnviosTable({ formulario }) {
                             />
                         </Tooltip>
                     )}
-                    {user?.role === 'tetlamamakani' && (
+                    {can('mariachi.sieej_formularios.delete') && (
                         <Tooltip title="Eliminar el envío">
                             <Button
                                 type="link"

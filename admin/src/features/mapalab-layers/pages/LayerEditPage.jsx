@@ -72,8 +72,9 @@ export default function LayerEditPage() {
     const requestedAdvanced = ADVANCED_TABS.includes(requestedTab);
     const initialTab = PRIMARY_TABS.includes(requestedTab) ? requestedTab : 'identidad';
     const { isMobile } = useIsMobile();
-    const { user } = useAuth();
-    const isAdmin = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const isAdmin = can('mariachi.mapalab.manage');
+    const puedeEditar = can('mariachi.mapalab.update');
 
     const {
         treeData,
@@ -341,7 +342,7 @@ export default function LayerEditPage() {
                 const fresh = await getLayer(layerId);
                 if (cancelled) return;
                 publicadoRef.current = fresh;
-                if (!isAdmin) {
+                if (!isAdmin && puedeEditar) {
                     const draft = await getLayerDraft(layerId);
                     if (draft?.data) {
                         camposDelBorradorRef.current = new Set(Object.keys(draft.data));
@@ -360,7 +361,7 @@ export default function LayerEditPage() {
             }
         })();
         return () => { cancelled = true; };
-    }, [layerId, isAdmin, getLayer, getLayerDraft, reloadKey]);
+    }, [layerId, isAdmin, puedeEditar, getLayer, getLayerDraft, reloadKey]);
 
     useEffect(() => {
         if (loading || !layer) return;
@@ -1247,7 +1248,7 @@ export default function LayerEditPage() {
                     <Button
                         danger
                         icon={<DeleteOutlined />}
-                        disabled={deleteDisabled}
+                        disabled={deleteDisabled || !puedeEditar}
                         onClick={openDeleteModal}
                         block
                     >

@@ -19,12 +19,25 @@ def test_portal_view_no_alcanza_para_escribir(client, editora_user):
         headers={"X-CSRF-Token": csrf},
     )
     assert response.status_code == 403
-    assert "mariachi.portal.update" in response.json()["detail"]
+    assert "mariachi.portal.publish" in response.json()["detail"]
 
 
-def test_con_portal_update_se_puede_escribir(client, editora_user):
+def test_portal_update_no_alcanza_para_publicar(client, editora_user):
     csrf = login_as(
         client, editora_user, {"mariachi.portal.view", "mariachi.portal.update"}
+    )
+    response = client.put(
+        f"{ADMIN_PREFIX}/paginas/1",
+        json={"title": "Test", "sections": []},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert response.status_code == 403
+    assert "mariachi.portal.publish" in response.json()["detail"]
+
+
+def test_con_portal_publish_se_puede_escribir(client, editora_user):
+    csrf = login_as(
+        client, editora_user, {"mariachi.portal.view", "mariachi.portal.publish"}
     )
     response = client.put(
         f"{ADMIN_PREFIX}/paginas/1",

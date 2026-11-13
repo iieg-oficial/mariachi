@@ -49,8 +49,8 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
     const [geometria, setGeometria] = useState(null);
     const [filtro, setFiltro] = useState('');
     const [posicion, setPosicion] = useState(POSICION_FINAL);
-    const { user } = useAuth();
-    const isAdmin = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const isAdmin = can('mariachi.geoserver.manage');
     const watchedNodeType = Form.useWatch('node_type', form);
     const watchedLabel = Form.useWatch('label', form);
     const watchedParentId = Form.useWatch('parent_id', form);

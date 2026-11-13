@@ -13,11 +13,11 @@ import SortableTree from '@features/portal-menu/components/menuManager/SortableT
 
 export default function MenuManager() {
     const { isMobile } = useIsMobile();
-    const { user } = useAuth();
+    const { can } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
-    const isAdmin = user?.role === 'tetlamamakani';
+    const isAdmin = can('mariachi.portal.publish');
     const reviewMode = isAdmin && searchParams.get('review') === 'true';
     const borradorId = searchParams.get('borrador');
 
@@ -26,7 +26,7 @@ export default function MenuManager() {
         borradorEstado, comentarioRechazo, reviewAuthor,
         updateItem, updateItemsOrder, discardChanges,
         getChangesSummary, publishChanges, openPreview, rechazarRevision
-    } = useMenuDraft(user, { reviewMode, borradorId });
+    } = useMenuDraft({ reviewMode, borradorId });
 
     const { customIcons } = useMenuIcons();
 

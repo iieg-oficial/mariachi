@@ -23,7 +23,7 @@ vi.mock('@features/sextante/api/stylesBatchService', () => ({
 }));
 
 vi.mock('@shared/contexts/useAuth', () => ({
-    useAuth: () => ({ user: { permissions: ['mariachi.geoserver.manage'] } }),
+    useAuth: () => ({ can: (permiso) => permiso === 'mariachi.geoserver.manage' }),
 }));
 
 vi.mock('@shared/services/message', () => ({

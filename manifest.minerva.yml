@@ -29,7 +29,9 @@ permissions:
   - key: mariachi.portal.view
     name: Ver paginas, menu e inicio del portal
   - key: mariachi.portal.update
-    name: Editar paginas, menu e inicio del portal
+    name: Editar paginas y menu del portal como borrador para revision
+  - key: mariachi.portal.publish
+    name: Publicar paginas y menu del portal y aprobar sus borradores
 
   - key: mariachi.sieej_admin.view
     name: Entrar al panel de administracion de SIEEJ
@@ -157,10 +159,16 @@ roles:
     permissions:
       - mariachi.portal.view
   - name: Portal - edicion
-    description: Atomico. Editar paginas, menu e inicio
+    description: Atomico. Editar paginas y menu; los cambios van a revision
     permissions:
       - mariachi.portal.view
       - mariachi.portal.update
+  - name: Portal - publicacion
+    description: Atomico. Publicar paginas y menu y aprobar los borradores de otras personas
+    permissions:
+      - mariachi.portal.view
+      - mariachi.portal.update
+      - mariachi.portal.publish
 
   - name: SIEEJ - consulta
     description: Atomico. Ver formularios y envios desde el panel
@@ -320,6 +328,7 @@ roles:
       - mariachi.mapalab_propuestas.approve
       - mariachi.portal.view
       - mariachi.portal.update
+      - mariachi.portal.publish
       - mariachi.sieej_admin.view
       - mariachi.sieej_formularios.view
       - mariachi.sieej_formularios.create

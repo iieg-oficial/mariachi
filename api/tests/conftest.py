@@ -209,6 +209,7 @@ TODOS_LOS_PERMISOS = frozenset({
     "mariachi.mapalab_propuestas.approve",
     "mariachi.portal.view",
     "mariachi.portal.update",
+    "mariachi.portal.publish",
     "mariachi.sieej_admin.view",
     "mariachi.sieej_formularios.view",
     "mariachi.sieej_formularios.create",

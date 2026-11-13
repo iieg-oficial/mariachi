@@ -3,7 +3,7 @@ import { Alert, Button, Card, Form, Input, Select, Space, Spin, Tooltip, Typogra
 import { PlusOutlined, MinusCircleOutlined, FolderOpenOutlined, LinkOutlined, UploadOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
-import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/acervo';
+import { BucketFilePicker, BucketFileUploader, puedeSubirEn, useAccessibleBuckets } from '@features/acervo';
 import { FRECUENCIA_OPTIONS, TIPO_MAPA_OPTIONS } from '@features/mapalab-layers/constants/metadataCatalogs';
 import EditorSection from '@features/mapalab-layers/components/layersEditor/EditorSection';
 import MetadataPreview from '@features/mapalab-layers/components/layersEditor/MetadataPreview';
@@ -499,7 +499,7 @@ export default function LayerMetadataSection({
                                                 onClick={() => setUploaderOpen(true)}
                                                 icon={<UploadOutlined />}
                                                 style={{ flex: 1 }}
-                                                disabled={!mapalabBucketId}
+                                                disabled={!puedeSubirEn(uploadBuckets[0], 'metadata/')}
                                             >
                                         Subir archivo nuevo
                                             </Button>

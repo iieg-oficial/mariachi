@@ -16,7 +16,7 @@ import { BulkActions, HistoryTab, UnpublishedTab } from '@features/sextante/comp
 
 const { Content } = Layout;
 
-const PUBLISH_PERMISSION = 'mariachi.mapalab.manage';
+const PUBLISH_PERMISSIONS = ['mariachi.mapalab.manage', 'mariachi.geoserver.manage'];
 const PAGE_TIP = 'Sube la tabla de estilos coropléticos, revisa cada fila y guarda un borrador por estilo.';
 const GROUP_STYLE = {
     display: 'inline-flex',
@@ -28,12 +28,12 @@ const GROUP_STYLE = {
 };
 
 export default function StylesBatchPage() {
-    const { user } = useAuth();
+    const { can } = useAuth();
     const { isMobile } = useIsMobile();
     const [view, setView] = useState('nuevo');
     const [wizardKey, setWizardKey] = useState(0);
     const unpublished = useDraftItems(fetchUnpublished);
-    const canPublish = Boolean(user?.permissions?.includes?.(PUBLISH_PERMISSION));
+    const canPublish = PUBLISH_PERMISSIONS.some(can);
     const pending = unpublished.items?.length || 0;
 
     const editInBatch = async (drafts) => {

@@ -28,6 +28,7 @@ import {
     reloadGeoserverFonts,
 } from '@features/sextante/api/geoserverFilesService';
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
+import { useAuth } from '@shared/contexts/useAuth';
 import { useOnUploaded } from '@features/sextante/hooks/useUploadQueue';
 import { FONT_EXT, basename, workspaceLabel } from '@features/sextante/utils/geoserverFiles';
 import PageHeading from '@shared/components/PageHeading';
@@ -43,6 +44,8 @@ export default function FontsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState('');
+    const { can } = useAuth();
+    const puedeGestionar = can('mariachi.geoserver.manage');
     const [uploadOpen, setUploadOpen] = useState(false);
     const [reloading, setReloading] = useState(false);
     const [deletingName, setDeletingName] = useState(null);
@@ -126,18 +129,22 @@ export default function FontsPage() {
                     extra={
                         <Space wrap>
                             <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading} />
-                            <Button
-                                icon={<SyncOutlined />}
-                                onClick={handleReload}
-                                loading={reloading}
-                                type={data.pendingReload ? 'primary' : 'default'}
-                                ghost={data.pendingReload}
-                            >
-                                Recargar en GeoServer
-                            </Button>
-                            <Button type="primary" icon={<PlusOutlined />} onClick={() => setUploadOpen(true)}>
-                                Subir tipografías
-                            </Button>
+                            {puedeGestionar && (
+                                <Button
+                                    icon={<SyncOutlined />}
+                                    onClick={handleReload}
+                                    loading={reloading}
+                                    type={data.pendingReload ? 'primary' : 'default'}
+                                    ghost={data.pendingReload}
+                                >
+                                    Recargar en GeoServer
+                                </Button>
+                            )}
+                            {puedeGestionar && (
+                                <Button type="primary" icon={<PlusOutlined />} onClick={() => setUploadOpen(true)}>
+                                    Subir tipografías
+                                </Button>
+                            )}
                         </Space>
                     }
                 />
@@ -178,7 +185,7 @@ export default function FontsPage() {
                                     dataSource={files}
                                     renderItem={(file) => (
                                         <List.Item
-                                            actions={[
+                                            actions={puedeGestionar ? [
                                                 <Popconfirm
                                                     key="del"
                                                     title="¿Eliminar esta tipografía?"
@@ -196,7 +203,7 @@ export default function FontsPage() {
                                                         loading={deletingName === file.name}
                                                     />
                                                 </Popconfirm>,
-                                            ]}
+                                            ] : []}
                                         >
                                             <Space size={8} wrap>
                                                 <Text>{file.name}</Text>

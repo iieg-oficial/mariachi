@@ -29,5 +29,7 @@ class AcervoBucketUpdate(CamelCaseInput):
 class AcervoBucketResponse(AcervoBucketBase):
     id: int
     created_at: datetime
+    acciones: list[str] = Field(default_factory=list)
+    carpetas_escribibles: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)

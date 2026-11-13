@@ -6,6 +6,7 @@ import useAcervoFiles from '@features/acervo/hooks/useAcervoFiles';
 import BucketFileUploader from '@features/acervo/components/BucketFileUploader';
 import BucketFileGrid from '@features/acervo/components/BucketFileGrid';
 import BucketFileList from '@features/acervo/components/BucketFileList';
+import { carpetasEscribibles, puedeSubir, puedeSubirEn } from '@features/acervo/utils/escritura';
 import InfiniteScrollSentinel from '@shared/components/InfiniteScrollSentinel';
 import { message } from '@shared/services/message';
 
@@ -95,6 +96,8 @@ export default function BucketFilePicker({
         [accessibleBuckets, activeBucketId],
     );
     const showBucketSelector = !bucketId && accessibleBuckets.length > 1;
+    const subirAqui = puedeSubirEn(activeBucket, currentPath);
+    const prefijosDeSubida = subirAqui ? [currentPath || ''] : carpetasEscribibles(activeBucket);
 
     const breadcrumbItems = useMemo(() => {
         const linkStyle = { cursor: 'pointer', background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit' };
@@ -188,7 +191,7 @@ export default function BucketFilePicker({
                             allowClear
                             style={{ flex: '1 1 200px', minWidth: 160 }}
                         />
-                        {allowUpload && (
+                        {allowUpload && puedeSubir(activeBucket) && (
                             <Button
                                 icon={<CloudUploadOutlined />}
                                 onClick={() => setUploaderOpen(true)}
@@ -241,7 +244,7 @@ export default function BucketFilePicker({
                     onClose={() => setUploaderOpen(false)}
                     onUploaded={handleUploaded}
                     bucketId={activeBucketId}
-                    prefixes={currentPath ? [currentPath] : ['']}
+                    prefixes={prefijosDeSubida}
                     title={activeBucket ? `Subir a ${activeBucket.display_name}` : 'Subir archivo'}
                     accept={uploadAccept}
                     folderFor={uploadFolderFor}

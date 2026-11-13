@@ -25,9 +25,9 @@ const TITULOS = {
 export default function MapalabStatsPage({ app = 'mapalab' }) {
     const textos = TITULOS[app] ?? TITULOS.mapalab;
     const { isMobile } = useIsMobile();
-    const { user } = useAuth();
+    const { can } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
-    const isAdmin = user?.role === 'tetlamamakani';
+    const isAdmin = can('mariachi.mapalab.manage');
 
     const [grain, setGrain] = useState('day');
     const [range, setRange] = useState([dayjs().subtract(29, 'day'), dayjs()]);

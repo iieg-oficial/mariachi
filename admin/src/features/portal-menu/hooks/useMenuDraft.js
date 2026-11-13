@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 
+import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import { message } from '@shared/services/message';
 
 const RESOURCE_TYPE = 'elementos-menu';
 const RESOURCE_ID = 'global';
 
-export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {}) => {
+export const useMenuDraft = ({ reviewMode = false, borradorId = null } = {}) => {
     const navigate = useNavigate();
     const [originalMenuItems, setOriginalMenuItems] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
@@ -20,7 +21,8 @@ export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {
     const [comentarioRechazo, setComentarioRechazo] = useState(null);
     const [reviewAuthor, setReviewAuthor] = useState(null);
 
-    const isAdmin = user?.role === 'tetlamamakani';
+    const { can } = useAuth();
+    const isAdmin = can('mariachi.portal.publish');
 
     const fetchMenuItems = useCallback(async () => {
         try {
