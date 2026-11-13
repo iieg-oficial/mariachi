@@ -4,29 +4,24 @@ const { Title, Paragraph, Text } = Typography;
 
 const PASOS = [
     {
-        paso: '1. Archivos',
-        donde: 'sextante · data dir',
-        que: 'Un directorio por mosaico con los .tif planos y la fecha en el nombre: <capa>_2025-06-01.tif. Va en geoserver-raster/<tema>/<mosaico>/ o bajo su workspace; se sube desde Recursos GeoServer.',
+        paso: '1. Subir',
+        donde: 'Recursos GeoServer · Rásters',
+        que: 'Una carpeta por mosaico con los .tif planos y la fecha al final del nombre: lluvia_2025-06-01.tif. Puede vivir en geoserver-raster/<tema>/ o bajo su workspace.',
     },
     {
-        paso: '2. Configuración',
-        donde: 'sextante · el mismo directorio',
-        que: 'indexer.properties y timeregex.properties junto a los .tif, antes de publicar. El regex captura la fecha del nombre y debe corresponder al TimeFormat. Se editan con el lápiz de Recursos.',
+        paso: '2. Publicar',
+        donde: 'Recursos GeoServer · la carpeta',
+        que: 'Publicar como mosaico: se elige workspace y patrón de fecha, se revisa la fecha leída de cada archivo y mariachi escribe los properties, crea el store, activa TIME y lo verifica.',
     },
     {
-        paso: '3. Publicación',
-        donde: 'sextante · REST',
-        que: 'PUT del directorio como coveragestore imagemosaic, y luego PUT al coverage para habilitar la dimensión TIME con estrategia MAXIMUM.',
-    },
-    {
-        paso: '4. Verificación',
-        donde: 'sextante · REST',
-        que: 'La GetCapabilities del workspace anuncia <Dimension name="time"> en la capa. Si no, revisar que el índice .dbf tenga la columna ingestion.',
-    },
-    {
-        paso: '5. Catálogo',
+        paso: '3. Catálogo',
         donde: 'Mariachi · Editor de capas',
-        que: 'Activar timeEnabled y poner Tipo de geometría en Ráster. Las fechas ya no se capturan: el visor las toma de GeoServer.',
+        que: 'Dar de alta la capa y encender timeEnabled. El tipo de geometría se resuelve solo y las fechas salen de GeoServer.',
+    },
+    {
+        paso: 'Meses nuevos',
+        donde: 'Recursos GeoServer · la carpeta',
+        que: 'Subir el .tif y usar Cosechar nuevos: agrega solo lo que falta en el índice, sin reconstruirlo.',
     },
 ];
 
@@ -38,36 +33,28 @@ const PASO_COLUMNS = [
 
 const GOTCHAS = [
     {
+        gotcha: 'Todos los .tif con el mismo patrón',
+        detalle: 'GeoServer aborta el mosaico entero si un nombre no casa. La vista previa marca los que no tienen fecha y no deja publicar.',
+    },
+    {
+        gotcha: 'La fecha se lee sin la extensión',
+        detalle: 'El regex se ancla al final del nombre sin .tif. El formato va en la misma línea: regex=…,format=yyyy_MM. TimeFormat en indexer.properties no lo usa el extractor.',
+    },
+    {
         gotcha: 'El índice se construye una sola vez',
-        detalle: 'Editar el regex de un mosaico ya publicado no cambia nada: las fechas viejas siguen en el .dbf. Hay que borrar el índice y recargar.',
-    },
-    {
-        gotcha: 'Reemplazar los .tif deja la capa en negro',
-        detalle: 'Si los archivos nuevos conservan los nombres, el índice viejo sigue apuntando a rutas válidas y GeoServer mosaicea contra el ColorModel de sample_image.dat. No hay error en el log y el reset no lo arregla: hay que borrar el índice.',
-    },
-    {
-        gotcha: 'Properties subidos después de publicar',
-        detalle: 'El índice se arma sin la columna ingestion: la capa pinta pero no anuncia TIME. Se corrige con Reindexar mosaico en Recursos.',
+        detalle: 'Cambiar el patrón o reemplazar .tif con los mismos nombres no cambia nada (o deja la capa en negro): Reindexar mosaico.',
     },
     {
         gotcha: 'Reindexar no activa la dimensión',
-        detalle: 'Son dos pasos. Tras reindexar hay que habilitar TIME en el coverage, con la misma configuración que ndvi.',
+        detalle: 'Si la franja del mosaico dice TIME sin activar, usar Activar TIME.',
     },
     {
         gotcha: 'La periodicidad capturada gana',
         detalle: 'Si rasterPeriodicity tiene valor, el visor lo usa en vez de GeoServer y no ve los meses nuevos. Dejarlo vacío.',
     },
     {
-        gotcha: 'El tipo de geometría no se llena solo',
-        detalle: 'Una capa nueva queda sin ícono de ráster en capas activas hasta capturarlo en el editor.',
-    },
-    {
         gotcha: 'temperatura/mosaic_time no es plantilla',
-        detalle: 'Su regex no casa con sus propios archivos y sirve por inercia del índice viejo. Copiar precipitacion/mosaic_time.',
-    },
-    {
-        gotcha: 'Un solo grupo de dígitos',
-        detalle: 'Si el nombre trae números además de la fecha, el regex tiene que anclarse al final o captura el prefijo.',
+        detalle: 'Su regex no casa con sus propios archivos y sirve por inercia del índice viejo.',
     },
 ];
 
@@ -77,11 +64,11 @@ const GOTCHA_COLUMNS = [
 ];
 
 const PIEZAS = [
-    { pieza: 'geoserver-raster/<tema>/<mosaico>/', repo: 'sextante', nota: 'Los .tif y sus dos properties. El data dir es per-host: no se versiona.' },
+    { pieza: 'geoserver-raster/<tema>/<mosaico>/', repo: 'sextante', nota: 'Los .tif, sus dos properties y el índice. El data dir es per-host: no se versiona.' },
+    { pieza: 'Recursos GeoServer', repo: 'mariachi', nota: 'Subir, publicar, activar TIME, cosechar y reindexar.' },
+    { pieza: 'Editor de capas', repo: 'mariachi', nota: 'Switch timeEnabled.' },
     { pieza: 'mapalab.layers.raster_periodicity', repo: 'dataengine', nota: 'Opcional. Vacío, el visor usa la dimensión TIME de GeoServer.' },
-    { pieza: 'Editor de capas', repo: 'mariachi', nota: 'Switch timeEnabled y tipo de geometría.' },
-    { pieza: 'Recursos GeoServer', repo: 'mariachi', nota: 'Subir los .tif, editar los properties y reindexar el mosaico.' },
-    { pieza: 'rasterPeriodicityFallback', repo: 'mapalab', nota: 'Completa las fechas desde la GetCapabilities al cargar el árbol. Requiere mapalab 1.172.1 o posterior.' },
+    { pieza: 'rasterPeriodicityFallback', repo: 'mapalab', nota: 'Completa las fechas desde la GetCapabilities al cargar el árbol.' },
     { pieza: 'useWMSFilterUpdater', repo: 'mapalab', nota: 'Manda el valor como TIME= en el GetMap, en vez de CQL_FILTER.' },
 ];
 
@@ -93,10 +80,9 @@ const PIEZA_COLUMNS = [
 
 const INDEXER = `TimeAttribute=ingestion
 Schema=*the_geom:Polygon,location:String,ingestion:java.util.Date
-PropertyCollectors=TimestampFileNameExtractorSPI[timeregex](ingestion)
-TimeFormat=yyyy-MM-dd`;
+PropertyCollectors=TimestampFileNameExtractorSPI[timeregex](ingestion)`;
 
-const TIMEREGEX = 'regex=.*([0-9]{4}-[0-9]{2}-[0-9]{2}).*';
+const TIMEREGEX = 'regex=.*([0-9]{4}_[0-9]{2})$,format=yyyy_MM';
 
 const PRE_STYLE = {
     margin: 0,
@@ -119,7 +105,7 @@ export default function RasterTimeTopic() {
                 </Paragraph>
             </div>
 
-            <Card size="small" title="Los cinco pasos">
+            <Card size="small" title="Los pasos">
                 <Table
                     dataSource={PASOS}
                     columns={PASO_COLUMNS}
@@ -129,7 +115,7 @@ export default function RasterTimeTopic() {
                 />
             </Card>
 
-            <Card size="small" title="Los dos properties">
+            <Card size="small" title="Los dos properties que escribe mariachi">
                 <Paragraph style={{ marginBottom: 4 }}><Text code>indexer.properties</Text></Paragraph>
                 <pre style={PRE_STYLE}>{INDEXER}</pre>
                 <Paragraph style={{ marginTop: 16, marginBottom: 4 }}><Text code>timeregex.properties</Text></Paragraph>

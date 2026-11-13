@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.164.0] - 2026-11-13
+
+### Agregado
+
+- **Publicar mosaicos temporales desde Recursos GeoServer.** En una carpeta con `.tif` y sin store aparece «Publicar como mosaico»: se elige workspace y patrón de fecha (`yyyy-MM-dd`, `yyyyMMdd`, `yyyy-MM`, `yyyy_MM`, `yyyyMM`, `yyyy`), se ve la fecha leída de cada archivo y mariachi escribe `indexer.properties` y `timeregex.properties`, crea el ImageMosaic, activa `TIME` (LIST, ISO8601, MAXIMUM) y verifica granulos y GetCapabilities. Si GeoServer falla, borra el store y el índice a medias. Ya no hace falta `curl` desde la VM de sextante.
+- **Estado del mosaico** en la carpeta: TIME activo o no, periodos, rango de fechas, archivos sin cosechar, granulos sin archivo y si la GetCapabilities anuncia la dimensión.
+- **Cosechar nuevos**: agrega al índice solo los `.tif` que faltan, sin reconstruirlo. **Activar TIME** para los mosaicos publicados sin dimensión.
+- `GEOSERVER_DATA_DIR` (opcional, `/opt/geoserver/data_dir` por defecto): GeoServer solo acepta rutas absolutas al crear o cosechar un mosaico; el store se deja con la ruta relativa para que siga siendo administrable.
+
+### Corregido
+
+- **«Reindexar mosaico» no aparecía en la pestaña Rásters**: la ruta se armaba como `workspaces/__rasters__/…` en vez de `geoserver-raster/…`.
+
+### Cambiado
+
+- Documentación → mapalab → «Rásters con TIME» describe el flujo desde la UI. El formato de fecha va en `timeregex.properties` (`regex=…,format=…`); el `TimeFormat` de `indexer.properties` no lo lee el extractor.
+
 ## [2.163.1] - 2026-11-13
 
 ### Corregido

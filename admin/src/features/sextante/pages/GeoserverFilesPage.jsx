@@ -14,9 +14,11 @@ import GeoserverPathBreadcrumb from '@features/sextante/components/GeoserverPath
 import GeoserverFilesToolbar from '@features/sextante/components/GeoserverFilesToolbar';
 import GeoserverSearchBar from '@features/sextante/components/GeoserverSearchBar';
 import MosaicActions from '@features/sextante/components/MosaicActions';
+import MosaicStatusLine from '@features/sextante/components/MosaicStatusLine';
 import ResetCachesButton from '@features/sextante/components/ResetCachesButton';
 import useGeoserverFileActions from '@features/sextante/hooks/useGeoserverFileActions';
 import useGeoserverSearch from '@features/sextante/hooks/useGeoserverSearch';
+import useMosaicFolder from '@features/sextante/hooks/useMosaicFolder';
 import useGeoserverSelection from '@features/sextante/hooks/useGeoserverSelection';
 import { useOnUploaded } from '@features/sextante/hooks/useUploadQueue';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
@@ -59,6 +61,7 @@ export default function GeoserverFilesPage() {
     const selection = useGeoserverSelection();
     const search = useGeoserverSearch();
     const { token } = useToken();
+    const folder = useMosaicFolder({ workspace, currentPath, files: data.files });
 
     const refreshWorkspaces = useCallback(async () => {
         try {
@@ -205,7 +208,7 @@ export default function GeoserverFilesPage() {
                         selectedCount={selection.count}
                         onBulkMove={actions.startMove}
                         onBulkDelete={actions.bulkDelete}
-                        extraActions={<MosaicActions workspace={workspace} currentPath={currentPath} onDone={reload} />}
+                        extraActions={<MosaicActions folder={folder} workspaces={workspaces} onDone={reload} />}
                     />
                 </div>
 
@@ -219,6 +222,8 @@ export default function GeoserverFilesPage() {
                         />
                     </div>
                 )}
+
+                {!isSearchMode && <MosaicStatusLine status={folder.status} />}
 
                 {error && (
                     <Text type="danger" style={{ display: 'block', marginBottom: 12 }}>
