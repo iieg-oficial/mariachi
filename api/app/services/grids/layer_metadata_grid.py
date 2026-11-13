@@ -77,6 +77,33 @@ def _column_field(
     )
 
 
+def _archivos(value: Any) -> list[dict] | None:
+    if isinstance(value, dict):
+        value = [value]
+    if not isinstance(value, list):
+        return None
+    archivos = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        nombre = str(item.get('nombre') or '').strip()
+        enlace = str(item.get('enlace') or '').strip()
+        if nombre or enlace:
+            archivos.append({'nombre': nombre, 'enlace': enlace})
+    return archivos or None
+
+
+def _archivos_field() -> GridField:
+    return GridField(
+        key='metadato',
+        table='metadata',
+        columns=('metadato',),
+        read=lambda row: _archivos(row.get('metadato')),
+        write=lambda row, value: row.__setitem__('metadato', value or []),
+        coerce=_archivos,
+    )
+
+
 def _numeralia_value(value: Any) -> Any:
     number, _symbol = parse_number_with_symbol(value)
     return number
@@ -96,6 +123,7 @@ def _build_fields() -> dict[str, GridField]:
         _column_field('link_final_capa', 'link_final_capa', max_length=500),
         _column_field('downloadable', 'downloadable', coerce=parse_bool),
         _column_field('pie_numeralia', 'pie_numeralia', max_length=500, table='stats'),
+        _archivos_field(),
     ]
 
     for json_key, column, item_key, max_length in (
@@ -169,6 +197,7 @@ COLUMNS_META: list[dict] = [
     {'key': 'fuentes_enlace', 'title': 'Fuente (enlace)', 'type': 'link', 'group': 'Fuentes', 'width': 240},
     {'key': 'metodologia_texto', 'title': 'Metodología', 'type': 'textarea', 'group': 'Metodología', 'width': 320},
     {'key': 'metodologia_archivo_enlace', 'title': 'Metodología (enlace)', 'type': 'link', 'group': 'Metodología', 'width': 240},
+    {'key': 'metadato', 'title': 'Archivos', 'type': 'files', 'group': 'Archivos', 'width': 170},
     {'key': 'tipo_mapa', 'title': 'Tipo de mapa', 'type': 'select', 'optionsKey': 'tipoMapa', 'group': 'Cartografía', 'width': 140},
     {'key': 'tipo_mapa_enlace', 'title': 'Tipo de mapa (enlace)', 'type': 'link', 'group': 'Cartografía', 'width': 240},
     {'key': 'texto_leyenda', 'title': 'Texto de leyenda', 'type': 'textarea', 'group': 'Cartografía', 'width': 320},

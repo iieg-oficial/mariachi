@@ -19,6 +19,7 @@ const sameValue = (a, b) => {
     if (typeof left === 'boolean' || typeof right === 'boolean') {
         return Boolean(left) === Boolean(right);
     }
+    if (typeof left === 'object' || typeof right === 'object') return JSON.stringify(left) === JSON.stringify(right);
     return String(left) === String(right);
 };
 

@@ -13,8 +13,9 @@ const SHORTCUTS = [
     { keys: 'Supr / Backspace', action: 'Vaciar las celdas seleccionadas' },
     { keys: 'Arrastrar la esquina', action: 'Rellenar hacia abajo con el valor de la selección' },
     { keys: 'Ctrl + Z', action: 'Deshacer el último cambio' },
-    { keys: 'Ctrl + F', action: 'Abrir el buscador de la tabla y escribir directo' },
+    { keys: 'Ctrl + F', action: 'Ir al buscador de la píldora y escribir directo' },
     { keys: 'Ctrl + Shift + F', action: 'Abrir el filtro por workspace' },
+    { keys: 'Ctrl + G', action: 'Ir a una columna: la tabla se desplaza y la selecciona en la fila activa' },
 ];
 
 const COLUMNS = [

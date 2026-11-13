@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -42,6 +43,10 @@ def _cell(value: Any) -> Any:
         return ''
     if isinstance(value, bool):
         return 'Sí' if value else 'No'
+    if isinstance(value, list) and all(isinstance(v, dict) and 'enlace' in v for v in value):
+        return '; '.join(f"{v.get('nombre') or v['enlace']} ({v['enlace']})" for v in value)
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, ensure_ascii=False)
     return value
 
 

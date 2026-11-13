@@ -27,6 +27,7 @@ export default function BucketFilePicker({
     title = 'Seleccionar archivo',
     allowUpload = true,
     uploadAccept,
+    uploadFolderFor,
 }) {
     const { buckets: accessibleBuckets, loading: bucketsLoading } = useAccessibleBuckets(bucketSlugs);
 
@@ -238,6 +239,7 @@ export default function BucketFilePicker({
                     prefixes={currentPath ? [currentPath] : ['']}
                     title={activeBucket ? `Subir a ${activeBucket.display_name}` : 'Subir archivo'}
                     accept={uploadAccept}
+                    folderFor={uploadFolderFor}
                 />
             )}
         </Modal>

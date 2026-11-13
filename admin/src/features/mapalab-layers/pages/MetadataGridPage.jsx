@@ -8,6 +8,9 @@ import { LAYER_CONFIG_CATALOGS } from '@features/mapalab-layers/constants/layerC
 import FechaPorContratoAction from '@features/mapalab-layers/components/FechaPorContratoAction';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useFullscreenHeader } from '@app/fullscreenHeader';
+import { archivosColumn } from '@features/mapalab-layers/components/metadataGrid/archivosColumn';
+
+const METADATA_COLUMN_TYPES = { files: archivosColumn };
 
 const { Text } = Typography;
 
@@ -124,6 +127,7 @@ export default function MetadataGridPage() {
                     resource="layer-metadata"
                     rowKeyField="layer_key"
                     catalogs={METADATA_GRID_CATALOGS}
+                    columnTypes={METADATA_COLUMN_TYPES}
                     filterField="workspace"
                     filterLabel="Workspace"
                     filterAllLabel="Todos los workspaces"

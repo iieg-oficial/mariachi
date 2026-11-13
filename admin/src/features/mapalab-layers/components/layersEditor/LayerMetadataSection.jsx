@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Button, Card, Form, Input, Select, Space, Spin, Tooltip, Typography, Row, Col } from 'antd';
-import { PlusOutlined, MinusCircleOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, MinusCircleOutlined, FolderOpenOutlined, LinkOutlined, UploadOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/acervo';
@@ -10,6 +10,8 @@ import MetadataPreview from '@features/mapalab-layers/components/layersEditor/Me
 import FechaUltimaField from '@features/mapalab-layers/components/layersEditor/FechaUltimaField';
 import SugerenciaPeriodicidad from '@features/mapalab-layers/components/layersEditor/SugerenciaPeriodicidad';
 import { diffPayload } from '@features/mapalab-layers/utils/layerDiff';
+import { carpetaPorExtension, nombreLegible } from '@features/mapalab-layers/utils/archivosDeMetadato';
+import { enlaceAlVisor } from '@features/mapalab-layers/utils/enlaceAlVisor';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -37,6 +39,7 @@ const META_DEFAULT = { texto: '', archivo_enlace: '' };
 
 export default function LayerMetadataSection({
     layerKey,
+    layerId,
     derivedFromDescendants = false,
     siblingsSharingCount = 0,
     layerLabel,
@@ -165,6 +168,19 @@ export default function LayerMetadataSection({
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     }, []);
 
+    const usarEnlaceSugerido = () => {
+        form.setFieldValue('link_final_capa', enlaceAlVisor(layerId));
+        alCambiar({ link_final_capa: true });
+    };
+
+    const proponerNombre = (campo, enlace) => {
+        if (form.getFieldValue(['metadato', campo, 'nombre'])?.trim()) return;
+        const propuesto = nombreLegible(enlace);
+        if (!propuesto) return;
+        form.setFieldValue(['metadato', campo, 'nombre'], propuesto);
+        alCambiar({ metadato: true });
+    };
+
     const openPicker = (index) => {
         setPickerFieldIndex(index);
         setPickerOpen(true);
@@ -173,7 +189,8 @@ export default function LayerMetadataSection({
     const onFileSelected = (file) => {
         const current = form.getFieldValue('metadato') || [];
         const next = [...current];
-        next[pickerFieldIndex] = { nombre: file.nombre, enlace: file.enlace };
+        const nombreActual = next[pickerFieldIndex]?.nombre?.trim();
+        next[pickerFieldIndex] = { nombre: nombreActual || nombreLegible(file.nombre), enlace: file.enlace };
         form.setFieldsValue({ metadato: next });
         alCambiar({ metadato: next });
     };
@@ -181,7 +198,7 @@ export default function LayerMetadataSection({
     const onFileUploaded = (file) => {
         const current = form.getFieldValue('metadato') || [];
         form.setFieldsValue({
-            metadato: [...current, { nombre: file.nombre, enlace: file.enlace }],
+            metadato: [...current, { nombre: nombreLegible(file.nombre), enlace: file.enlace }],
         });
         alCambiar({ metadato: true });
         message.success(`"${file.nombre}" agregado a Archivos adjuntos`);
@@ -418,7 +435,20 @@ export default function LayerMetadataSection({
                                 name="link_final_capa"
                                 tooltip="Deep-link público al visor mostrando esta capa activa. Suele incluir lat/lon/zoom + slug. Útil para compartir desde fichas externas."
                             >
-                                <Input placeholder="https://iieg.jalisco.gob.mx/mapalab/mapa?..." />
+                                <Input
+                                    placeholder={enlaceAlVisor(layerId) || 'https://iieg.jalisco.gob.mx/mapalab/mapa?...'}
+                                    suffix={layerId && (
+                                        <Tooltip title="Usar el enlace al visor de esta capa">
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<LinkOutlined />}
+                                                aria-label="Usar el enlace al visor de esta capa"
+                                                onClick={usarEnlaceSugerido}
+                                            />
+                                        </Tooltip>
+                                    )}
+                                />
                             </Form.Item>
                         </EditorSection>
 
@@ -437,7 +467,10 @@ export default function LayerMetadataSection({
                                                     <Input placeholder="Nombre mostrado" />
                                                 </Form.Item>
                                                 <Form.Item name={[name, 'enlace']} style={{ marginBottom: 0, flex: 2 }}>
-                                                    <Input placeholder="/metadata/txt/archivo.txt o URL externa" />
+                                                    <Input
+                                                        placeholder="/metadata/txt/archivo.txt o URL externa"
+                                                        onBlur={(e) => proponerNombre(name, e.target.value)}
+                                                    />
                                                 </Form.Item>
                                                 <Button
                                                     icon={<FolderOpenOutlined />}
@@ -504,6 +537,7 @@ export default function LayerMetadataSection({
                 prefixes={MAPALAB_PREFIXES}
                 title="Elegir archivo"
                 uploadAccept=".txt,.xlsx,.pdf,.csv"
+                uploadFolderFor={carpetaPorExtension}
             />
 
             <BucketFileUploader
@@ -514,6 +548,7 @@ export default function LayerMetadataSection({
                 prefixes={MAPALAB_PREFIXES}
                 title="Subir archivo al bucket mapalab"
                 accept=".txt,.xlsx,.pdf,.csv"
+                folderFor={carpetaPorExtension}
             />
         </Space>
     );

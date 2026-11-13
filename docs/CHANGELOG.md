@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.163.0] - 2026-11-13
+
+### Agregado
+
+- **Archivos en la captura masiva.** La pestaña Metadatos tiene la columna «Archivos»: con Enter o doble clic abre un modal para elegir del bucket, subir, renombrar o quitar archivos. Se copia y pega como lista de enlaces separados por `;`.
+- **Ir a una columna.** Un ícono en el buscador de la píldora (o `Ctrl+G`) lista las columnas; la tabla se desplaza y selecciona la elegida en la fila activa.
+- **Enlace al visor sugerido.** En la ficha de metadatos, «Enlace final a la capa» propone el deeplink al visor de la capa y lo llena con un clic.
+
+### Cambiado
+
+- **El buscador de la captura masiva vive en la píldora** como input compacto que se ensancha al usarlo (`Ctrl+F`); el filtro por workspace pasa de la barra a un ícono dentro del input (`Ctrl+Shift+F`).
+- **Los archivos de metadatos se suben a la carpeta de su extensión** (`metadata/xlsx/`, `metadata/txt/`…), desde la ficha y desde el selector; antes caían en la raíz del bucket.
+- **El nombre del archivo se propone legible** (sin extensión ni guiones bajos) y ya no pisa uno escrito a mano; también se propone al pegar un enlace.
+
+### Corregido
+
+- **Mover en el acervo ofrece todas las carpetas.** Solo listaba las registradas en la tabla de carpetas; ahora suma las que existen en el bucket por sus archivos.
+- **El grid compara listas por contenido**: dos listas distintas de objetos contaban como iguales.
+
 ## [2.162.1] - 2026-11-12
 
 ### Cambiado

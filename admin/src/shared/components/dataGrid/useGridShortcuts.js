@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export default function useGridShortcuts({ active, undo, dirtyCount, setSearchOpen, setFilterOpen }) {
+export default function useGridShortcuts({ active, undo, dirtyCount, focusSearch, setFilterOpen, setColumnOpen }) {
     useEffect(() => {
         if (!active) return undefined;
         const onKeyDown = (event) => {
@@ -17,17 +17,23 @@ export default function useGridShortcuts({ active, undo, dirtyCount, setSearchOp
                 event.preventDefault();
                 event.stopPropagation();
                 if (event.shiftKey) {
-                    setSearchOpen(false);
                     setFilterOpen(true);
                 } else {
                     setFilterOpen(false);
-                    setSearchOpen(true);
+                    focusSearch();
                 }
+                return;
+            }
+
+            if (key === 'g') {
+                event.preventDefault();
+                event.stopPropagation();
+                setColumnOpen(true);
             }
         };
         window.addEventListener('keydown', onKeyDown, true);
         return () => window.removeEventListener('keydown', onKeyDown, true);
-    }, [active, undo, setSearchOpen, setFilterOpen]);
+    }, [active, undo, focusSearch, setFilterOpen, setColumnOpen]);
 
     useEffect(() => {
         if (!dirtyCount) return undefined;

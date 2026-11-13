@@ -7,7 +7,10 @@ import { GRID_ICON_BUTTON_STYLES } from '@shared/components/dataGrid/gridIconBut
 import GridNotices from '@shared/components/dataGrid/GridNotices';
 import GridShortcutsModal from '@shared/components/dataGrid/GridShortcutsModal';
 import GridStatusBar from '@shared/components/dataGrid/GridStatusBar';
-import GridToolbar, { ALL_FILTER_VALUES } from '@shared/components/dataGrid/GridToolbar';
+import GridToolbar from '@shared/components/dataGrid/GridToolbar';
+import GridPillSearch, { GRID_PILL_SEARCH_STYLES } from '@shared/components/dataGrid/GridPillSearch';
+import useGridFilter from '@shared/components/dataGrid/useGridFilter';
+import useGridColumnFocus from '@shared/components/dataGrid/useGridColumnFocus';
 import useGridEditor from '@shared/components/dataGrid/useGridEditor';
 import useGridExport from '@shared/components/dataGrid/useGridExport';
 import useGridLastChanges from '@shared/components/dataGrid/useGridLastChanges';
@@ -22,6 +25,7 @@ export default function GridPanel({
     resource,
     rowKeyField,
     catalogs,
+    columnTypes,
     filterField,
     filterLabel,
     filterAllLabel,
@@ -55,8 +59,10 @@ export default function GridPanel({
     const setSearch = onSearchChange || setSearchLocal;
     const [activeRowKey, setActiveRowKey] = useState(null);
     const [activeColumnId, setActiveColumnId] = useState(null);
-    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchFocusTick, setSearchFocusTick] = useState(0);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [columnOpen, setColumnOpen] = useState(false);
+    const gridRef = useRef(null);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const { exporting, runExport } = useGridExport();
@@ -91,15 +97,9 @@ export default function GridPanel({
         enabled: active && !loading,
     });
 
-    const filterItems = useMemo(() => {
-        if (!filterField) return [];
-        const unique = Array.from(new Set(data.map((row) => row[filterField]).filter(Boolean))).sort();
-        return [
-            { key: ALL_FILTER_VALUES, label: filterAllLabel },
-            { type: 'divider' },
-            ...unique.map((value) => ({ key: value, label: value })),
-        ];
-    }, [data, filterField, filterAllLabel]);
+    const { filterItems, visibleData } = useGridFilter({
+        data, filterField, filterAllLabel, filterValue, search, searchFields,
+    });
 
     const handleExport = useCallback((option) => runExport(resource, option, {
         workspace: filterValue,
@@ -112,12 +112,6 @@ export default function GridPanel({
         onToolbarChange(
             <GridToolbar
                 isDesktop={isDesktop}
-                filterValue={filterValue}
-                onFilterChange={setFilterValue}
-                filterItems={filterItems}
-                filterLabel={filterLabel}
-                filterOpen={filterOpen}
-                onFilterOpenChange={setFilterOpen}
                 onOpenShortcuts={() => setShortcutsOpen(true)}
                 onOpenHistory={() => setHistoryOpen(true)}
                 onExport={handleExport}
@@ -126,22 +120,13 @@ export default function GridPanel({
             />,
         );
     }, [
-        active, onToolbarChange, isDesktop, filterValue, setFilterValue, filterItems, filterLabel,
-        filterOpen, handleExport, exporting, renderToolbarExtra, data, applyPatches, saving,
+        active, onToolbarChange, isDesktop, handleExport, exporting, renderToolbarExtra, data,
+        applyPatches, saving,
     ]);
 
     useEffect(() => {
         if (onDirtyCountChange) onDirtyCountChange(dirtyCount);
     }, [dirtyCount, onDirtyCountChange]);
-
-    const visibleData = useMemo(() => {
-        const term = search.trim().toLowerCase();
-        return data.filter((row) => {
-            if (filterField && filterValue && row[filterField] !== filterValue) return false;
-            if (!term) return true;
-            return searchFields.some((key) => String(row[key] || '').toLowerCase().includes(term));
-        });
-    }, [data, filterField, filterValue, search, searchFields]);
 
     const onGridChange = useCallback(
         (nextRows) => handleGridChange(nextRows, visibleData),
@@ -212,11 +197,16 @@ export default function GridPanel({
         activeColumnTitle, othersEditing, visibleData.length, data, itemsLabel, renderStatusExtra,
     ]);
 
-    useGridShortcuts({ active, undo, dirtyCount, setSearchOpen, setFilterOpen });
+    const { columns: searchColumns, focusColumn } = useGridColumnFocus({
+        gridRef, columnsMeta, rows: visibleData, activeRowKey, rowKeyField,
+    });
+
+    const focusSearch = useCallback(() => setSearchFocusTick((tick) => tick + 1), []);
+    useGridShortcuts({ active, undo, dirtyCount, focusSearch, setFilterOpen, setColumnOpen });
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <style>{GRID_ICON_BUTTON_STYLES}</style>
+            <style>{GRID_ICON_BUTTON_STYLES + GRID_PILL_SEARCH_STYLES}</style>
             <GridNotices
                 recoveredDraft={recoveredDraft}
                 onRestoreDraft={restoreRecoveredDraft}
@@ -230,6 +220,7 @@ export default function GridPanel({
                     <Spin style={{ display: 'block', margin: '48px auto' }} />
                 ) : (
                     <DataGrid
+                        gridRef={gridRef}
                         columnsMeta={columnsMeta}
                         catalogs={catalogs}
                         data={visibleData}
@@ -245,6 +236,7 @@ export default function GridPanel({
                         selection={selection}
                         baseByKey={baseByKey}
                         lastChanges={lastChanges}
+                        columnTypes={columnTypes}
                         height={gridHeight}
                     />
                 )}
@@ -255,11 +247,24 @@ export default function GridPanel({
                         onSave={save}
                         onUndo={undo}
                         canUndo={canUndo}
-                        search={search}
-                        onSearchChange={setSearch}
-                        searchPlaceholder={searchPlaceholder}
-                        searchOpen={searchOpen}
-                        onSearchOpenChange={setSearchOpen}
+                        search={(
+                            <GridPillSearch
+                                value={search}
+                                onChange={setSearch}
+                                placeholder={searchPlaceholder}
+                                focusSignal={searchFocusTick}
+                                filterItems={filterItems}
+                                filterValue={filterValue}
+                                onFilterChange={setFilterValue}
+                                filterLabel={filterLabel || 'Filtro'}
+                                filterOpen={filterOpen}
+                                onFilterOpenChange={setFilterOpen}
+                                columns={searchColumns}
+                                onFocusColumn={focusColumn}
+                                columnOpen={columnOpen}
+                                onColumnOpenChange={setColumnOpen}
+                            />
+                        )}
                     >
                         {renderSelectionActions ? renderSelectionActions({
                             data,
