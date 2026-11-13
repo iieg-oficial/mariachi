@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, get_db, require_permission, verify_csrf
@@ -167,11 +167,21 @@ async def quitar_campos_de_borrador(
 @router.put("/layer/{layer_id}/presencia")
 async def registrar_presencia_capa(
     layer_id: str,
+    campo: str | None = Query(default=None, max_length=64, pattern=r"^[A-Za-z0-9_-]+$"),
     current_user: Usuario = Depends(verify_csrf),
     _view: Usuario = Depends(_require_mapalab_view),
 ):
-    presence.register("capa", layer_id, current_user.username, current_user.name)
+    presence.register("capa", layer_id, current_user.username, current_user.name, campo=campo)
     return {"ok": True}
+
+
+@router.delete("/layer/{layer_id}/presencia", status_code=status.HTTP_204_NO_CONTENT)
+async def salir_de_capa(
+    layer_id: str,
+    current_user: Usuario = Depends(verify_csrf),
+    _view: Usuario = Depends(_require_mapalab_view),
+) -> None:
+    presence.unregister("capa", layer_id, current_user.username)
 
 
 @router.get("/layer/{layer_id}/presencia")

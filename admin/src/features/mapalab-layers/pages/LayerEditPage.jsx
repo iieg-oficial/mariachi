@@ -48,6 +48,7 @@ import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb
 import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput';
 import PublishReviewModal from '@features/mapalab-layers/components/PublishReviewModal';
 import EditandoAhora from '@features/mapalab-layers/components/layersEditor/EditandoAhora';
+import useCambiosDeCapa from '@features/mapalab-layers/hooks/useCambiosDeCapa';
 import UltimaPublicacion from '@features/mapalab-layers/components/layersEditor/UltimaPublicacion';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
 import { useLayerDrafts } from '@features/mapalab-layers/hooks/useLayerDrafts';
@@ -147,6 +148,9 @@ export default function LayerEditPage() {
     const publicadoRef = useRef(null);
     const camposDelBorradorRef = useRef(new Set());
     const [shellHeight, setShellHeight] = useState(null);
+    const recargarCapa = useCallback(() => setReloadKey((k) => k + 1), []);
+    const hayCambiosPropios = useCallback(() => tocadosRef.current.size > 0, []);
+    useCambiosDeCapa({ layerId, recargarArbol: reload, recargarCapa, recargarBorradores: reloadDrafts, hayCambiosPropios });
     const [eventoLayerId, setEventoLayerId] = useState(null);
 
     const [moveOpen, setMoveOpen] = useState(false);

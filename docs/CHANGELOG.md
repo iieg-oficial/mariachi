@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.168.0] - 2026-11-13
+
+### Agregado
+
+- **Cambios en vivo.** `GET /cambios/stream` (SSE) avisa de cada escritura exitosa del panel (`recurso`, `ruta`, `autor`) sin datos; cada pantalla vuelve a pedir lo suyo por el GET de siempre. Viaja por Redis pub/sub (`mariachi:cambios`), así que llega a todos los workers. Cada evento lleva los permisos que exigió la petición y solo se entrega a quien los tiene.
+- **Capas MapaLab al día sin recargar.** El árbol se refresca cuando otra persona crea, mueve o guarda; la capa abierta se recarga sola si no la has tocado, y si la estás editando aparece «Fulano guardó cambios · Recargar».
+- **Quién escribe en qué campo.** En el editor de capas, los avatares de quien está en la capa y un anillo de su color con «Nombre escribiendo» sobre el campo que tiene enfocado. Salir de la capa o cerrar la pestaña lo quita al instante (`DELETE /borradores/layer/{id}/presencia`).
+
+### Cambiado
+
+- `usePresencia` se actualiza por el stream en cuanto alguien entra o sale; el sondeo cada 20 s queda solo como respaldo. Aplica a capas, eventos, home y pipelines.
+
 ## [2.167.0] - 2026-11-13
 
 ### Agregado

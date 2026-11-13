@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import metrics as metrics_module
+from app.api.cambios_middleware import CambiosMiddleware
 from app.api.colibri_cors import ColibriPublicCORSMiddleware
 from app.api.deps import require_any_permission, require_panel_access, require_permission
 from app.api.routes import (
@@ -15,6 +16,7 @@ from app.api.routes import (
     auth,
     borradores,
     bulk_ingest,
+    cambios,
     capas_catalogo,
     colibri_direcciones,
     colibri_routes,
@@ -99,6 +101,7 @@ def create_app() -> FastAPI:
     # Se agrega despues del CORS global para quedar como middleware mas externo:
     # intercepta el preflight de los huespedes embebibles (dominios_permitidos)
     # antes de que el CORS global lo rechace por no estar en la lista fija.
+    app.add_middleware(CambiosMiddleware)
     app.add_middleware(ColibriPublicCORSMiddleware)
 
     app.include_router(auth.router, prefix=settings.admin_prefix)
@@ -144,6 +147,7 @@ def create_app() -> FastAPI:
     app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(acervo.router, prefix=settings.admin_prefix, dependencies=acervo_view)
     app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=panel)
+    app.include_router(cambios.router, prefix=settings.admin_prefix)
     app.include_router(publicaciones_capas.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(sistema.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=mapalab_view)

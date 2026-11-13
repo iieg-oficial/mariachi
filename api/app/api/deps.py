@@ -125,12 +125,24 @@ def session_seconds_left(user: Usuario) -> int:
     return max(0, int(exp - utcnow().timestamp()))
 
 
+PERMISOS_DE_LA_PETICION = "mariachi.permisos"
+
+
+def registrar_permisos(request: Request, permisos: tuple[str, ...]) -> None:
+    grupos = request.scope.setdefault(PERMISOS_DE_LA_PETICION, [])
+    if list(permisos) not in grupos:
+        grupos.append(list(permisos))
+
+
 def has_permission(user: Usuario, permission: str) -> bool:
     return permission in getattr(user, "permissions", set())
 
 
 def require_permission(permission: str):
-    async def checker(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+    async def checker(
+        request: Request, current_user: Usuario = Depends(get_current_user)
+    ) -> Usuario:
+        registrar_permisos(request, (permission,))
         if not has_permission(current_user, permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -165,7 +177,10 @@ PANEL_PERMISSIONS = (
 
 
 def require_any_permission(*permissions: str):
-    async def checker(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+    async def checker(
+        request: Request, current_user: Usuario = Depends(get_current_user)
+    ) -> Usuario:
+        registrar_permisos(request, tuple(permissions))
         if not any(has_permission(current_user, perm) for perm in permissions):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
