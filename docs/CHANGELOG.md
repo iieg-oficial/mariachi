@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.165.0] - 2026-11-13
+
+### Agregado
+
+- **Huachicol › Incidentes.** Cada 429 queda en el stream `mariachi:incidentes` de Redis (tope 5 000) con usuario o huella de IP, scope, método y plantilla de ruta; la pantalla los agrupa por ventana (15 min a 24 h) con su serie por minuto y el conteo contra el umbral del check `abuso`. Sin query strings, cuerpos ni IP en claro: la huella es HMAC con `SECRET_KEY`.
+- Cada grupo se despliega con su serie por minuto, tope, contador máximo, rechazos por minuto, lapso y qué suele ser según el método; abajo, la tabla de todos los topes configurados. Con eso se distingue una lectura (120/min) de una escritura (60/min) sin ir a los logs del nginx.
+- Permiso `mariachi.incidentes.view` y rol atómico «Incidentes - consulta»; el endpoint `GET /incidentes` responde `no-store`, tiene rate limit propio y deja `action=incidentes.view` en el log.
+
+### Cambiado
+
+- Los limitadores sin scope (`grid`, `symbols`, `layer_metadata`, `layers`, `eventos`, `bulk_ingest`) tienen bucket propio: compartían uno con topes distintos y el de 20 se comía con escrituras de los de 60 y 120.
+- El log del 429 dice scope, método y ruta, y la IP sale como huella HMAC, igual que en los honeypots de reportes e infobox.
+- Las subidas a Recursos GeoServer (`POST /files` y la apertura y cierre de las subidas por partes) tienen su propio tope, `geoserver_upload`, de 240 por minuto; renombrar, mover y borrar siguen en `geoserver_write` a 60.
+
+### Corregido
+
+- Una petición rechazada ya no cuenta en la ventana: un cliente que reintentaba se quedaba bloqueado mientras siguiera reintentando.
+- Subir muchos archivos chicos a Recursos GeoServer ya no tira el resto de la cola: `POST /geoserver/files` espera `Retry-After` ante un 429 igual que los chunks. Antes, pasados 60 por minuto, cada archivo restante fallaba al instante y alimentaba el bloqueo.
+
 ## [2.164.0] - 2026-11-13
 
 ### Agregado

@@ -22,7 +22,7 @@ from app.services.grids import get_spec
 
 router = APIRouter(prefix='/grid', tags=['grid'])
 
-_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='grid_write')
 
 _SESSION_FACTORIES = {
     'mariachi': contextmanager(get_db),

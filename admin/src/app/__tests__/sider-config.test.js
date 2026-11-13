@@ -54,6 +54,7 @@ describe('buildSiderItems', () => {
             '/huachicol/servidores',
             '/huachicol/telemetria',
             '/huachicol/actividad',
+            '/huachicol/incidentes',
         ]);
 
         const keys = items.map((i) => i.key);

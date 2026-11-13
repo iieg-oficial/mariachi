@@ -1,4 +1,5 @@
 import {
+    AlertOutlined,
     BarChartOutlined,
     CloudServerOutlined,
     ClusterOutlined,
@@ -155,23 +156,27 @@ export const MAIN_ITEMS = [
         key: 'group-huachicol',
         label: 'Huachicol',
         icon: <ClusterOutlined />,
-        permissions: ['mariachi.actividad.view'],
+        permissions: ['mariachi.actividad.view', 'mariachi.incidentes.view'],
         children: [
             {
                 key: '/huachicol/observabilidad', path: '/huachicol/observabilidad',
-                label: 'Observabilidad', icon: <DashboardOutlined />,
+                label: 'Observabilidad', icon: <DashboardOutlined />, permissions: ['mariachi.actividad.view'],
             },
             {
                 key: '/huachicol/servidores', path: '/huachicol/servidores',
-                label: 'Servidores', icon: <CloudServerOutlined />,
+                label: 'Servidores', icon: <CloudServerOutlined />, permissions: ['mariachi.actividad.view'],
             },
             {
                 key: '/huachicol/telemetria', path: '/huachicol/telemetria',
-                label: 'Telemetría', icon: <BarChartOutlined />,
+                label: 'Telemetría', icon: <BarChartOutlined />, permissions: ['mariachi.actividad.view'],
             },
             {
                 key: '/huachicol/actividad', path: '/huachicol/actividad',
-                label: 'Actividad', icon: <HistoryOutlined />,
+                label: 'Actividad', icon: <HistoryOutlined />, permissions: ['mariachi.actividad.view'],
+            },
+            {
+                key: '/huachicol/incidentes', path: '/huachicol/incidentes',
+                label: 'Incidentes', icon: <AlertOutlined />, permissions: ['mariachi.incidentes.view'],
             },
         ],
     },

@@ -41,7 +41,7 @@ router = APIRouter(
 
 _require_editor = require_permission("mariachi.mapalab.update")
 _require_manage = require_permission("mariachi.mapalab.manage")
-_write_rate_limit = rate_limit(max_requests=20, window_seconds=60.0)
+_write_rate_limit = rate_limit(max_requests=20, window_seconds=60.0, scope='bulk_ingest')
 
 _PLAN_TTL_HOURS = 24
 _MAX_FILE_BYTES = 10 * 1024 * 1024

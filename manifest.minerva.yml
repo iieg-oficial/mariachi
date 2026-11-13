@@ -106,6 +106,8 @@ permissions:
 
   - key: mariachi.actividad.view
     name: Ver la bitacora de actividad
+  - key: mariachi.incidentes.view
+    name: Ver incidentes de rate limit con usuario, scope y ruta
 
   - key: mariachi.usuarios.view
     name: Ver usuarios
@@ -281,6 +283,11 @@ roles:
     permissions:
       - mariachi.actividad.view
 
+  - name: Incidentes - consulta
+    description: Atomico. Ver quien golpea el rate limit, en que scope y ruta
+    permissions:
+      - mariachi.incidentes.view
+
   - name: Usuarios - administracion
     description: Atomico. Alta, baja y asignacion de accesos
     permissions:
@@ -336,6 +343,7 @@ roles:
       - mariachi.geoserver.view
       - mariachi.geoserver.manage
       - mariachi.actividad.view
+      - mariachi.incidentes.view
       - mariachi.usuarios.view
       - mariachi.usuarios.create
       - mariachi.usuarios.update

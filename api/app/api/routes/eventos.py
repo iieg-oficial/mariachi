@@ -34,7 +34,7 @@ router = APIRouter(
 )
 
 _require_editor = require_permission("mariachi.mapalab.update")
-_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='eventos_write')
 
 
 def _can_edit_mapalab(user: Usuario) -> bool:

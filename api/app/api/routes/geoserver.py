@@ -53,6 +53,7 @@ router = APIRouter(
 _require_geoserver_manage = require_permission("mariachi.geoserver.manage")
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='geoserver_read')
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='geoserver_write')
+_upload_rate_limit = rate_limit(max_requests=240, window_seconds=60.0, scope='geoserver_upload')
 _download_rate_limit = rate_limit(max_requests=3000, window_seconds=60.0, scope='geoserver_download')
 _chunk_rate_limit = rate_limit(max_requests=600, window_seconds=60.0, scope='geoserver_chunk')
 
@@ -801,7 +802,7 @@ async def upload_geoserver_file(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
-    _rl: Usuario = Depends(_write_rate_limit),
+    _rl: Usuario = Depends(_upload_rate_limit),
 ):
     clean_ws = _validate_workspace(workspace)
     target_name = name or file.filename or ''
@@ -843,7 +844,7 @@ async def init_chunked_geoserver_upload(
     total_chunks: int = Form(...),
     current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
-    _rl: Usuario = Depends(_write_rate_limit),
+    _rl: Usuario = Depends(_upload_rate_limit),
 ):
     from app.services.geoserver_chunked import CHUNK_SIZE, create_session
 
@@ -898,7 +899,7 @@ async def complete_chunked_geoserver_upload(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
-    _rl: Usuario = Depends(_write_rate_limit),
+    _rl: Usuario = Depends(_upload_rate_limit),
 ):
     from app.services.geoserver_chunked import (
         delete_session,

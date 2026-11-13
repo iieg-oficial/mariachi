@@ -25,7 +25,21 @@ export const browseGeoserverFiles = async (path = '', workspace = '') => {
 export const GEOSERVER_CHUNK_SIZE = 25 * 1024 * 1024;
 export const GEOSERVER_CHUNK_THRESHOLD = 5 * 1024 * 1024;
 
-export const uploadGeoserverFile = async ({ file, name, workspace, onProgress }) => {
+const MAX_REINTENTOS_429 = 5;
+
+const conReintento429 = async (fn) => {
+    for (let intentos = 1; ; intentos += 1) {
+        try {
+            return await fn();
+        } catch (err) {
+            if (err?.response?.status !== 429 || intentos > MAX_REINTENTOS_429) throw err;
+            const retryAfter = Number(err.response.headers?.['retry-after']) || 5;
+            await new Promise((resolve) => setTimeout(resolve, (retryAfter + 1) * 1000));
+        }
+    }
+};
+
+export const uploadGeoserverFile = ({ file, name, workspace, onProgress }) => conReintento429(async () => {
     const form = new FormData();
     form.append('file', file);
     if (name) form.append('name', name);
@@ -38,7 +52,7 @@ export const uploadGeoserverFile = async ({ file, name, workspace, onProgress })
         },
     });
     return res.data;
-};
+});
 
 export const initChunkedGeoserverUpload = async ({ name, workspace, contentType, totalSize, totalChunks }) => {
     const form = new FormData();
@@ -86,21 +100,7 @@ export const uploadGeoserverFileSmart = async ({ file, name, workspace, onProgre
     for (let i = 0; i < totalChunks; i += 1) {
         const start = i * GEOSERVER_CHUNK_SIZE;
         const blob = file.slice(start, Math.min(start + GEOSERVER_CHUNK_SIZE, file.size));
-        let attempts = 0;
-        for (;;) {
-            try {
-                await uploadGeoserverChunk(sessionId, i + 1, blob);
-                break;
-            } catch (err) {
-                attempts += 1;
-                if (err?.response?.status === 429 && attempts <= 5) {
-                    const retryAfter = Number(err.response.headers?.['retry-after']) || 5;
-                    await new Promise((resolve) => setTimeout(resolve, (retryAfter + 1) * 1000));
-                    continue;
-                }
-                throw err;
-            }
-        }
+        await conReintento429(() => uploadGeoserverChunk(sessionId, i + 1, blob));
         onProgress?.(Math.round(((i + 1) / totalChunks) * 100));
     }
     return completeChunkedGeoserverUpload(sessionId, file.size);

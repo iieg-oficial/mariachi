@@ -28,7 +28,7 @@ router = APIRouter(
 mapalab_router = APIRouter(tags=["mapalab-symbols público"])
 
 _require_admin = require_permission("mariachi.mapalab.manage")
-_write_rate_limit = rate_limit(max_requests=120, window_seconds=60.0)
+_write_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='symbols_write')
 
 
 @router.get("/symbol-categories", response_model=list[SymbolCategoryResponse])

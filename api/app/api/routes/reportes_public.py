@@ -38,6 +38,7 @@ from app.services.colibri_keys import (
     match_origin,
     verify_api_key,
 )
+from app.services.incidentes import huella_ip
 from app.services.pii_scrubber import (
     scrub_respuestas,
     scrub_source_context,
@@ -188,7 +189,7 @@ async def crear_reporte(
     db: Session = Depends(get_db),
 ):
     if website:
-        logger.info("reportes.honeypot ip=%s", request.client.host if request.client else 'unknown')
+        logger.info("reportes.honeypot ip=%s", huella_ip(request.client.host if request.client else None))
         return ReporteCreateResponse(id=0)
 
     try:

@@ -28,6 +28,7 @@ from app.api.routes import (
     geoserver,
     grid,
     home,
+    incidentes,
     instituto_espacios,
     intranet,
     intranet_directorio_lectura,
@@ -128,6 +129,11 @@ def create_app() -> FastAPI:
         actividad.router,
         prefix=settings.admin_prefix,
         dependencies=[Depends(require_permission("mariachi.actividad.view"))],
+    )
+    app.include_router(
+        incidentes.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.incidentes.view"))],
     )
     app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=sistema_manage)
     app.include_router(acervo_buckets.router, prefix=settings.admin_prefix, dependencies=acervo_view)

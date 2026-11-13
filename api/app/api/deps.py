@@ -155,6 +155,7 @@ PANEL_PERMISSIONS = (
     "mariachi.identidad.view",
     "mariachi.geoserver.view",
     "mariachi.actividad.view",
+    "mariachi.incidentes.view",
     "mariachi.usuarios.view",
     "mariachi.sistema.manage",
     "mariachi.vine.view",

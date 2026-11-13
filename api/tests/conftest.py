@@ -232,6 +232,7 @@ TODOS_LOS_PERMISOS = frozenset({
     "mariachi.geoserver.view",
     "mariachi.geoserver.manage",
     "mariachi.actividad.view",
+    "mariachi.incidentes.view",
     "mariachi.usuarios.view",
     "mariachi.usuarios.create",
     "mariachi.usuarios.update",
