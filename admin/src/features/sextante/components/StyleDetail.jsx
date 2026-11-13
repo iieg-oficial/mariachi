@@ -8,6 +8,7 @@ import DraftEditor from '@features/sextante/components/stylesBatch/DraftEditor';
 import IconAction from '@features/sextante/components/stylesBatch/IconAction';
 import XmlEditor from '@features/sextante/components/stylesBatch/XmlEditor';
 import { message } from '@shared/services/message';
+import StyleMapPreview from '@features/sextante/components/StyleMapPreview';
 
 const { Text } = Typography;
 
@@ -125,7 +126,10 @@ export default function StyleDetail({ alias, styleName, canEdit }) {
                     {detail.sharedBy?.length > 1 && (
                         <Text type="warning">Lo comparten {detail.sharedBy.length} capas: editarlo las cambia a todas.</Text>
                     )}
-                    <LegendPreview workspace={detail.workspace} styleName={detail.styleName} layerName={detail.sharedBy?.[0]} />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, alignItems: 'start' }}>
+                        <StyleMapPreview alias={alias} layers={detail.sharedBy} xml={detail.rawXml} />
+                        <LegendPreview workspace={detail.workspace} styleName={detail.styleName} layerName={detail.sharedBy?.[0]} />
+                    </div>
                 </Space>
                 <Space orientation="vertical" size={8} style={{ width: '100%', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
