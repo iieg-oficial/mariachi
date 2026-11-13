@@ -1,4 +1,5 @@
 import io
+import logging
 import re
 import unicodedata
 import zipfile
@@ -6,6 +7,7 @@ from collections.abc import Iterator
 from typing import Callable, Literal
 
 from fastapi import HTTPException, status
+from minio.error import S3Error
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -32,6 +34,8 @@ LISTADO_MAX_PAGE_SIZE = 1000
 AccionAcervo = Literal["create", "update", "delete"]
 
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+
+logger = logging.getLogger(__name__)
 
 
 def split_ext(filename: str) -> tuple[str, str]:
@@ -518,6 +522,45 @@ def serialize_folder(folder: AcervoFolder) -> dict:
         "path": folder.path,
         "parent": folder.parent,
     }
+
+
+def carpetas_de_objetos(nombres: list[str], ocultos: list[str]) -> set[str]:
+    carpetas: set[str] = set()
+    for nombre in nombres:
+        if any(nombre.startswith(p) for p in ocultos):
+            continue
+        acumulado = ""
+        for parte in nombre.split("/")[:-1]:
+            if not parte:
+                continue
+            acumulado = f"{acumulado}{parte}/"
+            carpetas.add(acumulado)
+    return carpetas
+
+
+def folders_for_bucket(db: Session, bucket: AcervoBucket) -> list[dict]:
+    registradas = {
+        f.path: serialize_folder(f)
+        for f in db.query(AcervoFolder).filter(AcervoFolder.bucket_id == bucket.id).all()
+    }
+    try:
+        nombres = [o["name"] for o in AcervoClient.for_bucket(bucket).list_objects(prefix="", recursive=True)]
+    except S3Error:
+        logger.warning("acervo.carpetas: no se pudo listar el bucket %s", bucket.acervo_bucket, exc_info=True)
+        nombres = []
+    for path in carpetas_de_objetos(nombres, get_hidden_prefixes(bucket.acervo_bucket)):
+        if path in registradas:
+            continue
+        nombre = path.rstrip("/").rsplit("/", 1)[-1]
+        padre = path.rstrip("/").rsplit("/", 1)[0] + "/" if "/" in path.rstrip("/") else None
+        registradas[path] = {
+            "id": f"bucket:{bucket.id}:{path}",
+            "bucket_id": bucket.id,
+            "name": nombre,
+            "path": path,
+            "parent": padre,
+        }
+    return sorted(registradas.values(), key=lambda f: f["path"])
 
 
 def ensure_folder_exists(db: Session, bucket_id: int, clean_folder: str) -> str:

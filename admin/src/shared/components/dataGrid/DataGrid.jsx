@@ -76,6 +76,7 @@ const RowGutter = ({ rowData, rowIndex, columnData }) => {
 };
 
 export default function DataGrid({
+    gridRef,
     columnsMeta,
     catalogs,
     data,
@@ -91,6 +92,7 @@ export default function DataGrid({
     selection,
     baseByKey,
     lastChanges,
+    columnTypes,
     height = 560,
 }) {
     const conflictKeys = useMemo(
@@ -115,9 +117,10 @@ export default function DataGrid({
         columnContext,
         baseByKey,
         lastChanges,
+        columnTypes,
     }), [
         columnsMeta, catalogs, draft, rowKeyField, conflictKeys, isCellDisabled, columnContext,
-        baseByKey, lastChanges,
+        baseByKey, lastChanges, columnTypes,
     ]);
 
     const gutterColumn = useMemo(() => ({
@@ -145,6 +148,7 @@ export default function DataGrid({
         <>
             <style>{GRID_STYLES}</style>
             <DynamicDataSheetGrid
+                ref={gridRef}
                 className="mariachi-grid"
                 value={rows}
                 columns={columns}

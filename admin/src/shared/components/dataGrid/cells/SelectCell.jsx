@@ -27,7 +27,7 @@ export default function SelectCell({ rowData, setRowData, focus, stopEditing, co
                 setRowData(value ?? null);
                 setTimeout(() => stopEditing({ nextRow: false }), 0);
             }}
-            onDropdownVisibleChange={(open) => {
+            onOpenChange={(open) => {
                 if (!open) stopEditing({ nextRow: false });
             }}
             filterOption={(input, option) =>

@@ -15,6 +15,7 @@ export default function BucketFileUploader({
     prefixes = [''],
     title = 'Subir archivo nuevo',
     accept,
+    folderFor,
 }) {
     const [form] = Form.useForm();
     const [uploading, setUploading] = useState(false);
@@ -35,18 +36,19 @@ export default function BucketFileUploader({
             message.warning('Selecciona un archivo');
             return;
         }
+        const folder = folderFor ? folderFor(file) : values.folder;
         setUploading(true);
         try {
             const result = await uploadAcervoFile(file, {
                 bucketId,
-                folder: values.folder || undefined,
+                folder: folder || undefined,
                 onProgress: setProgress,
             });
             message.success(`Archivo "${file.name}" subido`);
             // Guardar path relativo (portable entre entornos), no la URL absoluta de MinIO local.
             // result.name viene del backend como "metadata/txt/uuid.csv" (object key dentro del bucket).
             const objectKey = result?.name || (() => {
-                const folderPath = values.folder ? values.folder.replace(/\/?$/, '/') : '';
+                const folderPath = folder ? folder.replace(/\/?$/, '/') : '';
                 return `${folderPath}${file.name}`;
             })();
             const enlace = objectKey.startsWith('/') ? objectKey : `/${objectKey}`;
@@ -86,7 +88,7 @@ export default function BucketFileUploader({
             destroyOnHidden
         >
             <Form form={form} layout="vertical" initialValues={{ folder: prefixes[0] || '' }}>
-                {prefixes.length > 1 && (
+                {!folderFor && prefixes.length > 1 && (
                     <Form.Item label="Carpeta destino" name="folder">
                         <Select
                             options={prefixes.map((p) => ({
@@ -115,6 +117,11 @@ export default function BucketFileUploader({
                         </Text>
                     </Dragger>
                 </Form.Item>
+                {folderFor && fileList[0] && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Se guarda en <code>{folderFor(fileList[0].originFileObj || fileList[0])}</code>
+                    </Text>
+                )}
             </Form>
         </Modal>
     );

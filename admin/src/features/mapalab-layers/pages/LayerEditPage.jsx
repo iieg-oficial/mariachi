@@ -1101,6 +1101,7 @@ export default function LayerEditPage() {
             children: !layer ? null : featureTypeContext ? (
                 <LayerMetadataSection
                     layerKey={featureTypeContext.layerKey}
+                    layerId={layerId}
                     onDraftSaved={reloadDrafts}
                     onBaseline={registrarBaseline}
                     layerLabel={headerName}

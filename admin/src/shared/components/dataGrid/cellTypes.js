@@ -40,7 +40,8 @@ const parentColumn = (context) => ({
     pasteValue: ({ value }) => String(value ?? '').trim() || null,
 });
 
-const baseColumnFor = (meta, catalogs, context) => {
+const baseColumnFor = (meta, catalogs, context, columnTypes) => {
+    if (columnTypes?.[meta.type]) return columnTypes[meta.type];
     if (meta.type === 'parent') return parentColumn(context);
     if (meta.type === 'bool') return checkboxColumn;
     if (meta.type === 'select') return selectColumn(catalogs?.[meta.optionsKey] || []);
@@ -58,6 +59,7 @@ export const buildGridColumns = ({
     columnContext,
     baseByKey,
     lastChanges,
+    columnTypes,
 }) => columnsMeta
     .filter((meta) => !meta.sticky)
     .map((meta) => {
@@ -73,7 +75,7 @@ export const buildGridColumns = ({
             });
         };
         return {
-            ...withCellInfo(keyColumn(meta.key, baseColumnFor(meta, catalogs, columnContext)), infoOf),
+            ...withCellInfo(keyColumn(meta.key, baseColumnFor(meta, catalogs, columnContext, columnTypes)), infoOf),
             title: meta.title,
             minWidth: meta.width || 160,
             basis: meta.width || 160,

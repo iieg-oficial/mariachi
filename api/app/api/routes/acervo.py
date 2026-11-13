@@ -234,13 +234,7 @@ async def listar_carpetas(
     current_user: Usuario = Depends(get_current_user),
 ):
     bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
-    folders = (
-        db.query(AcervoFolder)
-        .filter(AcervoFolder.bucket_id == bucket.id)
-        .order_by(AcervoFolder.path)
-        .all()
-    )
-    return [acervo_file_service.serialize_folder(f) for f in folders]
+    return acervo_file_service.folders_for_bucket(db, bucket)
 
 
 @router.get("/carpetas/{bucket_id}/zip")

@@ -1,7 +1,6 @@
 import { Badge } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 import GridIconButton from '@shared/components/dataGrid/GridIconButton';
-import GridSearchDropdown from '@shared/components/dataGrid/GridSearchDropdown';
 
 const BARRA = {
     position: 'absolute',
@@ -30,10 +29,6 @@ export default function GridFloatingBar({
     onUndo,
     canUndo,
     search,
-    onSearchChange,
-    searchPlaceholder,
-    searchOpen,
-    onSearchOpenChange,
     children,
 }) {
     return (
@@ -56,14 +51,7 @@ export default function GridFloatingBar({
                 disabled={!canUndo}
                 title="Ctrl+Z"
             />
-            <GridSearchDropdown
-                value={search}
-                onChange={onSearchChange}
-                placeholder={searchPlaceholder}
-                open={searchOpen}
-                onOpenChange={onSearchOpenChange}
-                placement="top"
-            />
+            {search}
             {children}
         </div>
     );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import GridPanel from '@shared/components/dataGrid/GridPanel';
 
 const fetchGridRows = vi.fn();
@@ -78,43 +78,50 @@ beforeEach(() => {
 });
 
 describe('GridPanel · atajos de teclado', () => {
-    it('Ctrl+F abre el buscador de la tabla', async () => {
+    it('Ctrl+F pone el cursor en el buscador de la píldora', async () => {
         render(<Host />);
-        await screen.findByTitle('Buscar');
-        expect(screen.queryByPlaceholderText('Buscar capa')).toBeNull();
+        const input = await screen.findByLabelText('Buscar en la tabla');
 
         fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
 
-        expect(await screen.findByPlaceholderText('Buscar capa')).toBeTruthy();
+        await waitFor(() => expect(document.activeElement).toBe(input));
+    });
+
+    it('Ctrl+G abre el selector de columna', async () => {
+        render(<Host />);
+        await screen.findByLabelText('Buscar en la tabla');
+
+        fireEvent.keyDown(window, { key: 'g', ctrlKey: true });
+
+        expect(await screen.findByText('Ir a la columna…')).toBeTruthy();
     });
 
     it('Ctrl+F evita que el navegador abra su propio buscador', async () => {
         render(<Host />);
-        await screen.findByTitle('Buscar');
+        await screen.findByLabelText('Buscar en la tabla');
 
         expect(dispatchKey('f', { ctrlKey: true }).defaultPrevented).toBe(true);
     });
 
     it('Ctrl+Shift+F abre el filtro por workspace', async () => {
         render(<Host />);
-        await screen.findByTitle('Buscar');
+        await screen.findByLabelText('Buscar en la tabla');
 
         fireEvent.keyDown(window, { key: 'f', ctrlKey: true, shiftKey: true });
 
         expect(await screen.findByText('Todos los workspaces')).toBeTruthy();
-        expect(screen.queryByPlaceholderText('Buscar capa')).toBeNull();
     });
 
     it('Ctrl+Z sigue deshaciendo', async () => {
         render(<Host />);
-        await screen.findByTitle('Buscar');
+        await screen.findByLabelText('Buscar en la tabla');
 
         expect(dispatchKey('z', { ctrlKey: true }).defaultPrevented).toBe(true);
     });
 
     it('una tecla sin Ctrl no se intercepta', async () => {
         render(<Host />);
-        await screen.findByTitle('Buscar');
+        await screen.findByLabelText('Buscar en la tabla');
 
         expect(dispatchKey('f').defaultPrevented).toBe(false);
     });
