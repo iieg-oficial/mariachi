@@ -12,6 +12,12 @@ export const duracion = (s) => {
 
 export const tope = (limite, ventanaS) => (limite ? `${limite} / ${ventanaS} s` : '—');
 
+export const TIPOS = {
+    usuario: { color: 'purple', texto: 'Usuario' },
+    ip: { color: 'orange', texto: 'IP' },
+    sesion: { color: 'blue', texto: 'Sesión cerrada' },
+};
+
 export const claveGrupo = (r) => `${r.tipo}|${r.scope}|${r.actor}|${r.metodo}|${r.ruta}`;
 
 export const COLUMNAS_GRUPOS = [
@@ -19,9 +25,11 @@ export const COLUMNAS_GRUPOS = [
         title: 'Quién',
         dataIndex: 'actor',
         key: 'actor',
+        filters: Object.entries(TIPOS).map(([value, t]) => ({ text: t.texto, value })),
+        onFilter: (value, row) => row.tipo === value,
         render: (actor, row) => (
             <Space size={6}>
-                <Tag color={row.tipo === 'ip' ? 'orange' : 'purple'}>{row.tipo === 'ip' ? 'IP' : 'Usuario'}</Tag>
+                <Tag color={TIPOS[row.tipo]?.color}>{TIPOS[row.tipo]?.texto || row.tipo}</Tag>
                 <Text strong>{actor}</Text>
             </Space>
         ),
@@ -50,7 +58,7 @@ export const COLUMNAS_GRUPOS = [
         render: (_, row) => tope(row.limite, row.ventana_s),
     },
     {
-        title: '429',
+        title: 'Veces',
         dataIndex: 'golpes',
         key: 'golpes',
         width: 70,

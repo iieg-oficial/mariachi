@@ -20,6 +20,11 @@ _FAM_SID_KEY = "rt:famsid:{}"
 class RefreshError(Exception):
     """El refresh token es inválido: ausente, expirado o revocado."""
 
+    def __init__(self, mensaje: str, motivo: str = "error", usuario: str | None = None) -> None:
+        super().__init__(mensaje)
+        self.motivo = motivo
+        self.usuario = usuario
+
 
 def _ttl_seconds() -> int:
     return settings.refresh_token_expire_minutes * 60
@@ -58,11 +63,13 @@ def rotate(raw: str) -> tuple[str, str, str]:
         token_hash = _hash(raw)
         rec_raw = redis_client.get(_TOK_KEY.format(token_hash))
         if rec_raw is None:
-            raise RefreshError("refresh token inválido o expirado")
+            raise RefreshError("refresh token inválido o expirado", "expirado")
         rec = json.loads(rec_raw)
         if rec.get("used"):
             revoke_family(rec["f"])
-            raise RefreshError("refresh token ya utilizado; la sesión fue revocada por seguridad")
+            raise RefreshError(
+                "refresh token ya utilizado; la sesión fue revocada por seguridad", "reutilizado", rec.get("u")
+            )
         ttl = redis_client.ttl(_TOK_KEY.format(token_hash))
         rec["used"] = True
         redis_client.setex(

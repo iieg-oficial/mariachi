@@ -15,6 +15,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 - **Huachicol › Incidentes.** Cada 429 queda en el stream `mariachi:incidentes` de Redis (tope 5 000) con usuario o huella de IP, scope, método y plantilla de ruta; la pantalla los agrupa por ventana (15 min a 24 h) con su serie por minuto y el conteo contra el umbral del check `abuso`. Sin query strings, cuerpos ni IP en claro: la huella es HMAC con `SECRET_KEY`.
 - Cada grupo se despliega con su serie por minuto, tope, contador máximo, rechazos por minuto, lapso y qué suele ser según el método; abajo, la tabla de todos los topes configurados. Con eso se distingue una lectura (120/min) de una escritura (60/min) sin ir a los logs del nginx.
+- **Sesiones cerradas en Incidentes.** Cuando `/autenticacion/refrescar` responde 401 (lo que saca al usuario al login) queda un incidente `sesion` con el usuario y el motivo: `reutilizado` (refresh token ya rotado, se revoca la familia), `expirado`, `sin_cookie`, `sin_usuario` o `error`; también en el log como `action=sesion.cerrada`. Antes solo se veía un 401 sin dueño en el nginx.
 - Permiso `mariachi.incidentes.view` y rol atómico «Incidentes - consulta»; el endpoint `GET /incidentes` responde `no-store`, tiene rate limit propio y deja `action=incidentes.view` en el log.
 
 ### Cambiado

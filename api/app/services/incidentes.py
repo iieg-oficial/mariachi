@@ -68,6 +68,15 @@ def registrar_incidente(
         logger.warning('incidente no registrado: %s', exc)
 
 
+def registrar_sesion_cerrada(*, motivo: str, usuario: str | None, request: Request) -> None:
+    actor = usuario or 'desconocido'
+    logger.warning('action=sesion.cerrada motivo=%s user=%s', motivo, actor)
+    registrar_incidente(
+        tipo='sesion', scope=motivo, actor=actor, metodo=request.method,
+        ruta=plantilla_de_ruta(request), golpes=1, limite=0, ventana_s=0,
+    )
+
+
 def _leer_desde(desde_ms: int) -> list[tuple[str, dict[str, str]]]:
     try:
         return redis_client.xrevrange(STREAM, max='+', min=str(desde_ms), count=LIMITE_LECTURA)

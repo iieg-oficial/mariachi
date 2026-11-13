@@ -56,7 +56,7 @@ export default function IncidentesPage() {
                     <Space align="center" size={12}>
                         <AlertOutlined style={{ fontSize: 24, color: '#5C2472' }} />
                         <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Incidentes</Title>
-                        <Tooltip title="Peticiones rechazadas por rate limit (429). Las IP se guardan como huella, nunca en claro.">
+                        <Tooltip title="Rechazos por rate limit (429) y sesiones cerradas por un refresco fallido. Las IP se guardan como huella, nunca en claro.">
                             <InfoCircleOutlined style={{ color: '#8c8c8c' }} />
                         </Tooltip>
                     </Space>
