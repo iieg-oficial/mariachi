@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.167.0] - 2026-11-13
+
+### Agregado
+
+- **Alta de varios nodos a la vez en «Nuevo nodo».** Capas y grupos eligen varias capas de GeoServer y se crea un nodo por capa, con nombre y geometría propuestos; temas, categorías y etiquetas suman filas con «Agregar otro». Va por `/layers/lote`: todos o ninguno, con el error en su fila. Las propiedades de un grupo siguen de una en una.
+- «Cambiar ubicación» abre un árbol colapsable con buscador, debajo de las cards de tipo.
+
+### Cambiado
+
+- El buscador del árbol de capas es un input fijo a la izquierda del **+**, que pasa a círculo relleno; sin línea bajo las pestañas.
+- Móvil: el **+** sube junto a historial y configuración, el buscador ocupa su propia fila, la descripción pasa a tooltip junto al título y el segmentado mide lo mismo que los botones.
+- Móvil: el modal «Nuevo nodo» ocupa la pantalla completa y los switches van en una columna.
+
 ## [2.166.0] - 2026-11-13
 
 ### Agregado

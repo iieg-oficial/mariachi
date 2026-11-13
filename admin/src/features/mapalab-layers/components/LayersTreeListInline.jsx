@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Empty, Grid, Spin } from 'antd';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import api from '@shared/services/api';
 import LayerCreateModal from '@features/mapalab-layers/components/LayerCreateModal';
 import { matchesQuery } from '@features/mapalab-layers/utils/treeSearch';
 import LayersTreeBranch, { SortableTreeBranch } from './LayersTreeBranch';
@@ -161,10 +162,11 @@ export default function LayersTreeListInline({
                 <LayerCreateModal
                     open={createOpen}
                     onClose={onCreateClose}
-                    onSubmit={async (payload, extra) => {
-                        await onCreate(payload);
+                    onSubmit={async (payloads, extra) => {
+                        if (payloads.length === 1) await onCreate(payloads[0]);
+                        else await api.post('/layers/lote', { capas: payloads });
                         if (onReload) await onReload();
-                        if (extra?.orden && onReorder) await onReorder(payload.parent_id, extra.orden);
+                        if (extra?.orden && onReorder) await onReorder(payloads[0].parent_id, extra.orden);
                     }}
                     treeData={treeData}
                     defaultParentId={createParentId}
