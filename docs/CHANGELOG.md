@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.170.0] - 2026-11-17
+
+### Agregado
+
+- **Tarjetita repetida, al grupo en un clic.** Si las propiedades de un grupo sin tarjetita tienen la misma copiada, el grupo ofrece «Usar la de sus N propiedades» y cada propiedad «Pasar al grupo». Se guarda en el grupo y se borra de las propiedades, que pasan a heredarla.
+
+## [2.169.0] - 2026-11-13
+
+### Agregado
+
+- **Vista previa en el mapa en Estilos.** El detalle de un estilo pinta el mapa con su SLD junto a la leyenda, igual que en lote. Si lo comparten varias capas, «Pintado sobre» elige en cuál; si ninguna lo usa, queda solo la leyenda.
+
 ## [2.168.0] - 2026-11-13
 
 ### Agregado
