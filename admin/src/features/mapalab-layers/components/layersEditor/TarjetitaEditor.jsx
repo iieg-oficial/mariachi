@@ -16,6 +16,8 @@ import InfoBoxPreviewPanel from './InfoBoxPreviewPanel';
 import InfoBoxTemplatesModal from './InfoBoxTemplatesModal';
 import { useInfoboxUndo } from '@features/mapalab-layers/hooks/useInfoboxUndo';
 import PropagacionBadge from './PropagacionBadge';
+import { PasarAlGrupo, UsarLaDeSusPropiedades } from './TarjetitaComun';
+import { tarjetitaComun } from '@features/mapalab-layers/utils/propagacionTarjetita';
 
 const { Text } = Typography;
 
@@ -40,6 +42,7 @@ export default function TarjetitaEditor({
     puedePublicar = false,
     visibilidad = null,
     oculta = false,
+    onAplicado = null,
 }) {
     const [mode, setMode] = useState('lienzo');
     const [soloVista, setSoloVista] = useState(false);
@@ -49,6 +52,7 @@ export default function TarjetitaEditor({
     const vacia = !value || Object.keys(value).length === 0;
     const soloLlamada = vacia && !inherited && mode === 'lienzo';
     const esLienzo = mode === 'lienzo';
+    const comunDelGrupo = nodeType === 'group' && soloLlamada ? tarjetitaComun(rawTree, currentLayerId) : null;
     const previewValue = (!esLienzo && (value || inherited?.config)) || null;
 
     const alternarVista = () => { setSoloVista((v) => !v); };
@@ -100,6 +104,17 @@ export default function TarjetitaEditor({
                             puedePublicar={puedePublicar}
                         />
                     )}
+                    {nodeType === 'leaf' && !vacia && !soloVista && (
+                        <PasarAlGrupo
+                            rawTree={rawTree}
+                            layerId={currentLayerId}
+                            value={value}
+                            updateLayer={updateLayer}
+                            reload={reloadTree}
+                            onAplicado={onAplicado}
+                            puedePublicar={puedePublicar}
+                        />
+                    )}
                     {!soloLlamada && !soloVista && (
                         <Space size={2}>
                             <Tooltip title="Deshacer (Ctrl+Z)">
@@ -147,13 +162,26 @@ export default function TarjetitaEditor({
                     <Text type="secondary" style={{ fontSize: 12, marginBottom: 10, maxWidth: '42ch' }}>
                         Empieza con una forma ya armada o copia la de otra capa. Después la ajustas.
                     </Text>
-                    <Button
-                        type="primary"
-                        icon={<AppstoreAddOutlined />}
-                        onClick={() => setPlantillasAbiertas(true)}
-                    >
-                        Elegir una plantilla
-                    </Button>
+                    <Space size={8} wrap style={{ justifyContent: 'center' }}>
+                        {comunDelGrupo && (
+                            <UsarLaDeSusPropiedades
+                                rawTree={rawTree}
+                                groupId={currentLayerId}
+                                updateLayer={updateLayer}
+                                reload={reloadTree}
+                                onAplicado={onAplicado}
+                                puedePublicar={puedePublicar}
+                            />
+                        )}
+                        <Button
+                            shape={comunDelGrupo ? 'round' : undefined}
+                            type={comunDelGrupo ? 'default' : 'primary'}
+                            icon={<AppstoreAddOutlined />}
+                            onClick={() => setPlantillasAbiertas(true)}
+                        >
+                            Elegir una plantilla
+                        </Button>
+                    </Space>
                 </div>
             ) : (
                 <div style={{

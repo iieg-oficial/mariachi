@@ -1088,6 +1088,7 @@ export default function LayerEditPage() {
                             updateLayer={updateLayer}
                             reloadTree={reload}
                             puedePublicar={isAdmin}
+                            onAplicado={() => setReloadKey((k) => k + 1)}
                             oculta={watchedNodeType === 'leaf' && watchedQueryable === false}
                             visibilidad={watchedNodeType === 'leaf' && (
                                 <Form.Item name="queryable" noStyle>

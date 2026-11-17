@@ -11,7 +11,7 @@
  * backend ya recorre todos los ancestros al propagar, así que aquí se hace lo mismo.
  */
 
-import { propiedadesDeGrupo } from '@features/mapalab-layers/constants/nodeTypes';
+import { ETIQUETAS, propiedadesDeGrupo } from '@features/mapalab-layers/constants/nodeTypes';
 
 const buscarNodo = (nodos, id) => {
     for (const nodo of nodos || []) {
@@ -50,4 +50,49 @@ export const grupoQueHereda = (rawTree, layerId) => {
     const grupo = buscarNodo(rawTree, nodo.inheritedFrom);
     if (!grupo) return null;
     return { id: grupo.id, label: etiqueta(grupo), config: grupo.littleCard || null };
+};
+
+const ordenada = (valor) => {
+    if (Array.isArray(valor)) return valor.map(ordenada);
+    if (valor && typeof valor === 'object') {
+        return Object.fromEntries(Object.keys(valor).sort().map((k) => [k, ordenada(valor[k])]));
+    }
+    return valor;
+};
+
+export const mismaTarjetita = (a, b) => JSON.stringify(ordenada(a)) === JSON.stringify(ordenada(b));
+
+export const tarjetitaComun = (rawTree, groupId) => {
+    const grupo = groupId ? buscarNodo(rawTree, groupId) : null;
+    if (!grupo || grupo.nodeType !== 'group' || grupo.littleCard) return null;
+    const propias = propiedadesDeGrupo(grupo).filter((n) => n.littleCard && !n.inheritedFrom);
+    if (propias.length < 2) return null;
+    const [primera] = propias;
+    if (!propias.every((n) => mismaTarjetita(n.littleCard, primera.littleCard))) return null;
+    return {
+        grupo: { id: grupo.id, label: etiqueta(grupo) },
+        config: primera.littleCard,
+        ids: propias.map((n) => n.id),
+    };
+};
+
+const rutaHasta = (nodos, id, ruta = []) => {
+    for (const nodo of nodos || []) {
+        const actual = [...ruta, nodo];
+        if (nodo.id === id) return actual;
+        const hallada = rutaHasta(nodo.children, id, actual);
+        if (hallada) return hallada;
+    }
+    return null;
+};
+
+export const grupoDePropiedad = (rawTree, layerId) => {
+    const ruta = rutaHasta(rawTree, layerId);
+    if (!ruta || ruta[ruta.length - 1].nodeType !== 'leaf') return null;
+    for (let i = ruta.length - 2; i >= 0; i--) {
+        const ancestro = ruta[i];
+        if (ancestro.nodeType === 'group') return ancestro;
+        if (!ETIQUETAS.has(ancestro.nodeType)) return null;
+    }
+    return null;
 };

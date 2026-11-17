@@ -1,9 +1,7 @@
-import { useState } from 'react';
-import { Button, Dropdown, Modal, Popover, Space, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Popover, Space, Tag, Tooltip, Typography } from 'antd';
 import { CheckCircleFilled, InfoCircleOutlined } from '@ant-design/icons';
-import { message } from '@shared/services/message';
 import { propagacionDelGrupo } from '@features/mapalab-layers/utils/propagacionTarjetita';
-import { refrescarArbol } from '@features/mapalab-layers/utils/refrescoArbol';
+import { useTarjetitaAlGrupo } from '@features/mapalab-layers/hooks/useTarjetitaAlGrupo';
 
 const { Text } = Typography;
 
@@ -23,7 +21,7 @@ export default function PropagacionBadge({
     configDelGrupo = null,
     puedePublicar = false,
 }) {
-    const [aplicando, setAplicando] = useState(false);
+    const { aplicando, confirmar: confirmarAlGrupo } = useTarjetitaAlGrupo({ updateLayer, reload });
     const datos = propagacionDelGrupo(rawTree, groupId);
     if (!datos || datos.total === 0) return null;
 
@@ -31,42 +29,7 @@ export default function PropagacionBadge({
     const propias = datos.propias;
     const propagan = usan > 0;
 
-    const devolverAlGrupo = async (ids) => {
-        if (!updateLayer) return;
-        setAplicando(true);
-        const cerrar = message.loading('Aplicando… el árbol tarda unos segundos en refrescarse', 0);
-        try {
-            // Lo que se propaga tiene que ser lo que estas viendo: la tarjetita del grupo puede
-            // tener cambios sin guardar y las propiedades leen la guardada, no la de la pantalla.
-            await updateLayer(groupId, { infoboxConfig: configDelGrupo });
-            for (const id of ids) {
-                await updateLayer(id, { infoboxConfig: null });
-            }
-            await refrescarArbol(reload, { alVuelo: false });
-            message.success(ids.length === 1
-                ? 'Esa propiedad vuelve a usar la tarjetita del grupo'
-                : `${ids.length} propiedades vuelven a usar la tarjetita del grupo`);
-        } catch (err) {
-            message.error(err?.response?.data?.detail || 'No se pudo aplicar la tarjetita del grupo');
-        } finally {
-            cerrar?.();
-            setAplicando(false);
-        }
-    };
-
-    const confirmar = (ids, titulo) => Modal.confirm({
-        title: titulo,
-        content: (
-            <span>
-                Primero se guarda la tarjetita del grupo tal como la tienes en pantalla, y luego se borra la
-                propia de {ids.length === 1 ? 'esa capa' : `esas ${ids.length} capas`} para que muestren la del
-                grupo. <b>Se guarda de inmediato</b> y no se puede deshacer desde aquí.
-            </span>
-        ),
-        okText: 'Sí, aplicar',
-        cancelText: 'Cancelar',
-        onOk: () => devolverAlGrupo(ids),
-    });
+    const confirmar = (ids, titulo) => confirmarAlGrupo({ groupId, config: configDelGrupo, ids, titulo });
 
     const items = [
         ...datos.heredan.map((p) => ({
