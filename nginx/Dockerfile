@@ -36,7 +36,7 @@ RUN --mount=type=cache,target=/app/node_modules/.vite \
     npm run build
 
 FROM nginx:1.30.6-alpine
-RUN rm -f /etc/nginx/conf.d/default.conf
+RUN apk upgrade --no-cache && rm -f /etc/nginx/conf.d/default.conf
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
 COPY ./nginx/includes/ /etc/nginx/includes/

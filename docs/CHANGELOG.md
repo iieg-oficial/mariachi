@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.170.1] - 2026-11-17
+
+### Corregido
+
+- **Imágenes sin HIGH de Trivy.** La API hace `apt-get upgrade` al construir (`libpq5` y `postgresql-client-17` 17.12, `zlib1g` deb13u1) y el nginx `apk upgrade` (`libxslt`). Las dos quedan en 0.
+
 ## [2.170.0] - 2026-11-17
 
 ### Agregado
