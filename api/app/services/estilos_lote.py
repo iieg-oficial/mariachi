@@ -33,7 +33,7 @@ COLUMNAS_TABLA = (
     'severidad', 'severidad_2', 'orientacion_favorable', 'cortes_rangos', 'nombre_estilo', 'colores',
 )
 ESTADOS_ACTIVOS = ('en_progreso', 'pendiente_revision', 'rechazado')
-ESTADO_LOTE = 'pendiente_revision'
+ESTADO_LOTE = 'en_progreso'
 HILOS = 6
 CACHE_SEGUNDOS = 120.0
 LIMITE_HISTORIAL = 200
@@ -142,6 +142,7 @@ def crear_borradores(
     usuario: Usuario,
     client: GeoServerClient | None = None,
     reemplazar: list[int] | None = None,
+    dueno_id: int | None = None,
 ) -> list[Borrador]:
     reemplazar = reemplazar or []
     filas = revisar(texto, dataengine_db, client)
@@ -149,7 +150,7 @@ def crear_borradores(
         raise LoteConErroresError(filas)
     borradores = [_guardar(db, fila, usuario) for fila in filas]
     db.flush()
-    _quitar_reemplazados(db, set(reemplazar) - {b.id for b in borradores})
+    _quitar_reemplazados(db, set(reemplazar) - {b.id for b in borradores}, dueno_id)
     db.commit()
     for borrador in borradores:
         db.refresh(borrador)
@@ -209,11 +210,16 @@ def _del_lote(borradores: list[Borrador]) -> list[Borrador]:
     return [b for b in borradores if (b.data or {}).get('origen') == 'lote']
 
 
-def borradores_sin_publicar(db: Session) -> list[Borrador]:
-    return _del_lote(
+def borradores_sin_publicar(db: Session, dueno_id: int | None = None) -> list[Borrador]:
+    consulta = (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
         .filter(Borrador.resource_type == 'sld', Borrador.estado.in_(ESTADOS_ACTIVOS))
+    )
+    if dueno_id is not None:
+        consulta = consulta.filter(Borrador.usuario_id == dueno_id)
+    return _del_lote(
+        consulta
         .order_by(Borrador.actualizado_en.desc())
         .all()
     )
@@ -230,19 +236,23 @@ def historial(db: Session) -> list[Borrador]:
     )[:LIMITE_HISTORIAL]
 
 
-def _activos_del_lote(db: Session, ids: set[int] | list[int]) -> list[Borrador]:
+def _activos_del_lote(db: Session, ids: set[int] | list[int], dueno_id: int | None = None) -> list[Borrador]:
     if not ids:
         return []
+    consulta = db.query(Borrador).filter(
+        Borrador.id.in_(ids), Borrador.resource_type == 'sld', Borrador.estado.in_(ESTADOS_ACTIVOS),
+    )
+    if dueno_id is not None:
+        consulta = consulta.filter(Borrador.usuario_id == dueno_id)
     return _del_lote(
-        db.query(Borrador)
-        .filter(Borrador.id.in_(ids), Borrador.resource_type == 'sld', Borrador.estado.in_(ESTADOS_ACTIVOS))
+        consulta
         .order_by(Borrador.id)
         .all()
     )
 
 
-def _quitar_reemplazados(db: Session, ids: set[int]) -> None:
-    for borrador in _activos_del_lote(db, ids):
+def _quitar_reemplazados(db: Session, ids: set[int], dueno_id: int | None = None) -> None:
+    for borrador in _activos_del_lote(db, ids, dueno_id):
         db.delete(borrador)
 
 
@@ -278,8 +288,8 @@ def _fila_para_editar(borrador: Borrador, workspaces: dict[str, str]) -> dict[st
     return {**tabla, 'nombre_estilo': tabla.get('nombre_estilo') or borrador.resource_id.partition(':')[2]}
 
 
-def tabla_de_borradores(ids: list[int], db: Session, dataengine_db: Session) -> str:
-    borradores = [b for b in _activos_del_lote(db, ids) if (b.data or {}).get('shape') != 'xml']
+def tabla_de_borradores(ids: list[int], db: Session, dataengine_db: Session, dueno_id: int | None = None) -> str:
+    borradores = [b for b in _activos_del_lote(db, ids, dueno_id) if (b.data or {}).get('shape') != 'xml']
     if not borradores:
         raise TablaInvalidaError('No hay borradores sin publicar para editar')
     workspaces = {w.alias: w.geoserver_workspace for w in dataengine_db.query(Workspace).all()}

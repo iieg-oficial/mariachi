@@ -7,6 +7,7 @@ import { isXmlDraft } from '@features/sextante/utils/stylesBatchTable';
 import ColorRamp from './ColorRamp';
 import DraftEditor from './DraftEditor';
 import DraftPreview from './DraftPreview';
+import DraftStateTag from './DraftStateTag';
 import IconAction from './IconAction';
 import XmlEditor from './XmlEditor';
 
@@ -32,7 +33,7 @@ function DraftEdit({ item, onDone, onCancel }) {
 
 const when = (date) => new Date(date).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 
-export default function DraftList({ items, reload, actions, empty, editable = false }) {
+export default function DraftList({ items, reload, actions, empty, editable = false, showState = false }) {
     const [open, setOpen] = useState(null);
     const [busy, setBusy] = useState(null);
 
@@ -65,6 +66,7 @@ export default function DraftList({ items, reload, actions, empty, editable = fa
                             <Space wrap>
                                 {isXmlDraft(item) ? <Tag>XML</Tag> : <ColorRamp colors={item.data?.colors || []} />}
                                 <Text strong>{item.data?.style_title || item.resource_id}</Text>
+                                {showState && <DraftStateTag draft={item} />}
                                 <Text type="secondary">{when(item.actualizado_en)} · {item.usuario?.name || '—'}</Text>
                             </Space>
                             <Space size={6}>
@@ -72,7 +74,7 @@ export default function DraftList({ items, reload, actions, empty, editable = fa
                                 {editable && (
                                     <IconAction title="Editar aquí" icon={<EditOutlined />} active={mode === 'editar'} onClick={() => toggle(item.id, 'editar')} />
                                 )}
-                                {actions.map((action) => (
+                                {actions.filter((action) => !action.visible || action.visible(item)).map((action) => (
                                     <IconAction
                                         key={action.key}
                                         title={action.label}

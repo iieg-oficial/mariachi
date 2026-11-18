@@ -1,4 +1,4 @@
-import { Button, Card, Popconfirm, Space, Tag } from 'antd';
+import { Button, Card, Popconfirm, Space, Tag, Tooltip } from 'antd';
 import {
     CheckCircleOutlined,
     CheckOutlined,
@@ -14,6 +14,13 @@ const STATE_COLOR = {
     pendiente_revision: 'orange',
     aprobado: 'green',
     rechazado: 'red',
+};
+
+const STATE_LABEL = {
+    en_progreso: 'en progreso',
+    pendiente_revision: 'en revisión',
+    aprobado: 'aprobado',
+    rechazado: 'rechazado',
 };
 
 export default function SldActionsCard({
@@ -33,11 +40,25 @@ export default function SldActionsCard({
     onReload,
     onHistoryOpen,
 }) {
-    const draftBadge = draft ? (
+    const tag = draft ? (
         <Tag color={STATE_COLOR[draft.estado] || 'default'}>
-            Borrador: {draft.estado}
+            Borrador: {STATE_LABEL[draft.estado] || draft.estado}
         </Tag>
     ) : null;
+    const draftBadge = draft?.estado === 'rechazado' && draft.comentario_rechazo
+        ? <Tooltip title={draft.comentario_rechazo}>{tag}</Tooltip>
+        : tag;
+    const submitButton = (
+        <Button
+            type={isAdmin ? 'default' : 'primary'}
+            icon={<CloudUploadOutlined />}
+            onClick={onSubmitReview}
+            loading={submitting}
+            block
+        >
+            {draft?.estado === 'rechazado' ? 'Reenviar a revisión' : 'Solicitar revisión'}
+        </Button>
+    );
 
     return (
         <Card size="small">
@@ -63,7 +84,8 @@ export default function SldActionsCard({
                         <Button icon={<SaveOutlined />} onClick={onSave} loading={saving} block>
                             Guardar borrador
                         </Button>
-                        {isAdmin ? (
+                        {submitButton}
+                        {isAdmin && (
                             <Popconfirm
                                 title="Publicar SLD directo"
                                 description="Se aplicará en GeoServer inmediatamente sin pasar por revisión."
@@ -75,16 +97,6 @@ export default function SldActionsCard({
                                     Publicar directo (admin)
                                 </Button>
                             </Popconfirm>
-                        ) : (
-                            <Button
-                                type="primary"
-                                icon={<CloudUploadOutlined />}
-                                onClick={onSubmitReview}
-                                loading={submitting}
-                                block
-                            >
-                                Solicitar revisión
-                            </Button>
                         )}
                         <Button icon={<SyncOutlined />} onClick={onReload} block>
                             Recargar de GeoServer

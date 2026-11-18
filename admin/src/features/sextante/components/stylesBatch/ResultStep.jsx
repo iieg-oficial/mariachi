@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Button, Progress, Space, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router';
-import { approveDraft, batchErrorMessage } from '@features/sextante/api/stylesBatchService';
+import { approveDraft, batchErrorMessage, sendDraftToReview } from '@features/sextante/api/stylesBatchService';
 import ColorRamp from './ColorRamp';
 
 const { Text } = Typography;
 
 const STATUS = {
-    pending: { color: 'warning', label: 'Pendiente de aprobación' },
-    published: { color: 'success', label: 'Publicada' },
-    failed: { color: 'error', label: 'No se publicó' },
+    pending: { color: 'blue', label: 'Borrador' },
+    done: { color: 'success', label: 'Publicada' },
+    sent: { color: 'warning', label: 'En revisión' },
+    failed: { color: 'error', label: 'No se pudo' },
 };
 
 const ITEM_STYLE = { padding: '8px 12px', border: '1px solid var(--ant-color-border)', borderRadius: 8 };
@@ -19,17 +20,19 @@ export default function ResultStep({ drafts, canPublish }) {
     const [status, setStatus] = useState({});
     const [publishing, setPublishing] = useState(false);
 
+    const finished = canPublish ? 'done' : 'sent';
+    const run = canPublish ? (draft) => approveDraft(draft.id) : sendDraftToReview;
     const done = Object.values(status).filter((s) => s.state !== 'pending').length;
-    const pendingDrafts = drafts.filter((d) => (status[d.id]?.state || 'pending') !== 'published');
+    const pendingDrafts = drafts.filter((d) => (status[d.id]?.state || 'pending') !== finished);
 
-    const publishAll = async () => {
+    const runAll = async () => {
         setPublishing(true);
         for (const draft of pendingDrafts) {
             try {
-                await approveDraft(draft.id);
-                setStatus((prev) => ({ ...prev, [draft.id]: { state: 'published' } }));
+                await run(draft);
+                setStatus((prev) => ({ ...prev, [draft.id]: { state: finished } }));
             } catch (err) {
-                const error = batchErrorMessage(err, 'Error al publicar');
+                const error = batchErrorMessage(err, 'No se pudo completar');
                 setStatus((prev) => ({ ...prev, [draft.id]: { state: 'failed', error } }));
             }
         }
@@ -39,12 +42,10 @@ export default function ResultStep({ drafts, canPublish }) {
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Space wrap>
-                <Button shape="round" onClick={() => navigate('/revision')}>Ir a Revisión</Button>
-                {canPublish && (
-                    <Button type="primary" shape="round" loading={publishing} disabled={!pendingDrafts.length} onClick={publishAll}>
-                        Publicar {pendingDrafts.length} ahora
-                    </Button>
-                )}
+                {canPublish && <Button shape="round" onClick={() => navigate('/revision')}>Ir a Revisión</Button>}
+                <Button type="primary" shape="round" loading={publishing} disabled={!pendingDrafts.length} onClick={runAll}>
+                    {canPublish ? `Publicar ${pendingDrafts.length} ahora` : `Enviar ${pendingDrafts.length} a revisión`}
+                </Button>
             </Space>
             {publishing && <Progress percent={Math.round((done / drafts.length) * 100)} />}
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>

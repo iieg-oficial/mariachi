@@ -22,6 +22,7 @@ from app.services.geoserver_client import GeoServerClient, GeoServerError
 router = APIRouter(prefix="/borradores", tags=["borradores"])
 
 _require_mapalab_view = require_permission('mariachi.mapalab.view')
+_ESTADOS_ACTIVOS = ('en_progreso', 'pendiente_revision', 'rechazado')
 
 
 def _borrador_aprobable(db: Session, borrador_id: int, current_user: Usuario) -> Borrador:
@@ -209,10 +210,10 @@ async def aprobar_borrador(
     current_user: Usuario = Depends(verify_csrf),
 ):
     borrador = _borrador_aprobable(db, borrador_id, current_user)
-    if borrador.estado != 'pendiente_revision':
+    if borrador.estado not in _ESTADOS_ACTIVOS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Solo se aprueban borradores en estado 'pendiente_revision' (actual: {borrador.estado})",
+            detail=f"Solo se aprueban borradores activos (actual: {borrador.estado})",
         )
 
     campos: list[str] = []
@@ -270,7 +271,7 @@ async def eliminar_borrador_por_id(
     return {"message": "Borrador eliminado"}
 
 
-_ACTIVO_FILTER = Borrador.estado.in_(('en_progreso', 'pendiente_revision', 'rechazado'))
+_ACTIVO_FILTER = Borrador.estado.in_(_ESTADOS_ACTIVOS)
 
 
 def _del_recurso(resource_type: str, resource_id: str, current_user: Usuario) -> list:

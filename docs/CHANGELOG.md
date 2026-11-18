@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.171.0] - 2026-11-18
+
+### Agregado
+
+- **Simbología como tarjetas en la cola de revisión.** Cada SLD pendiente muestra su rampa de colores, estilo, origen (capa o lote), autor y fecha, con Revisar, Aprobar y Rechazar en la tarjeta. El resto de borradores sigue en la tabla.
+- **Enviar a revisión desde Sextante.** En «Sin publicar» y al terminar un lote, quien edita envía cada borrador o todos a revisión; cada tarjeta muestra su estado y, si fue rechazado, el motivo en un tooltip.
+
+### Cambiado
+
+- **Los borradores de Estilos y de la carga en lote nacen en `en_progreso`**, no en `pendiente_revision`: llegan a la cola solo cuando alguien los envía.
+- **Estilos en lote abierto a `mariachi.mapalab.update`.** Quien edita crea y envía sus borradores y solo ve los suyos; publicar sigue siendo de `mapalab.manage` y `geoserver.manage`, que ven todos.
+- **Editor de simbología de la capa:** quien aprueba también puede solicitar revisión, además de publicar directo; un borrador rechazado muestra el motivo y se reenvía.
+
+### Corregido
+
+- **Un borrador de lote rechazado o sin enviar ya se puede publicar.** `/borradores/por-id/{id}/aprobar` acepta cualquier borrador activo; antes respondía 400 si no estaba en `pendiente_revision`.
+
 ## [2.170.1] - 2026-11-17
 
 ### Corregido

@@ -98,7 +98,7 @@ def test_crear_borradores_guarda_uno_por_estilo(db_session, admin_user):
     assert guardado.resource_id == 'seguridad:homicidio'
     assert guardado.data['cortes'] == [0, 0, 1, 3]
     assert guardado.data['default_style'] is True
-    assert guardado.estado == 'pendiente_revision'
+    assert guardado.estado == 'en_progreso'
     estilos_lote.crear_borradores(
         f'{CABECERA}\n{FILA_OK}', db_session, _dataengine(('seguridad', 'seguridad_y_proteccion')),
         admin_user, _cliente(),
@@ -136,15 +136,6 @@ def test_ruta_revisar(admin_session):
         )
     assert r.status_code == 422
     assert 'Faltan columnas' in r.json()['detail']['mensaje']
-
-
-def test_ruta_pide_permiso_de_geoserver(editora_session):
-    r = editora_session['client'].post(
-        '/api/mariachi/geoserver/estilos-lote/revisar',
-        json={'texto': f'{CABECERA}\n{FILA_OK}'},
-        headers={'X-CSRF-Token': editora_session['csrf']},
-    )
-    assert r.status_code == 403
 
 
 def test_vista_previa_manda_el_sld_generado():
