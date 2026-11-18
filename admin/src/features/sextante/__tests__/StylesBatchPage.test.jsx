@@ -7,6 +7,8 @@ const createDrafts = vi.fn();
 const readTableFile = vi.fn();
 const fetchUnpublished = vi.fn();
 const editDrafts = vi.fn();
+const sendDraftToReview = vi.fn();
+let permisos = ['mariachi.geoserver.manage'];
 
 vi.mock('@features/sextante/api/stylesBatchService', () => ({
     reviewTable: (...args) => reviewTable(...args),
@@ -19,11 +21,13 @@ vi.mock('@features/sextante/api/stylesBatchService', () => ({
     reapplyDraft: vi.fn(),
     fetchPreview: vi.fn(() => new Promise(() => {})),
     approveDraft: vi.fn(),
+    discardOwnDraft: vi.fn(),
+    sendDraftToReview: (...args) => sendDraftToReview(...args),
     batchErrorMessage: (err, fallback) => err?.message || fallback,
 }));
 
 vi.mock('@shared/contexts/useAuth', () => ({
-    useAuth: () => ({ can: (permiso) => permiso === 'mariachi.geoserver.manage' }),
+    useAuth: () => ({ can: (permiso) => permisos.includes(permiso) }),
 }));
 
 vi.mock('@shared/services/message', () => ({
@@ -72,6 +76,8 @@ describe('StylesBatchPage', () => {
         reviewTable.mockReset();
         createDrafts.mockReset();
         fetchUnpublished.mockResolvedValue([]);
+        sendDraftToReview.mockReset();
+        permisos = ['mariachi.geoserver.manage'];
         localStorage.clear();
     });
 
@@ -98,7 +104,22 @@ describe('StylesBatchPage', () => {
         await waitFor(() => expect(createDrafts).toHaveBeenCalledTimes(1));
         expect(createDrafts.mock.calls[0][0]).toContain('seguridad:homicidio');
         expect(await screen.findByText('1 borradores guardados')).toBeTruthy();
-        expect(screen.getByText('Pendiente de aprobación')).toBeTruthy();
+        expect(screen.getByText('Borrador')).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'Publicar 1 ahora' })).toBeTruthy();
+    });
+
+    it('lets an editor send drafts to review without publishing', async () => {
+        permisos = ['mariachi.mapalab.update'];
+        sendDraftToReview.mockResolvedValue({ ok: true });
+        fetchUnpublished.mockResolvedValue([
+            { ...DRAFT, estado: 'rechazado', comentario_rechazo: 'Faltan clases' },
+        ]);
+        renderPage();
+        fireEvent.click(await screen.findByRole('button', { name: 'Sin publicar (1)' }));
+        expect(await screen.findByText('Rechazado')).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'Publicar' })).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'Enviar a revisión' }));
+        await waitFor(() => expect(sendDraftToReview).toHaveBeenCalledWith(expect.objectContaining({ id: 4 })));
     });
 
     it('goes back to a finished step from its label', async () => {

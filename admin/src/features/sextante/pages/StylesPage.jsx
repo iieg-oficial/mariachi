@@ -8,12 +8,12 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import PageHeader from '@features/sextante/components/PageHeader';
 import StyleDetail from '@features/sextante/components/StyleDetail';
 import useAllStyles from '@features/sextante/hooks/useAllStyles';
+import { SLD_EDIT_PERMISSIONS } from '@features/sextante/utils/stylesBatchTable';
 
 const { Content } = Layout;
 const { Text } = Typography;
 
 const PAGE_TIP = 'Estilos publicados en GeoServer. Toca uno para ver su leyenda y su SLD. Se editan desde Simbología en la capa o en lote.';
-const BATCH_PERMISSION = 'mariachi.geoserver.manage';
 const ALL = '';
 const PAGE_SIZE = 20;
 const TABLE_HEIGHT = 'calc(100vh - 300px)';
@@ -47,14 +47,14 @@ const columns = [
 
 export default function StylesPage() {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { can } = useAuth();
     const { isMobile } = useIsMobile();
     const [includeGlobal, setIncludeGlobal] = useState(false);
     const [alias, setAlias] = useState(ALL);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const { workspaces, styles, loading, error } = useAllStyles(includeGlobal);
-    const canBatch = Boolean(user?.permissions?.includes?.(BATCH_PERMISSION));
+    const canBatch = SLD_EDIT_PERMISSIONS.some(can);
 
     const rows = useMemo(() => {
         const needle = search.trim().toLowerCase();

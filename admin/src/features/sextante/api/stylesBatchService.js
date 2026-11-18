@@ -57,6 +57,12 @@ export const approveDraft = async (id) => (await api.post(`/borradores/por-id/${
 
 export const discardDraft = async (id) => (await api.delete(`/borradores/por-id/${id}`)).data;
 
+const ownDraftPath = (draft) => `/borradores/sld/${encodeURIComponent(draft.resource_id)}`;
+
+export const sendDraftToReview = async (draft) => (await api.post(`${ownDraftPath(draft)}/solicitar-revision`)).data;
+
+export const discardOwnDraft = async (draft) => (await api.delete(ownDraftPath(draft))).data;
+
 export const reapplyDraft = async (id) => (await api.post(`/borradores/por-id/${id}/re-aplicar`)).data;
 
 export const batchErrorMessage = (err, fallback) => {

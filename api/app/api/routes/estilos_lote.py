@@ -5,20 +5,23 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import get_db, require_permission, verify_csrf
+from app.api.deps import get_db, require_any_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer import Workspace
 from app.models.user import Usuario
 from app.schemas.borrador import BorradorResponse
 from app.services import estilos_lote, estilos_lote_estilo
+from app.services.borradores_permisos import puede_aprobar
 from app.services.estilos_lote_archivo import leer_archivo
 from app.services.estilos_lote_tabla import TablaInvalidaError
 from app.services.geoserver_client import GeoServerError
 
 router = APIRouter(prefix='/geoserver/estilos-lote', tags=['geoserver'])
 
-_require_geoserver_manage = require_permission('mariachi.geoserver.manage')
+_require_edicion_sld = require_any_permission(
+    'mariachi.mapalab.update', 'mariachi.mapalab.manage', 'mariachi.geoserver.manage',
+)
 _lote_rate_limit = rate_limit(max_requests=20, window_seconds=60.0, scope='estilos_lote')
 _preview_rate_limit = rate_limit(max_requests=240, window_seconds=60.0, scope='estilos_lote_preview')
 
@@ -60,6 +63,10 @@ def _workspace(dataengine_db: Session, alias: str) -> str:
     return ws.geoserver_workspace
 
 
+def _dueno(usuario: Usuario) -> int | None:
+    return None if puede_aprobar(usuario, 'sld') else usuario.id
+
+
 def _tabla_invalida(exc: TablaInvalidaError) -> HTTPException:
     filas = getattr(exc, 'filas', None)
     detalle = {'mensaje': str(exc), 'filas': [f.to_dict() for f in filas] if filas else []}
@@ -70,7 +77,7 @@ def _tabla_invalida(exc: TablaInvalidaError) -> HTTPException:
 async def leer_archivo_tabla(
     archivo: UploadFile = File(...),
     _user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    _editor: Usuario = Depends(_require_edicion_sld),
     _rl: Usuario = Depends(_lote_rate_limit),
 ):
     contenido = await archivo.read(MAX_ARCHIVO + 1)
@@ -86,15 +93,15 @@ async def leer_archivo_tabla(
 @router.get('/sin-publicar', response_model=list[BorradorResponse])
 async def sin_publicar(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    editor: Usuario = Depends(_require_edicion_sld),
 ):
-    return estilos_lote.borradores_sin_publicar(db)
+    return estilos_lote.borradores_sin_publicar(db, _dueno(editor))
 
 
 @router.get('/historial', response_model=list[BorradorResponse])
 async def historial(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    _editor: Usuario = Depends(_require_edicion_sld),
 ):
     return estilos_lote.historial(db)
 
@@ -104,7 +111,7 @@ async def revisar_tabla(
     tabla: TablaIn,
     dataengine_db: Session = Depends(get_dataengine_db),
     _user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    _editor: Usuario = Depends(_require_edicion_sld),
     _rl: Usuario = Depends(_lote_rate_limit),
 ):
     try:
@@ -120,11 +127,11 @@ async def editar_borradores(
     db: Session = Depends(get_db),
     dataengine_db: Session = Depends(get_dataengine_db),
     _user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    editor: Usuario = Depends(_require_edicion_sld),
     _rl: Usuario = Depends(_lote_rate_limit),
 ):
     try:
-        texto = estilos_lote.tabla_de_borradores(pedido.ids, db, dataengine_db)
+        texto = estilos_lote.tabla_de_borradores(pedido.ids, db, dataengine_db, _dueno(editor))
         filas = await run_in_threadpool(estilos_lote.revisar, texto, dataengine_db)
     except TablaInvalidaError as exc:
         raise _tabla_invalida(exc) from exc
@@ -136,7 +143,7 @@ async def desde_estilo(
     pedido: EstiloIn,
     dataengine_db: Session = Depends(get_dataengine_db),
     _user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    _editor: Usuario = Depends(_require_edicion_sld),
     _rl: Usuario = Depends(_lote_rate_limit),
 ):
     workspace = _workspace(dataengine_db, pedido.alias)
@@ -156,7 +163,7 @@ async def guardar_xml(
     db: Session = Depends(get_db),
     dataengine_db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    _editor: Usuario = Depends(_require_edicion_sld),
     _rl: Usuario = Depends(_lote_rate_limit),
 ):
     _workspace(dataengine_db, pedido.alias)
@@ -172,12 +179,13 @@ async def crear_borradores(
     db: Session = Depends(get_db),
     dataengine_db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    _editor: Usuario = Depends(_require_edicion_sld),
     _rl: Usuario = Depends(_lote_rate_limit),
 ):
     try:
         return await run_in_threadpool(
             estilos_lote.crear_borradores, tabla.texto, db, dataengine_db, current_user, None, tabla.reemplazar,
+            _dueno(current_user),
         )
     except TablaInvalidaError as exc:
         raise _tabla_invalida(exc) from exc
@@ -189,7 +197,7 @@ async def vista_previa(
     width: int = Query(default=360, ge=120, le=800),
     dataengine_db: Session = Depends(get_dataengine_db),
     _user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_geoserver_manage),
+    _editor: Usuario = Depends(_require_edicion_sld),
     _rl: Usuario = Depends(_preview_rate_limit),
 ):
     workspace = _workspace(dataengine_db, pedido.alias)

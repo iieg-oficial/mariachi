@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { Navigate } from 'react-router';
 import PermissionRoute from '@app/guards/PermissionRoute';
+import { SLD_EDIT_PERMISSIONS } from '@features/sextante/utils/stylesBatchTable';
 
 const GEOSERVER_VIEW = ['mariachi.geoserver.view'];
 const GEOSERVER_MANAGE = ['mariachi.geoserver.manage'];
@@ -26,7 +27,7 @@ export const buildSextanteRoutes = (withSuspense) => {
         route('sextante/workspaces', WorkspacesPage, GEOSERVER_MANAGE),
         route('sextante/capas', LayerExplorerPage),
         route('sextante/estilos', StylesPage),
-        route('sextante/estilos/lote', StylesBatchPage, GEOSERVER_MANAGE),
+        route('sextante/estilos/lote', StylesBatchPage, SLD_EDIT_PERMISSIONS),
         route('sextante/recursos', GeoserverFilesPage),
         route('sextante/tipografias', FontsPage),
         route('sextante/simbolos', SymbolsPage, MAPALAB_MANAGE),

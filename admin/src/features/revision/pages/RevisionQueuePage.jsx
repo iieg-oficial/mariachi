@@ -5,6 +5,7 @@ import { EditOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
+import SldReviewCards from '@features/revision/components/SldReviewCards';
 
 const { Title } = Typography;
 
@@ -237,10 +238,18 @@ export default function RevisionQueue() {
         <div>
             <Title level={isMobile ? 3 : 2} style={{ marginBottom: 16 }}>Cola de revisión</Title>
 
+            <SldReviewCards
+                items={borradores.filter(isSld)}
+                onReview={handleRevisar}
+                onApprove={handleAprobarCapa}
+                onReject={handleRechazar}
+                approving={aprobando}
+            />
+
             <Card styles={{ body: { padding: isMobile ? 0 : undefined } }}>
                 <Table
                     columns={columns}
-                    dataSource={borradores}
+                    dataSource={borradores.filter((b) => !isSld(b))}
                     rowKey="id"
                     loading={loading}
                     size={isMobile ? 'small' : 'middle'}
@@ -250,7 +259,7 @@ export default function RevisionQueue() {
                         simple: isMobile,
                         showTotal: (total) => `${total} pendientes`
                     }}
-                    locale={{ emptyText: 'Sin borradores pendientes de revisión' }}
+                    locale={{ emptyText: borradores.some(isSld) ? 'Sin otros borradores pendientes' : 'Sin borradores pendientes de revisión' }}
                 />
             </Card>
 

@@ -14,7 +14,7 @@ import ResultStep from './ResultStep';
 const { Text } = Typography;
 
 const STEPS = [{ title: 'Subir tabla' }, { title: 'Revisar filas' }, { title: 'Vista previa' }, { title: 'Borradores' }];
-const SAVED_TIP = 'Aún no cambia nada en el visor. Se publican desde Sin publicar o desde Revisión.';
+const SAVED_TIP = 'Aún no cambia nada en el visor. Envíalos a revisión o publícalos desde Sin publicar.';
 
 export default function BatchWizard({ canPublish }) {
     const [saved] = useState(loadBatch);
