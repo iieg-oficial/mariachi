@@ -18,8 +18,8 @@ const TODOS = [
     'mariachi.mapalab.manage',
     'mariachi.mapalab_llaves.manage',
     'mariachi.mapalab_propuestas.approve',
-    'mariachi.geoserver.view',
-    'mariachi.geoserver.manage',
+    'mariachi.sextante.view',
+    'mariachi.sextante.manage',
     'mariachi.sieej_admin.view',
     'mariachi.sieej_documentacion.view',
     'mariachi.mel.view',
@@ -70,7 +70,7 @@ describe('buildSiderItems', () => {
 
     it('Sextante agrupa lo de GeoServer; workspaces y simbolos piden su propio permiso', () => {
         const items = buildSiderItems({
-            ...conPermisos(['mariachi.geoserver.view']),
+            ...conPermisos(['mariachi.sextante.view']),
             onNavigate: noop,
         });
         const sextante = items.find((i) => i.key === 'project-sextante');

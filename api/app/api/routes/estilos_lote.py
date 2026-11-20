@@ -20,7 +20,7 @@ from app.services.geoserver_client import GeoServerError
 router = APIRouter(prefix='/geoserver/estilos-lote', tags=['geoserver'])
 
 _require_edicion_sld = require_any_permission(
-    'mariachi.mapalab.update', 'mariachi.mapalab.manage', 'mariachi.geoserver.manage',
+    'mariachi.mapalab.update', 'mariachi.mapalab.manage', 'mariachi.sextante.update', 'mariachi.sextante.manage',
 )
 _lote_rate_limit = rate_limit(max_requests=20, window_seconds=60.0, scope='estilos_lote')
 _preview_rate_limit = rate_limit(max_requests=240, window_seconds=60.0, scope='estilos_lote_preview')
@@ -95,7 +95,7 @@ async def sin_publicar(
     db: Session = Depends(get_db),
     editor: Usuario = Depends(_require_edicion_sld),
 ):
-    return estilos_lote.borradores_sin_publicar(db, _dueno(editor))
+    return estilos_lote.borradores_sin_publicar(db, editor.id)
 
 
 @router.get('/historial', response_model=list[BorradorResponse])

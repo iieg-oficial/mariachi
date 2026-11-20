@@ -16,7 +16,7 @@ import { BulkActions, HistoryTab, UnpublishedTab } from '@features/sextante/comp
 
 const { Content } = Layout;
 
-const PUBLISH_PERMISSIONS = ['mariachi.mapalab.manage', 'mariachi.geoserver.manage'];
+const PUBLISH_PERMISSIONS = ['mariachi.mapalab.manage', 'mariachi.sextante.manage'];
 const PAGE_TIP = 'Sube la tabla de estilos coropléticos, revisa cada fila y guarda un borrador por estilo.';
 const GROUP_STYLE = {
     display: 'inline-flex',

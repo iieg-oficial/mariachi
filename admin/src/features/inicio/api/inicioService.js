@@ -8,6 +8,11 @@ export const getMisBorradores = async () => {
     return res.data;
 };
 
+export const descartarMiBorrador = async (id) => {
+    const res = await api.delete(`/borradores/por-id/${id}`);
+    return res.data;
+};
+
 export const getBorradoresPendientes = async () => {
     const res = await api.get('/borradores/pendientes');
     return res.data;

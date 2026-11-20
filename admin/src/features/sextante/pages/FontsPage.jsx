@@ -45,7 +45,8 @@ export default function FontsPage() {
     const [error, setError] = useState(null);
     const [search, setSearch] = useState('');
     const { can } = useAuth();
-    const puedeGestionar = can('mariachi.geoserver.manage');
+    const puedeEditar = can('mariachi.sextante.update');
+    const puedeAdministrar = can('mariachi.sextante.manage');
     const [uploadOpen, setUploadOpen] = useState(false);
     const [reloading, setReloading] = useState(false);
     const [deletingName, setDeletingName] = useState(null);
@@ -129,7 +130,7 @@ export default function FontsPage() {
                     extra={
                         <Space wrap>
                             <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading} />
-                            {puedeGestionar && (
+                            {puedeEditar && (
                                 <Button
                                     icon={<SyncOutlined />}
                                     onClick={handleReload}
@@ -140,7 +141,7 @@ export default function FontsPage() {
                                     Recargar en GeoServer
                                 </Button>
                             )}
-                            {puedeGestionar && (
+                            {puedeEditar && (
                                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setUploadOpen(true)}>
                                     Subir tipografías
                                 </Button>
@@ -185,7 +186,7 @@ export default function FontsPage() {
                                     dataSource={files}
                                     renderItem={(file) => (
                                         <List.Item
-                                            actions={puedeGestionar ? [
+                                            actions={puedeAdministrar ? [
                                                 <Popconfirm
                                                     key="del"
                                                     title="¿Eliminar esta tipografía?"

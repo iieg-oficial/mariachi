@@ -162,19 +162,19 @@ def create_app() -> FastAPI:
     app.include_router(
         estilos_lote.router,
         prefix=settings.admin_prefix,
-        dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
+        dependencies=[Depends(require_permission("mariachi.sextante.view"))],
     )
     app.include_router(
         geoserver.router,
         prefix=settings.admin_prefix,
         dependencies=[
-            Depends(require_any_permission("mariachi.geoserver.view", "mariachi.mapalab.view"))
+            Depends(require_any_permission("mariachi.sextante.view", "mariachi.mapalab.view"))
         ],
     )
     app.include_router(
         mosaics.router,
         prefix=settings.admin_prefix,
-        dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
+        dependencies=[Depends(require_permission("mariachi.sextante.view"))],
     )
     app.include_router(preview.admin_router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(
