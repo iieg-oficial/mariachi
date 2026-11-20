@@ -3,8 +3,8 @@ import { Navigate } from 'react-router';
 import PermissionRoute from '@app/guards/PermissionRoute';
 import { SLD_EDIT_PERMISSIONS } from '@features/sextante/utils/stylesBatchTable';
 
-const GEOSERVER_VIEW = ['mariachi.geoserver.view'];
-const GEOSERVER_MANAGE = ['mariachi.geoserver.manage'];
+const GEOSERVER_VIEW = ['mariachi.sextante.view'];
+const GEOSERVER_MANAGE = ['mariachi.sextante.manage'];
 const MAPALAB_MANAGE = ['mariachi.mapalab.manage'];
 
 export const buildSextanteRoutes = (withSuspense) => {

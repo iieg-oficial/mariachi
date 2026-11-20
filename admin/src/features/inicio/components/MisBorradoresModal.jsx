@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { Button, Empty, Modal, Space, Spin, Table, Tag, Typography } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
-import { getMisBorradores } from '@features/inicio/api/inicioService';
+import { Button, Empty, Modal, Popconfirm, Space, Spin, Table, Tag, Typography } from 'antd';
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { descartarMiBorrador, getMisBorradores } from '@features/inicio/api/inicioService';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 
@@ -17,12 +18,21 @@ const TIPO_LABEL = {
     evento: 'Evento',
     home_section: 'Inicio',
     page: 'Página',
+    pagina: 'Página',
+    sld: 'Estilo',
+    layer: 'Capa',
+    layer_metadata: 'Metadatos',
+    layer_stats: 'Estadísticas',
 };
+
+const CAPA = new Set(['layer', 'layer_metadata', 'layer_stats']);
 
 const editPath = (record) => {
     if (record.resource_type === 'elementos-menu') return `/menu?review=true&borrador=${record.id}`;
     if (record.resource_type === 'evento') return `/mapalab/eventos/${record.resource_id}/edit`;
     if (record.resource_type === 'home_section') return '/mapalab/home';
+    if (record.resource_type === 'sld') return '/sextante/estilos/lote';
+    if (CAPA.has(record.resource_type)) return '/mapalab/layers';
     return `/pages/edit/${record.resource_id}`;
 };
 
@@ -31,7 +41,7 @@ const tituloRecurso = (record) => {
     return record.data?.titulo || record.data?.title || record.resource_id;
 };
 
-const COLUMNAS = [
+const COLUMNAS_BASE = [
     {
         title: 'Tipo',
         key: 'tipo',
@@ -61,20 +71,48 @@ const COLUMNAS = [
             ? new Date(d).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })
             : '—'),
     },
+];
+
+const detener = (e) => e.stopPropagation();
+
+const columnasCon = (onDescartar, descartando) => [
+    ...COLUMNAS_BASE,
     {
         key: 'acciones',
-        width: 120,
+        width: 170,
         render: (_, r) => (
-            <Link to={editPath(r)}>
-                <Button type="link" icon={<EditOutlined />} size="small">Continuar</Button>
-            </Link>
+            <Space size={0} onClick={detener}>
+                <Link to={editPath(r)}>
+                    <Button type="link" icon={<EditOutlined />} size="small">Continuar</Button>
+                </Link>
+                <Popconfirm
+                    title="¿Descartar este borrador?"
+                    description="Se pierden sus cambios; lo publicado no cambia."
+                    okText="Descartar"
+                    okButtonProps={{ danger: true }}
+                    cancelText="Cancelar"
+                    onConfirm={() => onDescartar(r)}
+                >
+                    <Button
+                        type="text"
+                        danger
+                        size="small"
+                        shape="circle"
+                        icon={<DeleteOutlined />}
+                        aria-label="Descartar borrador"
+                        loading={descartando === r.id}
+                    />
+                </Popconfirm>
+            </Space>
         ),
     },
 ];
 
-export default function MisBorradoresModal({ open, onClose, borradores, loading }) {
+export default function MisBorradoresModal({ open, onClose, borradores, loading, onCambio }) {
     const [cargados, setCargados] = useState(borradores || []);
     const [cargando, setCargando] = useState(false);
+    const [descartados, setDescartados] = useState([]);
+    const [descartando, setDescartando] = useState(null);
     const usaPropios = Array.isArray(borradores);
 
     useEffect(() => {
@@ -88,7 +126,21 @@ export default function MisBorradoresModal({ open, onClose, borradores, loading 
         return () => { cancelado = true; };
     }, [open, usaPropios]);
 
-    const datos = usaPropios ? borradores : cargados;
+    const descartar = async (borrador) => {
+        setDescartando(borrador.id);
+        try {
+            await descartarMiBorrador(borrador.id);
+            setDescartados((prev) => [...prev, borrador.id]);
+            message.success('Borrador descartado');
+            onCambio?.();
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'No se pudo descartar el borrador');
+        } finally {
+            setDescartando(null);
+        }
+    };
+
+    const datos = (usaPropios ? borradores : cargados).filter((b) => !descartados.includes(b.id));
     const esperando = usaPropios ? loading : cargando;
     const rechazados = datos.filter((b) => b.estado === 'rechazado').length;
 
@@ -122,7 +174,7 @@ export default function MisBorradoresModal({ open, onClose, borradores, loading 
                 />
             ) : (
                 <Table
-                    columns={COLUMNAS}
+                    columns={columnasCon(descartar, descartando)}
                     dataSource={datos}
                     rowKey="id"
                     pagination={false}

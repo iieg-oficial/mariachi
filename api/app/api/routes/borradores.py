@@ -123,7 +123,7 @@ async def obtener_mis_borradores(
     return (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
-        .filter(Borrador.usuario_id == current_user.id)
+        .filter(Borrador.usuario_id == current_user.id, _ACTIVO_FILTER)
         .order_by(Borrador.actualizado_en.desc())
         .all()
     )
@@ -264,7 +264,12 @@ async def eliminar_borrador_por_id(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    borrador = _borrador_aprobable(db, borrador_id, current_user)
+    borrador = db.query(Borrador).filter(Borrador.id == borrador_id).first()
+    if not borrador:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    propio = borrador.usuario_id == current_user.id and borrador.estado in _ESTADOS_ACTIVOS
+    if not propio:
+        exigir_aprobacion(current_user, borrador.resource_type)
 
     db.delete(borrador)
     db.commit()

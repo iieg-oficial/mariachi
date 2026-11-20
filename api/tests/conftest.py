@@ -230,8 +230,9 @@ TODOS_LOS_PERMISOS = frozenset({
     "mariachi.colibri_config.manage",
     "mariachi.mel.view",
     "mariachi.mel.update",
-    "mariachi.geoserver.view",
-    "mariachi.geoserver.manage",
+    "mariachi.sextante.view",
+    "mariachi.sextante.update",
+    "mariachi.sextante.manage",
     "mariachi.actividad.view",
     "mariachi.incidentes.view",
     "mariachi.usuarios.view",
@@ -264,7 +265,7 @@ PERMISOS_EDITORA = frozenset({
     "mariachi.acervo.create",
     "mariachi.acervo.update",
     "mariachi.colibri_reportes.view",
-    "mariachi.geoserver.view",
+    "mariachi.sextante.view",
     "mariachi.usuarios.view",
 })
 

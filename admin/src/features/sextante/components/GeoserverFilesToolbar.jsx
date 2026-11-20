@@ -17,18 +17,20 @@ export default function GeoserverFilesToolbar({
                     <Button shape="round" icon={<DragOutlined />} onClick={onBulkMove}>
                         Mover ({selectedCount})
                     </Button>
-                    <Popconfirm
-                        title={`¿Eliminar ${selectedCount} recurso(s)?`}
-                        description="Las carpetas se borran con todo su contenido."
-                        okText="Eliminar"
-                        okButtonProps={{ danger: true }}
-                        cancelText="Cancelar"
-                        onConfirm={onBulkDelete}
-                    >
-                        <Button shape="round" danger icon={<DeleteOutlined />}>
-                            Eliminar ({selectedCount})
-                        </Button>
-                    </Popconfirm>
+                    {onBulkDelete && (
+                        <Popconfirm
+                            title={`¿Eliminar ${selectedCount} recurso(s)?`}
+                            description="Las carpetas se borran con todo su contenido."
+                            okText="Eliminar"
+                            okButtonProps={{ danger: true }}
+                            cancelText="Cancelar"
+                            onConfirm={onBulkDelete}
+                        >
+                            <Button shape="round" danger icon={<DeleteOutlined />}>
+                                Eliminar ({selectedCount})
+                            </Button>
+                        </Popconfirm>
+                    )}
                 </>
             )}
             <Tooltip title={uploadDisabled ? 'Entra a una carpeta para subir' : 'Subir archivos'}>

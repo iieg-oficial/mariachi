@@ -36,10 +36,34 @@ def test_mapalab_no_administra_ni_explora_geoserver(client, editora_user, metodo
     ],
 )
 def test_consulta_de_geoserver_no_escribe(client, editora_user, metodo, ruta):
-    csrf = login_as(client, editora_user, {"mariachi.geoserver.view"})
+    csrf = login_as(client, editora_user, {"mariachi.sextante.view"})
     r = client.request(metodo.upper(), f"{ADMIN_PREFIX}{ruta}", json={}, headers={"X-CSRF-Token": csrf})
     assert r.status_code == 403
-    assert "mariachi.geoserver.manage" in r.json()["detail"]
+    assert "mariachi.sextante." in r.json()["detail"]
+
+
+EDICION_SEXTANTE = {"mariachi.sextante.view", "mariachi.sextante.update"}
+
+
+@pytest.mark.parametrize(
+    ("metodo", "ruta"),
+    [
+        ("delete", "/geoserver/files/x.svg"),
+        ("post", "/geoserver/files/bulk-delete"),
+        ("post", "/geoserver/workspaces/register"),
+        ("get", "/geoserver/mosaicos"),
+    ],
+)
+def test_edicion_de_sextante_no_borra_ni_administra(client, editora_user, metodo, ruta):
+    csrf = login_as(client, editora_user, EDICION_SEXTANTE)
+    r = client.request(metodo.upper(), f"{ADMIN_PREFIX}{ruta}", json={}, headers={"X-CSRF-Token": csrf})
+    assert r.status_code == 403
+    assert "mariachi.sextante.manage" in r.json()["detail"]
+
+
+def test_edicion_de_sextante_entra_a_estilos_en_lote(client, editora_user):
+    login_as(client, editora_user, EDICION_SEXTANTE)
+    assert client.get(f"{ADMIN_PREFIX}/geoserver/estilos-lote/sin-publicar").status_code == 200
 
 
 def test_sin_geoserver_ni_mapalab_no_entra(client, editora_user):

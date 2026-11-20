@@ -47,7 +47,7 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
     const [posicion, setPosicion] = useState(POSICION_FINAL);
     const { can } = useAuth();
     const { isMobile } = useIsMobile();
-    const isAdmin = can('mariachi.geoserver.manage');
+    const isAdmin = can('mariachi.sextante.manage');
     const watchedNodeType = Form.useWatch('node_type', form);
     const watchedParentId = Form.useWatch('parent_id', form);
 

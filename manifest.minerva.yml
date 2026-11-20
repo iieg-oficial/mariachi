@@ -101,10 +101,12 @@ permissions:
   - key: mariachi.mel.update
     name: Editar marcas y tokens de MEL, el manual de estilo y lineamientos
 
-  - key: mariachi.geoserver.view
-    name: Ver recursos y tipografias de GeoServer
-  - key: mariachi.geoserver.manage
-    name: Subir recursos y recargar GeoServer
+  - key: mariachi.sextante.view
+    name: Ver capas, estilos, recursos y tipografias de Sextante
+  - key: mariachi.sextante.update
+    name: Subir y mover recursos, recargar tipografias y editar estilos en lote de Sextante
+  - key: mariachi.sextante.manage
+    name: Workspaces, mosaicos, borrar recursos y publicar estilos de Sextante
 
   - key: mariachi.actividad.view
     name: Ver la bitacora de actividad
@@ -280,11 +282,21 @@ roles:
       - mariachi.mel.view
       - mariachi.mel.update
 
-  - name: GeoServer - administracion
-    description: Atomico. Recursos y tipografias de Sextante
+  - name: Sextante - consulta
+    description: Atomico. Ver capas, estilos, recursos y tipografias
     permissions:
-      - mariachi.geoserver.view
-      - mariachi.geoserver.manage
+      - mariachi.sextante.view
+  - name: Sextante - edicion
+    description: Atomico. Subir y mover recursos, recargar tipografias y editar estilos en lote
+    permissions:
+      - mariachi.sextante.view
+      - mariachi.sextante.update
+  - name: Sextante - administracion
+    description: Atomico. Workspaces, mosaicos, borrar recursos y publicar estilos
+    permissions:
+      - mariachi.sextante.view
+      - mariachi.sextante.update
+      - mariachi.sextante.manage
 
   - name: Actividad - consulta
     description: Atomico. Ver la bitacora del ecosistema
@@ -349,8 +361,9 @@ roles:
       - mariachi.colibri_config.manage
       - mariachi.mel.view
       - mariachi.mel.update
-      - mariachi.geoserver.view
-      - mariachi.geoserver.manage
+      - mariachi.sextante.view
+      - mariachi.sextante.update
+      - mariachi.sextante.manage
       - mariachi.actividad.view
       - mariachi.incidentes.view
       - mariachi.usuarios.view

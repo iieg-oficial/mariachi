@@ -25,7 +25,7 @@ from app.services.mosaic_service import MosaicError, list_mosaics, reindex_mosai
 
 router = APIRouter(prefix='/geoserver', tags=['geoserver-mosaicos'])
 
-_require_manage = require_permission('mariachi.geoserver.manage')
+_require_manage = require_permission('mariachi.sextante.manage')
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='mosaic_read')
 _write_rate_limit = rate_limit(max_requests=10, window_seconds=60.0, scope='mosaic_write')
 

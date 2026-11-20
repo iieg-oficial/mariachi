@@ -7,8 +7,8 @@ from tests.conftest import ADMIN_PREFIX, login_as
 
 LOTE = f"{ADMIN_PREFIX}/geoserver/estilos-lote"
 BORRADORES = f"{ADMIN_PREFIX}/borradores"
-EDICION = {"mariachi.geoserver.view", "mariachi.mapalab.view", "mariachi.mapalab.update"}
-APROBACION = EDICION | {"mariachi.geoserver.manage"}
+EDICION = {"mariachi.sextante.view", "mariachi.mapalab.view", "mariachi.mapalab.update"}
+APROBACION = EDICION | {"mariachi.sextante.manage"}
 
 
 def _borrador(db, usuario, resource_id: str, estado: str = "en_progreso") -> Borrador:
@@ -31,15 +31,15 @@ def test_edicion_ve_solo_sus_borradores(client, db_session, editora_user, admin_
     assert [b["resource_id"] for b in r.json()] == ["s:propio"]
 
 
-def test_aprobacion_ve_todos(client, db_session, editora_user, admin_user):
+def test_aprobacion_tambien_ve_solo_los_suyos(client, db_session, editora_user, admin_user):
     _borrador(db_session, editora_user, "s:a")
     _borrador(db_session, admin_user, "s:b")
     login_as(client, admin_user, APROBACION)
-    assert {b["resource_id"] for b in client.get(f"{LOTE}/sin-publicar").json()} == {"s:a", "s:b"}
+    assert [b["resource_id"] for b in client.get(f"{LOTE}/sin-publicar").json()] == ["s:b"]
 
 
 def test_sin_edicion_no_entra_al_lote(client, editora_user):
-    login_as(client, editora_user, {"mariachi.geoserver.view"})
+    login_as(client, editora_user, {"mariachi.sextante.view"})
     assert client.get(f"{LOTE}/sin-publicar").status_code == 403
 
 

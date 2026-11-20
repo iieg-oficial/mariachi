@@ -57,7 +57,8 @@ export default function GeoserverFilesPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { can } = useAuth();
-    const puedeGestionar = can('mariachi.geoserver.manage');
+    const puedeEditar = can('mariachi.sextante.update');
+    const puedeAdministrar = can('mariachi.sextante.manage');
     const [uploadOpen, setUploadOpen] = useState(false);
     const [deletingName, setDeletingName] = useState(null);
     const { isMobile } = useIsMobile();
@@ -205,14 +206,14 @@ export default function GeoserverFilesPage() {
                         search={search.search}
                         onSearchChange={search.setSearch}
                     />
-                    {puedeGestionar && (
+                    {puedeEditar && (
                         <GeoserverFilesToolbar
                             uploadDisabled={workspace === null || isSearchMode}
                             onUpload={() => setUploadOpen(true)}
                             selectedCount={selection.count}
                             onBulkMove={actions.startMove}
-                            onBulkDelete={actions.bulkDelete}
-                            extraActions={<MosaicActions folder={folder} workspaces={workspaces} onDone={reload} />}
+                            onBulkDelete={puedeAdministrar ? actions.bulkDelete : undefined}
+                            extraActions={puedeAdministrar && <MosaicActions folder={folder} workspaces={workspaces} onDone={reload} />}
                         />
                     )}
                 </div>
@@ -250,13 +251,13 @@ export default function GeoserverFilesPage() {
                         deletingName={deletingName}
                         onOpenFolder={openFolder}
                         onDownloadZip={downloadZip}
-                        onDelete={puedeGestionar ? handleDelete : undefined}
+                        onDelete={puedeAdministrar ? handleDelete : undefined}
                         onDownloadFile={downloadFile}
                         anySelected={selection.count > 0}
                         isSelected={selection.isSelected}
-                        onToggleSelect={puedeGestionar ? selection.toggle : undefined}
-                        onRename={puedeGestionar ? actions.startRename : undefined}
-                        onDeleteFolder={puedeGestionar ? actions.startDeleteFolder : undefined}
+                        onToggleSelect={puedeEditar ? selection.toggle : undefined}
+                        onRename={puedeEditar ? actions.startRename : undefined}
+                        onDeleteFolder={puedeAdministrar ? actions.startDeleteFolder : undefined}
                     />
 
                     {!isSearchMode && !loading && (

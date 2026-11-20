@@ -30,12 +30,20 @@ def test_solo_consulta_no_guarda_borradores(client, editora_user):
     assert "mariachi.mapalab.update" in r.json()["detail"]
 
 
-def test_edicion_de_portal_no_aprueba_ni_descarta(client, editora_user):
-    borrador_id = _pagina_en_revision(client, editora_user)
+def test_edicion_de_portal_no_aprueba_ni_descarta_lo_ajeno(client, editora_user, admin_user):
+    borrador_id = _pagina_en_revision(client, admin_user)
     h = _como(client, editora_user, EDICION_PORTAL)
     assert client.get(f"{BASE}/por-id/{borrador_id}").status_code == 403
     assert client.delete(f"{BASE}/por-id/{borrador_id}", headers=h).status_code == 403
     assert client.get(f"{BASE}/pendientes").status_code == 403
+
+
+def test_cada_quien_descarta_su_borrador_desde_mis_borradores(client, editora_user):
+    borrador_id = _pagina_en_revision(client, editora_user)
+    h = _como(client, editora_user, EDICION_PORTAL)
+    assert [b["id"] for b in client.get(f"{BASE}/mios").json()] == [borrador_id]
+    assert client.delete(f"{BASE}/por-id/{borrador_id}", headers=h).status_code == 200
+    assert client.get(f"{BASE}/mios").json() == []
 
 
 def test_publicacion_de_portal_revisa_sin_permisos_de_mapalab(client, editora_user, admin_user):
