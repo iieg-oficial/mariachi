@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Cambiado
+
+- Imágenes base a Python 3.15 y Node 26.
+
 ## [2.171.0] - 2026-11-18
 
 ### Agregado
