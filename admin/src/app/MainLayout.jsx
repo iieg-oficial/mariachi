@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Layout, Menu, Button, Badge, Tooltip, Typography, Drawer, Grid } from 'antd';
 import {
     MenuFoldOutlined,
@@ -51,12 +51,15 @@ export default function MainLayout() {
     const [reportesPendingCount, setReportesPendingCount] = useState(0);
     const [misBorradores, setMisBorradores] = useState([]);
 
-    useEffect(() => {
-        if (!user) return;
+    const cargarMisBorradores = useCallback(() => {
         api.get('/borradores/mios')
             .then(r => setMisBorradores(r.data || []))
             .catch(() => {});
-    }, [user]);
+    }, []);
+
+    useEffect(() => {
+        if (user) cargarMisBorradores();
+    }, [user, cargarMisBorradores]);
 
     useEffect(() => {
         if (!can('mariachi.mapalab.update')) return;
@@ -312,6 +315,7 @@ export default function MainLayout() {
                 open={borradoresOpen}
                 onClose={() => setBorradoresOpen(false)}
                 borradores={misBorradores}
+                onCambio={cargarMisBorradores}
             />
         </Layout>
     );

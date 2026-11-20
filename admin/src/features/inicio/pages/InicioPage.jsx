@@ -21,7 +21,7 @@ const REVISORES = [
     'mariachi.mapalab.manage',
     'mariachi.mapalab.update',
     'mariachi.portal.publish',
-    'mariachi.geoserver.manage',
+    'mariachi.sextante.manage',
 ];
 
 export default function InicioPage() {

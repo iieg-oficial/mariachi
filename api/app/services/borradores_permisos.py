@@ -11,11 +11,15 @@ PERMISOS_POR_TIPO: dict[str, tuple[str, tuple[str, ...]]] = {
     "layer": _MAPALAB,
     "layer_metadata": _MAPALAB,
     "layer_stats": _MAPALAB,
-    "sld": ("mariachi.mapalab.update", ("mariachi.mapalab.manage", "mariachi.geoserver.manage")),
+    "sld": ("mariachi.mapalab.update", ("mariachi.mapalab.manage", "mariachi.sextante.manage")),
     "evento": _MAPALAB_DIRECTO,
     "home_section": _MAPALAB_DIRECTO,
     "pagina": _PORTAL,
     "elementos-menu": _PORTAL,
+}
+
+EDICION_ADICIONAL: dict[str, tuple[str, ...]] = {
+    "sld": ("mariachi.sextante.update",),
 }
 
 
@@ -28,7 +32,11 @@ def puede_aprobar(user: Usuario, tipo: str) -> bool:
 
 
 def puede_editar(user: Usuario, tipo: str) -> bool:
-    return has_permission(user, _permisos(tipo)[0]) or puede_aprobar(user, tipo)
+    if has_permission(user, _permisos(tipo)[0]):
+        return True
+    if any(has_permission(user, p) for p in EDICION_ADICIONAL.get(tipo, ())):
+        return True
+    return puede_aprobar(user, tipo)
 
 
 def exigir_edicion(user: Usuario, tipo: str) -> None:

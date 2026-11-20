@@ -8,7 +8,7 @@ const readTableFile = vi.fn();
 const fetchUnpublished = vi.fn();
 const editDrafts = vi.fn();
 const sendDraftToReview = vi.fn();
-let permisos = ['mariachi.geoserver.manage'];
+let permisos = ['mariachi.sextante.manage'];
 
 vi.mock('@features/sextante/api/stylesBatchService', () => ({
     reviewTable: (...args) => reviewTable(...args),
@@ -77,7 +77,7 @@ describe('StylesBatchPage', () => {
         createDrafts.mockReset();
         fetchUnpublished.mockResolvedValue([]);
         sendDraftToReview.mockReset();
-        permisos = ['mariachi.geoserver.manage'];
+        permisos = ['mariachi.sextante.manage'];
         localStorage.clear();
     });
 

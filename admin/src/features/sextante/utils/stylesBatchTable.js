@@ -1,4 +1,9 @@
-export const SLD_EDIT_PERMISSIONS = ['mariachi.mapalab.update', 'mariachi.mapalab.manage', 'mariachi.geoserver.manage'];
+export const SLD_EDIT_PERMISSIONS = [
+    'mariachi.mapalab.update',
+    'mariachi.mapalab.manage',
+    'mariachi.sextante.update',
+    'mariachi.sextante.manage',
+];
 
 export const TABLE_COLUMNS = [
     'capa',

@@ -50,9 +50,10 @@ router = APIRouter(
     tags=['geoserver'],
 )
 
-_require_geoserver_manage = require_permission("mariachi.geoserver.manage")
-_require_geoserver_view = require_permission("mariachi.geoserver.view")
-_require_lectura_capas = require_any_permission("mariachi.geoserver.view", "mariachi.mapalab.view")
+_require_geoserver_manage = require_permission("mariachi.sextante.manage")
+_require_geoserver_view = require_permission("mariachi.sextante.view")
+_require_geoserver_update = require_permission("mariachi.sextante.update")
+_require_lectura_capas = require_any_permission("mariachi.sextante.view", "mariachi.mapalab.view")
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='geoserver_read')
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='geoserver_write')
 _upload_rate_limit = rate_limit(max_requests=240, window_seconds=60.0, scope='geoserver_upload')
@@ -802,7 +803,7 @@ async def upload_geoserver_file(
     name: str | None = Form(default=None),
     workspace: str | None = Form(default=None),
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_geoserver_manage),
+    current_user: Usuario = Depends(_require_geoserver_update),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
 ):
@@ -844,7 +845,7 @@ async def init_chunked_geoserver_upload(
     content_type: str | None = Form(default=None),
     total_size: int = Form(...),
     total_chunks: int = Form(...),
-    current_user: Usuario = Depends(_require_geoserver_manage),
+    current_user: Usuario = Depends(_require_geoserver_update),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
 ):
@@ -874,7 +875,7 @@ async def upload_chunked_geoserver_part(
     session_id: str,
     chunk: UploadFile = File(...),
     part_number: int = Form(...),
-    current_user: Usuario = Depends(_require_geoserver_manage),
+    current_user: Usuario = Depends(_require_geoserver_update),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_chunk_rate_limit),
 ):
@@ -899,7 +900,7 @@ async def complete_chunked_geoserver_upload(
     session_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_geoserver_manage),
+    current_user: Usuario = Depends(_require_geoserver_update),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
 ):
@@ -1106,7 +1107,7 @@ async def move_geoserver_resource(
     payload: GeoServerMoveRequest,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_geoserver_manage),
+    current_user: Usuario = Depends(_require_geoserver_update),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
@@ -1258,7 +1259,7 @@ async def list_geoserver_fonts(
 async def reload_geoserver_fonts(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_geoserver_manage),
+    current_user: Usuario = Depends(_require_geoserver_update),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):

@@ -97,7 +97,7 @@ export default function SldEditor({ layer, derivedFeatureType }) {
 function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, borradorId }) {
     const navigate = useNavigate();
     const { can } = useAuth();
-    const isAdmin = can('mariachi.mapalab.manage') || can('mariachi.geoserver.manage');
+    const isAdmin = can('mariachi.mapalab.manage') || can('mariachi.sextante.manage');
     const { loading, error, data, draft, saveDraft, requestReview, reload } = useSldEditor({
         workspace,
         styleName,

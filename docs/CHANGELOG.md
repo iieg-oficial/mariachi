@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.171.1] - 2026-11-20
+
+### Agregado
+
+- **Sextante con tres niveles de acceso.** Roles atómicos «Sextante - consulta», «Sextante - edicion» y «Sextante - administracion». El permiso nuevo `mariachi.sextante.update` sube y mueve recursos, sube y recarga tipografías y edita estilos en lote; borrar, workspaces, mosaicos y publicar estilos siguen siendo de administración.
+- **Descartar desde «Mis borradores».** Cada fila tiene su botón para descartar ese borrador sin tocar los demás. Quien lo creó puede descartar el suyo mientras siga activo, aunque no tenga permiso de aprobar.
+
+### Cambiado
+
+- **Permisos `mariachi.geoserver.*` renombrados a `mariachi.sextante.*`**, como el menú. El rol «GeoServer - administracion» se reemplaza por «Sextante - administracion»: hay que reimportar el manifiesto en minerva y reasignar a quien tenía el rol anterior.
+- **«Sin publicar» de Estilos en lote muestra solo los borradores propios**, también a quien publica. Lo de los demás llega a Revisiones cuando lo envían.
+
+### Corregido
+
+- «Mis borradores» ya no lista borradores aprobados, y «Continuar» lleva a la pantalla correcta en estilos y capas.
+
 ## [2.171.0] - 2026-11-18
 
 ### Agregado

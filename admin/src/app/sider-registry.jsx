@@ -44,12 +44,12 @@ export const PROJECT_REGISTRY = {
     sextante: {
         label: 'Sextante',
         icon: <CompassOutlined />,
-        permissions: ['mariachi.geoserver.view'],
+        permissions: ['mariachi.sextante.view'],
         showBetaBadge: true,
         items: [
             {
                 key: '/sextante/workspaces', path: '/sextante/workspaces', label: 'Workspaces',
-                icon: <DeploymentUnitOutlined />, permissions: ['mariachi.geoserver.manage'],
+                icon: <DeploymentUnitOutlined />, permissions: ['mariachi.sextante.manage'],
             },
             { key: '/sextante/capas', path: '/sextante/capas', label: 'Explorador de capas', icon: <TableOutlined /> },
             { key: '/sextante/estilos', path: '/sextante/estilos', label: 'Estilos', icon: <BgColorsOutlined /> },
