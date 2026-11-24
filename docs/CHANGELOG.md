@@ -11,6 +11,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ## [No publicado]
 
+### Agregado
+
+- Documentación → Plugin de QGIS: el botón de descarga muestra la versión del complemento, leída
+  del `metadata.txt` del ZIP publicado, y el archivo se guarda como `mapalab-qgis-<versión>.zip`.
+
 ### Cambiado
 
 - Imágenes base a Python 3.15 y Node 26.
