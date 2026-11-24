@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.171.2] - 2026-11-24
+
+### Agregado
+
+- Documentación → Plugin de QGIS: el botón de descarga muestra la versión del complemento, leída
+  del `metadata.txt` del ZIP publicado, y el archivo se guarda como `mapalab-qgis-<versión>.zip`.
+
 ## [2.171.1] - 2026-11-20
 
 ### Agregado
