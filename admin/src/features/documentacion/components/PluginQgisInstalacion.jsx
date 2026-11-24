@@ -1,12 +1,13 @@
 import { Alert, Button, Card, Space, Steps, Table, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
+import useVersionDelZip from '../hooks/useVersionDelZip';
 
 const { Paragraph, Text } = Typography;
 
 const DESCARGA_URL = import.meta.env.VITE_QGIS_PLUGIN_URL
     || '/acervo/mapalab/plugin/mapalab-qgis.zip';
 
-const DESCARGA_NOMBRE = DESCARGA_URL.split('/').pop();
+const nombreDescarga = (version) => (version ? `mapalab-qgis-${version}.zip` : 'mapalab-qgis.zip');
 
 const PASOS = [
     {
@@ -75,6 +76,9 @@ const SITUACION_COLUMNS = [
 ];
 
 export default function PluginQgisInstalacion() {
+    const version = useVersionDelZip(DESCARGA_URL);
+    const nombre = nombreDescarga(version);
+
     return (
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <Alert
@@ -88,13 +92,13 @@ export default function PluginQgisInstalacion() {
                 size="small"
                 title="1 · Descargar el complemento"
                 extra={
-                    <Button type="primary" icon={<DownloadOutlined />} href={DESCARGA_URL} download>
-                        Descargar .zip
+                    <Button type="primary" icon={<DownloadOutlined />} href={DESCARGA_URL} download={nombre}>
+                        {version ? `Descargar v${version}` : 'Descargar .zip'}
                     </Button>
                 }
             >
                 <Paragraph style={{ marginBottom: 0 }}>
-                    Un solo archivo, <Text code>{DESCARGA_NOMBRE}</Text>, con todo lo que el complemento
+                    Un solo archivo, <Text code>{nombre}</Text>, con todo lo que el complemento
                     necesita. Es el mismo paquete para Linux, Windows y macOS, y se instala desde el propio
                     QGIS sin permisos de administrador.
                 </Paragraph>
