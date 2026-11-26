@@ -39,6 +39,7 @@ import {
 import ColibriIcon from '@shared/components/ColibriIcon';
 import { VINE_HABILITADO } from '@features/vine/constants/flags';
 import { ALCANCE_LOCAL, ENTORNO_NO_PROD } from '@app/sider-alcance';
+import { REVISION_PERMISSIONS } from '@features/revision/permissions';
 
 export const PROJECT_REGISTRY = {
     sextante: {
@@ -265,7 +266,7 @@ export const FOOTER_RAIL_ITEMS = [
         path: '/revision',
         label: 'Revisiones',
         icon: <AuditOutlined />,
-        permissions: ['mariachi.mapalab.manage'],
+        permissions: REVISION_PERMISSIONS,
         showBadge: true,
     },
 ];
