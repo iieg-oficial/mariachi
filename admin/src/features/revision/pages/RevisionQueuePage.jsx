@@ -20,6 +20,8 @@ const TIPOS_DE_CAPA = {
     layer_stats: 'Estadísticas',
 };
 
+const SLD_SHAPES = { point: 'Punto', boundary: 'Boundary', xml: 'XML' };
+
 export default function RevisionQueue() {
     const { isMobile } = useIsMobile();
     const navigate = useNavigate();
@@ -129,7 +131,7 @@ export default function RevisionQueue() {
         if (isHomeSection(record)) return <Tag color="cyan">Home: {record.resource_id}</Tag>;
         if (isSld(record)) {
             const shape = record.data?.shape || 'choropleth';
-            const label = shape === 'point' ? 'Punto' : shape === 'boundary' ? 'Boundary' : 'Coroplético';
+            const label = SLD_SHAPES[shape] || 'Coroplético';
             return <Tag color="green">Simbología ({label}): {record.resource_id}</Tag>;
         }
         if (isLayerDraft(record)) return <Tag color="blue">{layerDraftName(record)}</Tag>;

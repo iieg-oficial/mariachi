@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.171.4] - 2026-11-26
+
+### Corregido
+
+- **Revisiones se abre también con «Sextante - administracion» y «Portal - publicacion».** El backend
+  ya les dejaba aprobar estilos y páginas, pero el menú y la ruta pedían `mariachi.mapalab.manage`.
+- Los borradores de SLD en XML del lote salen como «Simbología (XML)» en Revisiones, no como coropléticos.
+
 ## [2.171.3] - 2026-11-26
 
 ### Agregado
