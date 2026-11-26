@@ -100,7 +100,6 @@ export default function BatchWizard({ canPublish }) {
     );
 
     const title = {
-        0: 'Sube tu tabla',
         1: <Space>{back}<Text strong>{rows.length} estilos</Text>{errorBadge}</Space>,
         2: <Space>{back}<Text strong>Vista previa</Text></Space>,
         3: (
@@ -148,14 +147,16 @@ export default function BatchWizard({ canPublish }) {
                 onChange={goTo}
                 items={STEPS.map((item, index) => ({ ...item, disabled: !canOpen(index) }))}
             />
-            <Card title={title} extra={extra}>
-                {step === 0 && <UploadStep loading={loading} onFile={handleFile} onSubmit={handleTable} />}
-                {step === 1 && (
-                    <ReviewStep rows={rows} checkingRows={checkingRows} onChangeRow={changeRow} onRemoveRows={removeRows} fill />
-                )}
-                {step === 2 && <PreviewStep rows={rows} />}
-                {step === 3 && <ResultStep drafts={drafts} canPublish={canPublish} />}
-            </Card>
+            {step === 0 && <UploadStep loading={loading} onFile={handleFile} onSubmit={handleTable} />}
+            {step > 0 && (
+                <Card title={title} extra={extra}>
+                    {step === 1 && (
+                        <ReviewStep rows={rows} checkingRows={checkingRows} onChangeRow={changeRow} onRemoveRows={removeRows} fill />
+                    )}
+                    {step === 2 && <PreviewStep rows={rows} />}
+                    {step === 3 && <ResultStep drafts={drafts} canPublish={canPublish} />}
+                </Card>
+            )}
         </div>
     );
 }

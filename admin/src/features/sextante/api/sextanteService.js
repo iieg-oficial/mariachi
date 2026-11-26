@@ -29,6 +29,13 @@ export const listWorkspaceStyles = async (alias, includeGlobal = false) => {
     return res.data;
 };
 
+export const getStylesSummary = async (alias, fresco = false) => {
+    const res = await api.get(`${BASE}/workspaces/${encodeURIComponent(alias)}/styles/resumen`, {
+        params: { fresco },
+    });
+    return res.data.styles;
+};
+
 export const getStyleDetail = async (alias, styleName) => {
     const res = await api.get(
         `${BASE}/styles/${encodeURIComponent(alias)}/${encodeURIComponent(styleName)}`,

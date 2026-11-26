@@ -9,6 +9,38 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.171.3] - 2026-11-26
+
+### Agregado
+
+- **Estilos: columnas Tipo y Capas que lo usan.** Salen de `GET /geoserver/workspaces/{alias}/styles/resumen`,
+  que cruza capas y SLD una vez por workspace y guarda el resultado dos minutos. Un candado con tooltip
+  explica por qué un estilo no se edita con el editor de colores.
+- **Estado de compatibilidad del SLD** junto a la vista previa: XML inválido, GeoServer lo rechaza, sin
+  editor de colores o compatible.
+
+### Cambiado
+
+- Imágenes base a Python 3.15 y Node 26.
+- Detalle de Estilos: vista previa, SLD y acciones en una sola fila; refrescar, copiar, editar colores
+  y editar XML van agrupados. El XML se edita en la misma caja, sin mover nada, y el mapa lo pinta en vivo.
+- Estilos en móvil: «Cargar en lote» como botón de icono, buscador a todo el ancho y nombres sin cortar,
+  con scroll horizontal.
+- Estilos en lote: el paso de subir va sin tarjeta ni título y «O pégala desde Excel» queda en una «ó»
+  centrada con tooltip.
+
+### Corregido
+
+- **Sin publicar del lote vuelve a mostrar a quien aprueba los borradores enviados a revisión.** Desde
+  2.171.1 solo veía los suyos; los ajenos en progreso siguen siendo privados.
+
+## [2.171.2] - 2026-11-24
+
+### Agregado
+
+- Documentación → Plugin de QGIS: el botón de descarga muestra la versión del complemento, leída
+  del `metadata.txt` del ZIP publicado, y el archivo se guarda como `mapalab-qgis-<versión>.zip`.
+
 ## [2.171.1] - 2026-11-20
 
 ### Agregado

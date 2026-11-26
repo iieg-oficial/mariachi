@@ -128,7 +128,7 @@ describe('StylesBatchPage', () => {
         pasteTable(container);
         expect(await screen.findByText('Ver cómo quedan')).toBeTruthy();
         fireEvent.click(screen.getByText('Subir tabla'));
-        expect(await screen.findByText('Sube tu tabla')).toBeTruthy();
+        expect(await screen.findByText('Revisar tabla')).toBeTruthy();
         fireEvent.click(screen.getByText('Revisar filas'));
         expect(await screen.findByText('Ver cómo quedan')).toBeTruthy();
     });
