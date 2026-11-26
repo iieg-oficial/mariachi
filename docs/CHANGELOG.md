@@ -9,12 +9,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [2.171.2] - 2026-11-25
+## [2.171.3] - 2026-11-26
 
 ### Agregado
 
-- Documentación → Plugin de QGIS: el botón de descarga muestra la versión del complemento, leída
-  del `metadata.txt` del ZIP publicado, y el archivo se guarda como `mapalab-qgis-<versión>.zip`.
 - **Estilos: columnas Tipo y Capas que lo usan.** Salen de `GET /geoserver/workspaces/{alias}/styles/resumen`,
   que cruza capas y SLD una vez por workspace y guarda el resultado dos minutos. Un candado con tooltip
   explica por qué un estilo no se edita con el editor de colores.
@@ -35,6 +33,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 - **Sin publicar del lote vuelve a mostrar a quien aprueba los borradores enviados a revisión.** Desde
   2.171.1 solo veía los suyos; los ajenos en progreso siguen siendo privados.
+
+## [2.171.2] - 2026-11-24
+
+### Agregado
+
+- Documentación → Plugin de QGIS: el botón de descarga muestra la versión del complemento, leída
+  del `metadata.txt` del ZIP publicado, y el archivo se guarda como `mapalab-qgis-<versión>.zip`.
 
 ## [2.171.1] - 2026-11-20
 
