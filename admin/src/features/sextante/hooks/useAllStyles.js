@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { listGeoserverWorkspaces } from '@features/sextante/api/geoserverFilesService';
-import { listWorkspaceStyles } from '@features/sextante/api/sextanteService';
+import { getStylesSummary, listWorkspaceStyles } from '@features/sextante/api/sextanteService';
 
 const PARALLEL = 4;
 
@@ -40,6 +40,7 @@ export default function useAllStyles(includeGlobal) {
     const [styles, setStyles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [summaries, setSummaries] = useState({});
 
     const reload = useCallback(async () => {
         setLoading(true);
@@ -51,6 +52,10 @@ export default function useAllStyles(includeGlobal) {
             const globals = includeGlobal && registered.length ? await globalsOf(registered[0]) : [];
             setWorkspaces(registered);
             setStyles([...perWorkspace.flat(), ...globals]);
+            mapLimit(registered, async (w) => {
+                const summary = await getStylesSummary(w.alias).catch(() => ({}));
+                setSummaries((prev) => ({ ...prev, [w.alias]: summary }));
+            });
             if (failed.length) setError(`No se pudieron leer: ${failed.join(', ')}`);
         } catch (err) {
             setStyles([]);
@@ -62,5 +67,5 @@ export default function useAllStyles(includeGlobal) {
 
     useEffect(() => { reload(); }, [reload]);
 
-    return { workspaces, styles, loading, error, reload };
+    return { workspaces, styles, summaries, loading, error, reload };
 }

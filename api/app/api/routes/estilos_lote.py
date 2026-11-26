@@ -95,7 +95,7 @@ async def sin_publicar(
     db: Session = Depends(get_db),
     editor: Usuario = Depends(_require_edicion_sld),
 ):
-    return estilos_lote.borradores_sin_publicar(db, editor.id)
+    return estilos_lote.borradores_sin_publicar(db, editor.id, revisor=puede_aprobar(editor, 'sld'))
 
 
 @router.get('/historial', response_model=list[BorradorResponse])

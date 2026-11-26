@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Button, Card, Space, Spin, Tag, Typography } from 'antd';
 import useStylePreview from '@features/sextante/hooks/useStylePreview';
 
@@ -5,8 +6,10 @@ const { Text } = Typography;
 
 const NULL_SWATCH = 'repeating-linear-gradient(45deg, var(--ant-color-text-quaternary) 0 2px, transparent 2px 5px)';
 
-export function MapImage({ alias, layerName, row, caption }) {
+export function MapImage({ alias, layerName, row, caption, onStatus }) {
     const { src, failed, retry } = useStylePreview(alias, layerName, row);
+    const status = failed ? 'error' : (src ? 'ok' : 'loading');
+    useEffect(() => { onStatus?.(status); }, [onStatus, status]);
     return (
         <Space orientation="vertical" size={4} style={{ width: '100%' }}>
             {caption && <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase' }}>{caption}</Text>}

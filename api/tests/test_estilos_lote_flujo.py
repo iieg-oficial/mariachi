@@ -31,11 +31,13 @@ def test_edicion_ve_solo_sus_borradores(client, db_session, editora_user, admin_
     assert [b["resource_id"] for b in r.json()] == ["s:propio"]
 
 
-def test_aprobacion_tambien_ve_solo_los_suyos(client, db_session, editora_user, admin_user):
+def test_aprobacion_ve_los_suyos_y_los_enviados_a_revision(client, db_session, editora_user, admin_user):
     _borrador(db_session, editora_user, "s:a")
+    _borrador(db_session, editora_user, "s:enviado", "pendiente_revision")
     _borrador(db_session, admin_user, "s:b")
     login_as(client, admin_user, APROBACION)
-    assert [b["resource_id"] for b in client.get(f"{LOTE}/sin-publicar").json()] == ["s:b"]
+    vistos = {b["resource_id"] for b in client.get(f"{LOTE}/sin-publicar").json()}
+    assert vistos == {"s:b", "s:enviado"}
 
 
 def test_sin_edicion_no_entra_al_lote(client, editora_user):

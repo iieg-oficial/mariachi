@@ -8,7 +8,7 @@ import PasteGrid from './PasteGrid';
 const { Text } = Typography;
 
 const ACCEPTED = /\.(xlsx|xlsm|csv|tsv|txt)$/i;
-const PASTE_TIP = 'Selecciona en Excel desde la columna del nombre hasta la de cortes, copia y pega en la primera celda. Los encabezados se ignoran.';
+const PASTE_TIP = 'O pégala desde Excel: selecciona desde la columna del nombre hasta la de cortes, copia y pega en la primera celda. Los encabezados se ignoran.';
 
 export default function UploadStep({ loading, onFile, onSubmit }) {
     const [grid, setGrid] = useState(emptyGrid);
@@ -41,8 +41,8 @@ export default function UploadStep({ loading, onFile, onSubmit }) {
                 </Upload.Dragger>
             </Spin>
             <Space orientation="vertical" style={{ width: '100%' }}>
-                <Space>
-                    <Text strong>O pégala desde Excel</Text>
+                <Space style={{ width: '100%', justifyContent: 'center' }}>
+                    <Text strong>ó</Text>
                     <Tooltip title={PASTE_TIP}>
                         <InfoCircleOutlined aria-label={PASTE_TIP} />
                     </Tooltip>

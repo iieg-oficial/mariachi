@@ -33,6 +33,7 @@ from app.schemas.geoserver_file import (
 from app.schemas.layer import WorkspaceCreate, WorkspacePending, WorkspaceResponse
 from app.services.acervo_file_service import ZIP_MAX_BYTES, stream_zip
 from app.services.actividad_service import registrar_actividad
+from app.services.estilos_resumen import resumen_estilos
 from app.services.geoserver_client import (
     RASTER_ROOT,
     RASTER_SCOPE,
@@ -280,6 +281,22 @@ async def list_workspace_styles(
         if name not in own_names
     )
     return {'workspace': alias, 'styles': styles}
+
+
+@router.get('/workspaces/{alias}/styles/resumen')
+async def styles_summary(
+    alias: str,
+    fresco: bool = Query(default=False),
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_lectura_capas),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    ws = _resolve_workspace(db, alias)
+    try:
+        resumen = await run_in_threadpool(resumen_estilos, ws.geoserver_workspace, None, fresco)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return {'workspace': alias, 'styles': resumen}
 
 
 @router.get('/workspaces/{alias}/layers/{layer}/fields')
