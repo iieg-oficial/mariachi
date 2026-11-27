@@ -24,6 +24,7 @@ import { buildSextanteRoutes } from '@features/sextante/routes';
 import { buildFramesRoutes, buildFramesFullscreenRoutes } from '@features/frames/routes';
 import { buildIntranetRoutes } from '@features/intranet/routes';
 import { buildVineFullscreenRoutes, buildVineRoutes } from '@features/vine/routes';
+import { REVISION_PERMISSIONS } from '@features/revision/permissions';
 
 const Users = lazy(() => import('@features/users'));
 const MenuManager = lazy(() => import('@features/portal-menu'));
@@ -86,7 +87,7 @@ const router = createBrowserRouter([
                     {
                         path: 'revision',
                         element: withSuspense(
-                            <PermissionRoute anyOf={['mariachi.mapalab.manage']}>
+                            <PermissionRoute anyOf={REVISION_PERMISSIONS}>
                                 <RevisionQueue />
                             </PermissionRoute>
                         )

@@ -12,20 +12,14 @@ import useDraftItems from '@features/sextante/hooks/useDraftItems';
 import PageHeader from '@features/sextante/components/PageHeader';
 import BatchWizard from '@features/sextante/components/stylesBatch/BatchWizard';
 import IconAction from '@features/sextante/components/stylesBatch/IconAction';
+import { ACTION_GROUP_STYLE } from '@features/sextante/utils/actionGroup';
 import { BulkActions, HistoryTab, UnpublishedTab } from '@features/sextante/components/stylesBatch/DraftTabs';
 
 const { Content } = Layout;
 
 const PUBLISH_PERMISSIONS = ['mariachi.mapalab.manage', 'mariachi.sextante.manage'];
 const PAGE_TIP = 'Sube la tabla de estilos coropléticos, revisa cada fila y guarda un borrador por estilo.';
-const GROUP_STYLE = {
-    display: 'inline-flex',
-    gap: 8,
-    padding: 4,
-    marginInlineStart: 8,
-    borderRadius: 999,
-    background: 'var(--ant-color-fill-tertiary)',
-};
+const GROUP_STYLE = { ...ACTION_GROUP_STYLE, marginInlineStart: 8 };
 
 export default function StylesBatchPage() {
     const { can } = useAuth();

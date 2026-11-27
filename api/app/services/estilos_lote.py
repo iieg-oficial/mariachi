@@ -8,6 +8,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.time import utcnow
@@ -210,14 +211,17 @@ def _del_lote(borradores: list[Borrador]) -> list[Borrador]:
     return [b for b in borradores if (b.data or {}).get('origen') == 'lote']
 
 
-def borradores_sin_publicar(db: Session, dueno_id: int | None = None) -> list[Borrador]:
+def borradores_sin_publicar(
+    db: Session, dueno_id: int | None = None, revisor: bool = False,
+) -> list[Borrador]:
     consulta = (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
         .filter(Borrador.resource_type == 'sld', Borrador.estado.in_(ESTADOS_ACTIVOS))
     )
     if dueno_id is not None:
-        consulta = consulta.filter(Borrador.usuario_id == dueno_id)
+        propios = Borrador.usuario_id == dueno_id
+        consulta = consulta.filter(or_(propios, Borrador.estado == 'pendiente_revision') if revisor else propios)
     return _del_lote(
         consulta
         .order_by(Borrador.actualizado_en.desc())
