@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.172.0] - 2026-11-27
+
+### Agregado
+
+- **Revisiones muestra el antes y el después de cada borrador sin salir de la cola.** «Revisar» abre un
+  collapse con «Hoy en el visor» junto a «Este borrador», y se aprueba o rechaza desde ahí:
+  - Tarjetita: las dos tarjetas pintadas con un registro real de la capa.
+  - Metadatos: la ficha del visor publicada y la del borrador.
+  - Estadísticas: la numeralia publicada y la del borrador, calculada al vuelo con `stats/preview`.
+  - SLD en lote: los dos mapas, debajo de sus tarjetas.
+  - Cada campo cambiado como `antes → después`.
+
+### Eliminado
+
+- Los modales `BorradorCapaRevisionModal` y `SldDraftReviewModal`: los reemplaza el collapse.
+
 ## [2.171.4] - 2026-11-26
 
 ### Corregido
