@@ -10,7 +10,7 @@ const RAMP_BOX = { height: 18, display: 'flex', alignItems: 'center' };
 
 const when = (date) => new Date(date).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 
-function SldCard({ item, onReview, onApprove, onReject, approving }) {
+function SldCard({ item, open, onReview, onApprove, onReject, approving }) {
     const data = item.data || {};
     const shape = data.shape || 'choropleth';
     const colors = data.colors || [];
@@ -30,7 +30,9 @@ function SldCard({ item, onReview, onApprove, onReject, approving }) {
             </Space>
             <Text type="secondary" style={{ fontSize: 12 }}>{item.usuario?.name || '—'} · {when(item.actualizado_en)}</Text>
             <Space size={6} wrap>
-                <Button shape="round" icon={<EyeOutlined />} onClick={() => onReview(item)}>Revisar</Button>
+                <Button shape="round" icon={<EyeOutlined />} aria-expanded={open} onClick={() => onReview(item)}>
+                    {open ? 'Ocultar' : 'Revisar'}
+                </Button>
                 <Popconfirm title="¿Aprobar y publicar en el visor?" okText="Aprobar" cancelText="Cancelar" onConfirm={() => onApprove(item)}>
                     <Button shape="round" type="primary" icon={<CheckOutlined />} loading={approving}>Aprobar</Button>
                 </Popconfirm>
@@ -40,7 +42,7 @@ function SldCard({ item, onReview, onApprove, onReject, approving }) {
     );
 }
 
-export default function SldReviewCards({ items, onReview, onApprove, onReject, approving }) {
+export default function SldReviewCards({ items, openIds = [], renderPanel, onReview, onApprove, onReject, approving }) {
     if (!items.length) return null;
     return (
         <section aria-label="Simbología pendiente">
@@ -50,6 +52,7 @@ export default function SldReviewCards({ items, onReview, onApprove, onReject, a
                     <SldCard
                         key={item.id}
                         item={item}
+                        open={openIds.includes(item.id)}
                         onReview={onReview}
                         onApprove={onApprove}
                         onReject={onReject}
@@ -57,6 +60,11 @@ export default function SldReviewCards({ items, onReview, onApprove, onReject, a
                     />
                 ))}
             </div>
+            {renderPanel && items.filter((item) => openIds.includes(item.id)).map((item) => (
+                <Card key={item.id} size="small" title={item.data?.style_title || item.resource_id} style={{ marginBottom: 16 }}>
+                    {renderPanel(item)}
+                </Card>
+            ))}
         </section>
     );
 }

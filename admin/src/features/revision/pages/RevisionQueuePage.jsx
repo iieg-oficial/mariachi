@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { Table, Card, Typography, Button, Space, Modal, Input, Tag } from 'antd';
+import { Table, Card, Typography, Button, Space, Modal, Input, Spin, Tag } from 'antd';
 import { useNavigate } from 'react-router';
 import { EditOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
@@ -9,10 +9,7 @@ import SldReviewCards from '@features/revision/components/SldReviewCards';
 
 const { Title } = Typography;
 
-const BorradorCapaRevisionModal = lazy(() => import('@features/mapalab-layers')
-    .then((m) => ({ default: m.BorradorCapaRevisionModal })));
-const SldDraftReviewModal = lazy(() => import('@features/sextante')
-    .then((m) => ({ default: m.SldDraftReviewModal })));
+const DraftReviewPanel = lazy(() => import('@features/revision/components/DraftReviewPanel'));
 
 const TIPOS_DE_CAPA = {
     layer: 'Capa',
@@ -30,7 +27,7 @@ export default function RevisionQueue() {
     const [rechazarModalVisible, setRechazarModalVisible] = useState(false);
     const [borradorSeleccionado, setBorradorSeleccionado] = useState(null);
     const [comentario, setComentario] = useState('');
-    const [borradorCapa, setBorradorCapa] = useState(null);
+    const [abiertos, setAbiertos] = useState([]);
     const [aprobando, setAprobando] = useState(false);
 
     const fetchPendientes = useCallback(async () => {
@@ -92,18 +89,13 @@ export default function RevisionQueue() {
         try {
             await api.post(`/borradores/por-id/${borrador.id}/aprobar`);
             message.success('Borrador aprobado y publicado');
-            setBorradorCapa(null);
+            setAbiertos((prev) => prev.filter((id) => id !== borrador.id));
             fetchPendientes();
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al aprobar el borrador');
         } finally {
             setAprobando(false);
         }
-    };
-
-    const handleRechazarCapa = (borrador) => {
-        setBorradorCapa(null);
-        handleRechazar(borrador);
     };
 
     const confirmarRechazo = async () => {
@@ -162,10 +154,18 @@ export default function RevisionQueue() {
     const supportsPreview = (record) => isMenu(record)
         || (!isEvento(record) && !isHomeSection(record) && !isSld(record) && !isLayerDraft(record));
 
+    const alternar = (id) => setAbiertos((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
     const handleRevisar = (record) => {
-        if (isLayerDraft(record) || isBatchSld(record)) setBorradorCapa(record);
+        if (isLayerDraft(record) || isBatchSld(record)) alternar(record.id);
         else navigate(editPath(record));
     };
+
+    const panel = (record) => (
+        <Suspense fallback={<Spin />}>
+            <DraftReviewPanel borrador={record} onAprobar={handleAprobarCapa} onRechazar={handleRechazar} aprobando={aprobando} />
+        </Suspense>
+    );
 
     const nombreDelRecurso = (record) => {
         if (!record) return '';
@@ -176,8 +176,6 @@ export default function RevisionQueue() {
         if (isLayerDraft(record)) return `${TIPOS_DE_CAPA[record.resource_type].toLowerCase()} "${record.data?.label || record.resource_id}"`;
         return record.data?.title;
     };
-
-    const ReviewModal = isBatchSld(borradorCapa) ? SldDraftReviewModal : BorradorCapaRevisionModal;
 
     const columns = [
         {
@@ -222,7 +220,7 @@ export default function RevisionQueue() {
                         icon={<EditOutlined />}
                         onClick={() => handleRevisar(record)}
                     >
-                        {isMobile ? '' : 'Revisar'}
+                        {isMobile ? '' : (abiertos.includes(record.id) ? 'Ocultar' : 'Revisar')}
                     </Button>
                     <Button
                         danger
@@ -242,6 +240,8 @@ export default function RevisionQueue() {
 
             <SldReviewCards
                 items={borradores.filter(isSld)}
+                openIds={abiertos}
+                renderPanel={(item) => (isBatchSld(item) ? panel(item) : null)}
                 onReview={handleRevisar}
                 onApprove={handleAprobarCapa}
                 onReject={handleRechazar}
@@ -254,6 +254,12 @@ export default function RevisionQueue() {
                     dataSource={borradores.filter((b) => !isSld(b))}
                     rowKey="id"
                     loading={loading}
+                    expandable={{
+                        expandedRowKeys: abiertos,
+                        onExpandedRowsChange: (keys) => setAbiertos([...keys]),
+                        rowExpandable: isLayerDraft,
+                        expandedRowRender: panel,
+                    }}
                     size={isMobile ? 'small' : 'middle'}
                     scroll={{ x: 'max-content' }}
                     pagination={{
@@ -288,18 +294,6 @@ export default function RevisionQueue() {
                 />
             </Modal>
 
-            {borradorCapa && (
-                <Suspense fallback={null}>
-                    <ReviewModal
-                        borrador={borradorCapa}
-                        onClose={() => setBorradorCapa(null)}
-                        onAprobar={handleAprobarCapa}
-                        onRechazar={handleRechazarCapa}
-                        aprobando={aprobando}
-                        width={isMobile ? '100%' : 640}
-                    />
-                </Suspense>
-            )}
         </div>
     );
 }
